@@ -1,0 +1,39 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from backend.routers import auth, gigs, bookings, chat, reviews, security, reports
+import uvicorn
+
+app = FastAPI(title="OnlyGigz API")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://192.168.100.58:3000",
+        "http://192.168.100.58:3001",
+        "http://192.168.100.58:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(gigs.router)
+app.include_router(bookings.router)
+app.include_router(chat.router)
+app.include_router(reviews.router)
+app.include_router(security.router)
+app.include_router(reports.router)
+
+@app.get("/")
+async def root():
+    return {"message": "OnlyGigz Backend API is running"}
+
+if __name__ == "__main__":
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
