@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0e0e11;
+  --foreground: #ffffff;
+  --surface: #18181b;
+  --primary: #b3ff00;
+  --secondary: #a1a1aa;
+  --border: #27272a;
+}
+
+@theme inline {
+  --color-background-base: var(--background);
+  --color-surface: var(--surface);
+  --color-primary-accent: var(--primary);
+  --color-text-secondary: var(--secondary);
+  --color-border-subtle: var(--border);
+  
+  /* Typography Tokens */
+  --text-heading: 30px;
+  --leading-heading: 36px;
+  
+  --text-body: 16px;
+  --leading-body: 24px;
+  
+  --text-label: 14px;
+  --leading-label: 20px;
+  
+  /* Standard Tailwind mapping overrides if needed */
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+}
+
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar Utility */
+.custom-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari and Opera */
+}
+
+@keyframes scraper-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-scraper-spin {
+  animation: scraper-spin 1s linear infinite;
+}
+
