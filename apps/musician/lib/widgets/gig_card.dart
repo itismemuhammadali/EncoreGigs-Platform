@@ -79,35 +79,63 @@ class GigCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFA1F301).withValues(alpha: 0.2),
-                          border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.09),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            SvgPicture.asset(
-                              'assets/featured_icon.svg',
-                              width: 16,
-                              height: 16,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFFA1F301),
-                                BlendMode.srcIn,
+                      Row(
+                        children: [
+                          if (gig.isUrgent)
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.2),
+                                border: Border.all(color: Colors.red.withValues(alpha: 0.5), width: 1.09),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.bolt, color: Colors.red, size: 16),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'URGENT',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Featured',
-                              style: TextStyle(
-                                color: Color(0xFFA1F301),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                              border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.09),
+                              borderRadius: BorderRadius.circular(20),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/featured_icon.svg',
+                                  width: 16,
+                                  height: 16,
+                                  colorFilter: const ColorFilter.mode(
+                                    Color(0xFFA1F301),
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Featured',
+                                  style: TextStyle(
+                                    color: Color(0xFFA1F301),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

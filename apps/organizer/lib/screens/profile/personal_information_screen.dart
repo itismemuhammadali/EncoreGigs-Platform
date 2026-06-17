@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../constants.dart';
+import '../../widgets/country_code_picker.dart';
 
 class PersonalInformationScreen extends StatefulWidget {
   const PersonalInformationScreen({super.key});
@@ -25,6 +26,7 @@ class _PersonalInformationScreenState
   File? _selectedImage;
   bool _isLoading = true;
   bool _isSaving = false;
+  CountryCode _selectedCountry = countries[0];
 
   @override
   void initState() {
@@ -41,7 +43,23 @@ class _PersonalInformationScreenState
         setState(() {
           _nameController.text = profile['name'] ?? profile['fullName'] ?? profile['orgName'] ?? '';
           _emailController.text = profile['email'] ?? profile['businessEmail'] ?? user.email ?? '';
-          _phoneController.text = profile['contact'] ?? profile['phone'] ?? profile['businessPhone'] ?? '';
+          
+          String phone = profile['contact'] ?? profile['phone'] ?? profile['businessPhone'] ?? '';
+          if (phone.isNotEmpty) {
+            bool found = false;
+            for (var country in countries) {
+              if (phone.startsWith(country.code)) {
+                _selectedCountry = country;
+                _phoneController.text = phone.substring(country.code.length).trim();
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              _phoneController.text = phone;
+            }
+          }
+
           _locationController.text = profile['location'] ?? profile['city'] ?? '';
           _bioController.text = profile['bio'] ?? profile['description'] ?? '';
           _profileImageUrl = fixEmulatorUrl(profile['profileImageUrl']);
@@ -119,7 +137,7 @@ class _PersonalInformationScreenState
       uid: user.uid,
       name: _nameController.text,
       email: _emailController.text,
-      contact: _phoneController.text,
+      contact: '${_selectedCountry.code} ${_phoneController.text.trim()}',
       location: _locationController.text,
       bio: _bioController.text,
       profileImageUrl: imageUrl,
@@ -187,7 +205,6 @@ class _PersonalInformationScreenState
         centerTitle: true,
       ),
       body: SafeArea(
-        bottom: false,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -276,8 +293,24 @@ class _PersonalInformationScreenState
               const SizedBox(height: 20),
               _buildLabel('Phone Number'),
               const SizedBox(height: 8),
-              _buildField(_phoneController, '+1 (555) 000-0000',
-                  keyboardType: TextInputType.phone),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CountryCodePicker(
+                    selectedCountry: _selectedCountry,
+                    onCountryChanged: (code) {
+                      setState(() {
+                        _selectedCountry = code;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildField(_phoneController, '555 000-0000',
+                        keyboardType: TextInputType.phone),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               _buildLabel('Location'),
               const SizedBox(height: 8),

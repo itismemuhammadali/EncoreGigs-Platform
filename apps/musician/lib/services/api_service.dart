@@ -141,4 +141,36 @@ class ApiService {
       throw Exception('Failed to load reviews: ${response.body}');
     }
   }
+
+  Future<void> createDispute(Map<String, dynamic> disputeData) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/disputes/create'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(disputeData),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to create dispute: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDisputes(String userId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/disputes/list?user_id=$userId'));
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load disputes: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDispute(String disputeId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/disputes/$disputeId'));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load dispute: ${response.body}');
+    }
+  }
 }

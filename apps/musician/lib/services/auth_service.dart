@@ -16,6 +16,7 @@ class AuthService extends ChangeNotifier {
 
   User? _user;
   User? get user => _user;
+  User? get currentUser => _user;
 
   List<String> _appliedGigIds = [];
   List<String> get appliedGigIds => _appliedGigIds;
@@ -98,14 +99,39 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> uploadImage(File file, String path) async {
+    debugPrint('AuthService: Starting upload to $path...');
     try {
       final storage = _resolveStorage();
       final ref = storage.ref().child(path);
-      final uploadTask = await ref.putFile(file).timeout(const Duration(minutes: 5));
-      final url = await uploadTask.ref.getDownloadURL();
-      return url;
+      
+      // Explicitly wait for the upload to complete
+      final TaskSnapshot snapshot = await ref.putFile(file).timeout(const Duration(minutes: 5));
+      
+      if (snapshot.state == TaskState.success) {
+        // Small delay for the emulator
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        try {
+          final url = await ref.getDownloadURL();
+          debugPrint('AuthService: Upload success, URL: $url');
+          return url;
+        } catch (e) {
+          debugPrint('AuthService: getDownloadURL failed, constructing emulator URL manually...');
+          // Fallback for emulator: Manually construct the URL
+          // Format: http://<host>:<port>/v0/b/<bucket>/o/<path>?alt=media
+          final host = getEmulatorHost();
+          final bucket = "demo-onlygigz.appspot.com";
+          final encodedPath = Uri.encodeComponent(path);
+          final manualUrl = "http://$host:9199/v0/b/$bucket/o/$encodedPath?alt=media";
+          debugPrint('AuthService: Manual Emulator URL: $manualUrl');
+          return manualUrl;
+        }
+      } else {
+        debugPrint('AuthService: Upload failed with state: ${snapshot.state}');
+        return null;
+      }
     } catch (e) {
-      debugPrint('Upload Error: $e');
+      debugPrint('AuthService: Upload Error at $path: $e');
       return null;
     }
   }
@@ -467,6 +493,51 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _auth.signOut();
+  }
+
+  Future<String?> createDispute({
+    required String bookingId,
+    required String category,
+    required String description,
+    required List<String> attachments,
+    required String reporterRole,
+  }) async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) return 'User not authenticated';
+
+      await _apiService.createDispute({
+        'bookingId': bookingId,
+        'reporterId': uid,
+        'reporterRole': reporterRole,
+        'category': category,
+        'description': description,
+        'attachments': attachments,
+      });
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDisputes() async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) return [];
+      return await _apiService.getDisputes(uid);
+    } catch (e) {
+      debugPrint('Error fetching disputes: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getDispute(String disputeId) async {
+    try {
+      return await _apiService.getDispute(disputeId);
+    } catch (e) {
+      debugPrint('Error fetching dispute: $e');
+      return null;
+    }
   }
 
   Future<String?> updateProfilePicture(File imageFile) async {

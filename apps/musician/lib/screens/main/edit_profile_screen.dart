@@ -8,6 +8,7 @@ import 'package:onlygigz_musician/models/profile_model.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
 import 'package:onlygigz_musician/services/api_service.dart';
 import 'package:provider/provider.dart';
+import '../../widgets/country_code_picker.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -33,6 +34,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   File? _imageFile;
+  CountryCode _selectedCountry = countries[0];
 
   @override
   void initState() {
@@ -63,7 +65,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           professionalTitleController.text = profile.profession;
           bioController.text = profile.bio;
           locationController.text = profile.location;
-          phoneController.text = data['contact'] ?? '';
+          
+          String phone = data['contact'] ?? '';
+          if (phone.isNotEmpty) {
+            bool found = false;
+            for (var country in countries) {
+              if (phone.startsWith(country.code)) {
+                _selectedCountry = country;
+                phoneController.text = phone.substring(country.code.length).trim();
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              phoneController.text = phone;
+            }
+          }
           
           // Parsing rate range
           final rateStr = data['feeRange']?.toString() ?? '0';
@@ -115,7 +132,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'uid': currentUser.uid,
         'name': fullNameController.text.trim(),
         'email': currentUser.email,
-        'contact': phoneController.text.trim(),
+        'contact': '${_selectedCountry.code} ${phoneController.text.trim()}',
         'location': locationController.text.trim(),
         'bio': bioController.text.trim(),
         'profileImageUrl': imageUrl,
@@ -403,10 +420,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             controller: locationController,
                           ),
                           const SizedBox(height: 16),
-                          _buildTextField(
-                            label: 'Phone Number',
-                            controller: phoneController,
-                            hintText: '+1 (555) 000-0000',
+                          const Text(
+                            'Phone Number',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CountryCodePicker(
+                                selectedCountry: _selectedCountry,
+                                onCountryChanged: (code) {
+                                  setState(() {
+                                    _selectedCountry = code;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _buildTextField(
+                                  label: '',
+                                  controller: phoneController,
+                                  hintText: '555 000-0000',
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

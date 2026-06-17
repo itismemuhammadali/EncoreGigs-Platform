@@ -1,27 +1,24 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Play,
   Database,
   CheckCircle,
   AlertTriangle,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { ScraperDetailsModal } from "@/components/ui/ScraperDetailsModal";
 import { EditScrapedGigModal } from "@/components/ui/EditScrapedGigModal";
 import { RunScraperModal } from "@/components/ui/RunScraperModal";
+import { apiRequest } from "@/lib/api";
 
 /** 
  * BACKEND DEVELOPER NOTE:
  * The following interfaces define the structure expected from the API.
- * Integration points:
- * 1. Fetch overall stats for the dashboard cards.
- * 2. Fetch recent scraper runs list.
- * 3. Fetch recently imported gigs with filtering support.
- * 4. POST request to trigger the scraper engine.
  */
 
 interface ScraperStat {
@@ -29,7 +26,7 @@ interface ScraperStat {
   value: string;
   subtext?: string;
   trend?: string;
-  icon: React.ElementType;
+  icon: any;
 }
 
 interface ScraperRun {
@@ -43,7 +40,7 @@ interface ScraperRun {
 }
 
 interface ImportedGig {
-  id: number;
+  id: string;
   title: string;
   source: string;
   classification: string;
@@ -54,55 +51,84 @@ interface ImportedGig {
 
 export default function ScraperModule() {
   const [activeTab, setActiveTab] = useState<"all" | "duplicates" | "spam">("all");
-  const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: "" });
-  const [deleteModal, setDeleteModal] = useState<{ show: boolean; gigId: number | null }>({ show: false, gigId: null });
+  const [toast, setToast] = useState<{ show: boolean; message: string; type?: "success" | "error" }>({ show: false, message: "" });
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; gigId: string | null }>({ show: false, gigId: null });
   const [detailsModal, setDetailsModal] = useState<{ show: boolean; run: ScraperRun | null }>({ show: false, run: null });
   const [editModal, setEditModal] = useState<{ show: boolean; gig: ImportedGig | null }>({ show: false, gig: null });
   const [runScraperModal, setRunScraperModal] = useState(false);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<ScraperStat[]>([]);
+  const [recentRuns, setRecentRuns] = useState<ScraperRun[]>([]);
+  const [importedGigs, setImportedGigs] = useState<ImportedGig[]>([]);
 
-  // BACKEND: Replace these initial state values with data from your API
-  const [stats, setStats] = useState<ScraperStat[]>([
-    { label: "Total Scraped Gigs", value: "1,845", subtext: "Last 30 days", icon: Database },
-    { label: "Success Rate", value: "94.2%", trend: "+2.3%", icon: CheckCircle },
-    { label: "Duplicates Detected", value: "124", subtext: "Automatically filtered", icon: FileText },
-    { label: "Spam Flagged", value: "37", subtext: "AI detection active", icon: AlertTriangle },
-  ]);
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
 
-  const [recentRuns, setRecentRuns] = useState<ScraperRun[]>([
-    { id: "1", timestamp: "2026-02-17 08:30:00", source: "Eventbrite", imported: 45, errors: 2, duration: "3m 24s", status: "success" },
-    { id: "2", timestamp: "2026-02-17 06:00:00", source: "Bandsintown", imported: 67, errors: 0, duration: "4m 12s", status: "success" },
-    { id: "3", timestamp: "2026-02-17 03:30:00", source: "GigSalad", imported: 23, errors: 1, duration: "2m 45s", status: "success" },
-    { id: "4", timestamp: "2026-02-16 22:00:00", source: "Thumbtack", imported: 0, errors: 5, duration: "0m 32s", status: "failed" },
-    { id: "5", timestamp: "2026-02-16 18:30:00", source: "The Bash", imported: 34, errors: 0, duration: "3m 56s", status: "success" },
-  ]);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [statsData, runsData, gigsData] = await Promise.all([
+        apiRequest("/scraper/stats"),
+        apiRequest("/scraper/runs"),
+        apiRequest(`/scraper/imported?filter_type=${activeTab}`)
+      ]);
 
-  const [importedGigs, setImportedGigs] = useState<ImportedGig[]>([
-    { id: 1, title: "Jazz Festival Performance", source: "Eventbrite", classification: "Jazz", confidence: "95%", flags: "None", importedAt: "2 hours ago" },
-    { id: 2, title: "Wedding Band Needed", source: "GigSalad", classification: "Wedding", confidence: "88%", flags: "None", importedAt: "3 hours ago" },
-    { id: 3, title: "Rock Concert Drummer", source: "Bandsintown", classification: "Rock", confidence: "92%", flags: "Duplicate", importedAt: "5 hours ago" },
-    { id: 4, title: "Quick Cash for Musicians!!!", source: "Unknown", classification: "Spam", confidence: "78%", flags: "Spam", importedAt: "6 hours ago" },
-  ]);
+      // Map icons to stats
+      const iconMap: Record<string, any> = {
+        "Database": Database,
+        "CheckCircle": CheckCircle,
+        "FileText": FileText,
+        "AlertTriangle": AlertTriangle
+      };
 
-  // Handle Filtering Logic
-  const filteredGigs = useMemo(() => {
-    return importedGigs.filter((gig) => {
-      if (activeTab === "all") return true;
-      if (activeTab === "duplicates") return gig.flags === "Duplicate";
-      if (activeTab === "spam") return gig.flags === "Spam";
-      return true;
-    });
-  }, [importedGigs, activeTab]);
+      setStats(statsData.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Database })));
+      setRecentRuns(runsData);
+      setImportedGigs(gigsData);
+    } catch (error) {
+      console.error("Failed to fetch scraper data:", error);
+      showToast("Failed to load scraper data", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const showToast = (message: string) => {
-    setToast({ show: true, message });
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ show: true, message, type });
+  };
+
+  const formatDate = (isoString: string) => {
+    if (!isoString || isoString === "Unknown" || isoString === "N/A") return isoString;
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return isoString;
+    }
   };
 
   /** 
    * BACKEND INTEGRATION: Trigger Scraper 
    */
   const handleRunScraper = async () => {
-    // TODO: Implement API call to POST /api/scraper/run
-    showToast("Scraper started successfully");
+    try {
+      await apiRequest("/scraper/run", { method: "POST" });
+      showToast("Scraper started successfully");
+      // Don't close immediately so user can see the simulation in the modal
+      // fetchData after a delay to get new results
+      setTimeout(fetchData, 5000);
+    } catch (error) {
+      showToast("Failed to start scraper", "error");
+    }
   };
 
   /** 
@@ -110,12 +136,24 @@ export default function ScraperModule() {
    */
   const handleDeleteGig = async () => {
     if (deleteModal.gigId) {
-      // TODO: Implement API call to DELETE /api/scraper/gigs/:id
-      setImportedGigs(prev => prev.filter(g => g.id !== deleteModal.gigId));
-      setDeleteModal({ show: false, gigId: null });
-      showToast("Gig deleted successfully");
+      try {
+        await apiRequest(`/scraper/gigs/${deleteModal.gigId}`, { method: "DELETE" });
+        setImportedGigs(prev => prev.filter(g => g.id !== deleteModal.gigId));
+        setDeleteModal({ show: false, gigId: null });
+        showToast("Gig deleted successfully");
+      } catch (error) {
+        showToast("Failed to delete gig", "error");
+      }
     }
   };
+
+  if (isLoading && stats.length === 0) {
+    return (
+      <div className="w-full h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#b3ff00] animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -176,7 +214,7 @@ export default function ScraperModule() {
               <tbody className="divide-y divide-[#2A2A2A]">
                 {recentRuns.map((run) => (
                   <tr key={run.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{run.timestamp}</td>
+                    <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{formatDate(run.timestamp)}</td>
                     <td className="px-6 py-5 text-white font-medium text-[14px]">{run.source}</td>
                     <td className="px-6 py-5 text-[#b3ff00] font-bold text-[14px]">{run.imported}</td>
                     <td className="px-6 py-5 text-[#ef4444] font-medium text-[14px]">{run.errors}</td>
@@ -198,6 +236,11 @@ export default function ScraperModule() {
                     </td>
                   </tr>
                 ))}
+                {recentRuns.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-[#71717a]">No recent runs found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -235,7 +278,7 @@ export default function ScraperModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2A2A2A]">
-                {filteredGigs.map((gig) => (
+                {importedGigs.map((gig) => (
                   <tr key={gig.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-5 text-white font-bold text-[14px] truncate max-w-[200px]">{gig.title}</td>
                     <td className="px-6 py-5 text-[#a1a1aa] text-[14px] font-medium">{gig.source}</td>
@@ -255,7 +298,7 @@ export default function ScraperModule() {
                         {gig.flags}
                       </span>
                     </td>
-                    <td className="px-6 py-5 text-[#a1a1aa] text-[13px]">{gig.importedAt}</td>
+                    <td className="px-6 py-5 text-[#a1a1aa] text-[13px]">{formatDate(gig.importedAt)}</td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
                         <button 
@@ -274,13 +317,18 @@ export default function ScraperModule() {
                     </td>
                   </tr>
                 ))}
+                {importedGigs.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-10 text-center text-[#71717a]">No imported gigs found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false, message: "" })} />
+      <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: "" })} />
       
       <ConfirmationModal 
         isOpen={deleteModal.show}
@@ -300,15 +348,27 @@ export default function ScraperModule() {
         isOpen={editModal.show}
         onClose={() => setEditModal({ show: false, gig: null })}
         gigData={editModal.gig}
-        onSave={(updatedGig) => {
-          setImportedGigs(prev => prev.map(g => g.id === updatedGig.id ? updatedGig : g));
-          setEditModal({ show: false, gig: null });
-          setToast({ show: true, message: "Gig updated successfully" });
+        onSave={async (updatedGig) => {
+          try {
+            await apiRequest(`/scraper/gigs/${updatedGig.id}`, {
+              method: "PATCH",
+              body: JSON.stringify(updatedGig)
+            });
+            setImportedGigs(prev => prev.map(g => g.id === updatedGig.id ? updatedGig : g));
+            setEditModal({ show: false, gig: null });
+            showToast("Gig updated successfully");
+          } catch (error) {
+            showToast("Failed to update gig", "error");
+          }
         }}
       />
       <RunScraperModal 
         isOpen={runScraperModal}
-        onClose={() => setRunScraperModal(false)}
+        onClose={() => {
+          setRunScraperModal(false);
+          fetchData(); // Refresh the main dashboard when closing the modal
+        }}
+        onConfirm={handleRunScraper}
       />
     </div>
   );

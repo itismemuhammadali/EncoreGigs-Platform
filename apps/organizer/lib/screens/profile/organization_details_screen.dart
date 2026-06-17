@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/country_code_picker.dart';
 
 class OrganizationDetailsScreen extends StatefulWidget {
   const OrganizationDetailsScreen({super.key});
@@ -31,6 +32,7 @@ class _OrganizationDetailsScreenState
   File? _selectedLicenseFile;
   bool _isLoading = true;
   bool _isSaving = false;
+  CountryCode _selectedCountry = countries[0];
 
   final List<String> _orgTypes = [
     'Venue / Club',
@@ -55,7 +57,23 @@ class _OrganizationDetailsScreenState
         setState(() {
           _nameController.text = profile['orgName'] ?? profile['name'] ?? '';
           _emailController.text = profile['businessEmail'] ?? profile['email'] ?? '';
-          _phoneController.text = profile['businessPhone'] ?? profile['contact'] ?? '';
+          
+          String phone = profile['businessPhone'] ?? profile['contact'] ?? '';
+          if (phone.isNotEmpty) {
+            bool found = false;
+            for (var country in countries) {
+              if (phone.startsWith(country.code)) {
+                _selectedCountry = country;
+                _phoneController.text = phone.substring(country.code.length).trim();
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              _phoneController.text = phone;
+            }
+          }
+
           _addressController.text = profile['address'] ?? '';
           _cityController.text = profile['city'] ?? '';
           _stateController.text = profile['state'] ?? '';
@@ -151,7 +169,7 @@ class _OrganizationDetailsScreenState
       orgName: _nameController.text,
       type: _selectedType ?? 'Other',
       businessEmail: _emailController.text,
-      businessPhone: _phoneController.text,
+      businessPhone: '${_selectedCountry.code} ${_phoneController.text.trim()}',
       address: _addressController.text,
       city: _cityController.text,
       state: _stateController.text,
@@ -277,8 +295,24 @@ class _OrganizationDetailsScreenState
               const SizedBox(height: 20),
               _buildLabel('Business Phone'),
               const SizedBox(height: 8),
-              _buildField(_phoneController, '+1 (555) 000-0000',
-                  keyboardType: TextInputType.phone),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CountryCodePicker(
+                    selectedCountry: _selectedCountry,
+                    onCountryChanged: (code) {
+                      setState(() {
+                        _selectedCountry = code;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildField(_phoneController, '555 000-0000',
+                        keyboardType: TextInputType.phone),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               _buildLabel('Business Address'),
               const SizedBox(height: 8),

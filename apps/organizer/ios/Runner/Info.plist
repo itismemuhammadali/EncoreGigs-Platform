@@ -30,7 +30,11 @@
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs to connect to the local backend and Firebase emulators.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs access to your camera to take photos for gig listings.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

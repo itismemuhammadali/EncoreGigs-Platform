@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center p-6 antialiased">
+    <main className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center p-6 antialiased" suppressHydrationWarning>
       {/* Back to Sign In */}
       <div className="w-[520px] mb-8">
         <Link
@@ -49,12 +49,12 @@ export default function ResetPasswordPage() {
 
       {/* Logo Section */}
       <div className="flex flex-col items-center mb-8 text-center">
-        <div className="relative w-[110px] h-[70px] mb-6 transition-transform duration-500 hover:scale-105">
+        <div className="relative mb-6 transition-transform duration-500 hover:scale-105">
           <Image
             src="/logo.png"
             alt="OnlyGigz Logo"
-            fill
-            sizes="110px"
+            width={110}
+            height={70}
             className="object-contain"
             priority
           />

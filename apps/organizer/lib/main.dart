@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,6 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
+import 'services/api_service.dart';
 import 'providers/signup_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
@@ -24,43 +27,57 @@ import 'constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase with dummy options since we're using emulators
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "dummy-api-key",
-      appId: "dummy-app-id",
-      messagingSenderId: "dummy-sender-id",
+  if (Firebase.apps.isEmpty) {
+    const firebaseOptions = FirebaseOptions(
+      apiKey: "AIzaSyB-DUMMY-KEY-FOR-EMULATOR-VALID",
+      appId: "1:1234567890:ios:abcdef123456",
+      messagingSenderId: "1234567890",
       projectId: "demo-onlygigz",
       storageBucket: "demo-onlygigz.appspot.com",
-    ),
-  );
-
-  await initHosts();
-
-  // Connect to Firebase Emulators
-  final String host = getEmulatorHost();
-  try {
-    await FirebaseAuth.instance.useAuthEmulator(host, 9099);
-    FirebaseFirestore.instance.settings = Settings(
-      host: '$host:8080',
-      sslEnabled: false,
-      persistenceEnabled: false,
+      iosBundleId: "com.onlygigz.organizer",
     );
-    await FirebaseStorage.instance.useStorageEmulator(host, 9199);
-  } catch (e) {
-    debugPrint('Error connecting to emulators: $e');
+
+    try {
+      await Firebase.initializeApp(options: firebaseOptions);
+      
+      final String host = getEmulatorHost();
+      debugPrint('Connecting to Firebase emulators on host: $host');
+      
+      await FirebaseAuth.instance.useAuthEmulator(host, 9099);
+      FirebaseFirestore.instance.settings = Settings(
+        host: '$host:8080',
+        sslEnabled: false,
+        persistenceEnabled: false,
+      );
+      await FirebaseStorage.instance.useStorageEmulator(host, 9199);
+      debugPrint('Firebase emulators connected (Auth:9099, Firestore:8080, Storage:9199)');
+    } catch (e) {
+      debugPrint('Firebase initialization error: $e');
+    }
   }
 
   runApp(
-  MultiProvider(
-    providers: [
-      ChangeNotifierProvider(create: (_) => AuthService()),
-      ChangeNotifierProvider(create: (_) => ChatService()),
-      ChangeNotifierProvider(create: (_) => SignUpProvider()),
-    ],
-    child: const MyApp(),
-  ),
-  );}
+    MultiProvider(
+      providers: [
+        Provider(create: (_) => ApiService()),
+        ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider(create: (_) => ChatService()),
+        ChangeNotifierProvider(create: (_) => SignUpProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+
+  _initNetworking();
+}
+
+Future<void> _initNetworking() async {
+  try {
+    await initHosts().timeout(const Duration(seconds: 2));
+  } catch (e) {
+    debugPrint('Networking initialization warning: $e');
+  }
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -79,7 +96,7 @@ class MyApp extends StatelessWidget {
           surface: const Color(0xFF0A0A0F),
           brightness: Brightness.dark,
         ),
-        pageTransitionsTheme: const PageTransitionsTheme(
+        pageTransitionsTheme: PageTransitionsTheme(
           builders: {
             TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
             TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),

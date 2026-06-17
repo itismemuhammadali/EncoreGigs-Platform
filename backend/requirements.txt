@@ -5,3 +5,5 @@ pydantic[email]
 requests
 python-multipart
 reportlab
+stripe
+python-dotenv

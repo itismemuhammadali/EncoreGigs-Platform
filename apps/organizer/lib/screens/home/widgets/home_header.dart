@@ -13,7 +13,7 @@ class HomeHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Welcome Back, Alex',
+              'Welcome Back',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 22,

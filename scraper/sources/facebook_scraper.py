@@ -7,6 +7,7 @@ import re
 
 class FacebookScraper(BaseScraper):
     def __init__(self, target_groups: List[str] = None):
+        super().__init__()
         self.target_groups = target_groups or ["Austin Musician Gigs"]
 
     @property
@@ -27,7 +28,7 @@ class FacebookScraper(BaseScraper):
         }
 
     def scrape(self) -> List[GigDetails]:
-        print(f"Scraping Facebook Groups: {self.target_groups}...")
+        print(f"Scraping Facebook Groups: {self.target_groups}...", flush=True)
         gigs = []
         
         # NOTE: Real Facebook scraping of groups usually requires authentication 
@@ -35,28 +36,31 @@ class FacebookScraper(BaseScraper):
         # and extraction logic from the text content we'd get from those groups.
         
         for group in self.target_groups:
-            # Placeholder: In a real scenario, we'd use a scraper library or Playwright
-            # to get the post contents.
-            sample_post_text = "Looking for a jazz pianist for a wedding in Austin. Pay is $500 for 3 hours. Contact me at john.doe@example.com or 512-555-0199."
+            # Improved sample post to be music-specific for demonstration
+            sample_post_text = "Urgent: Need a Lead Guitarist for a Rock Gig at Antone's this Friday! Must have own gear. Pay is $300. Contact me at music.pro@example.com or 512-555-9876."
             
+            # Apply musical filter
+            if not self.is_music_related(sample_post_text):
+                continue
+                
             contact = self._extract_contact_info(sample_post_text)
             
             organizer = OrganizerDetails(
-                name="Facebook User",
+                name="Facebook Music Organizer",
                 personal_email=contact["email"],
                 personal_phone=contact["phone"],
                 organization_type="Private"
             )
 
             gig = GigDetails(
-                title=f"Gig from {group}",
+                title=f"Musician Wanted: Rock Gig in {group}",
                 description=sample_post_text,
-                budget="$500",
-                duration="3 hours",
+                budget="$300",
+                duration="Nightly",
                 location="Austin, TX",
                 source_url=f"https://facebook.com/groups/{group}",
                 source_type=self.source_name,
-                external_id="fb_sample_001",
+                external_id="fb_music_sample_001",
                 organizer=organizer
             )
             gigs.append(gig)

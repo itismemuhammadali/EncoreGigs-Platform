@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -9,11 +9,13 @@ import {
   CheckCircle,
   Clock,
   Paperclip,
-  ShieldAlert
+  ShieldAlert,
+  Loader2
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { SendWarningModal } from "@/components/ui/SendWarningModal";
 import { SuspendUserModal } from "@/components/ui/SuspendUserModal";
+import { apiRequest } from "@/lib/api";
 
 // --- Types & Interfaces ---
 interface Dispute {
@@ -29,63 +31,9 @@ interface Dispute {
   description: string;
 }
 
-// --- Mock Data ---
-// BACKEND DEVELOPER: Replace this mock array with a fetch call to your disputes endpoint.
-const MOCK_DISPUTES: Dispute[] = [
-  {
-    id: "DSP-001",
-    priority: "high",
-    status: "open",
-    gigReference: "Jazz Night at Blue Note",
-    filedDate: "2026-02-16",
-    organizer: "Metro Events LLC",
-    musician: "Sarah Johnson",
-    reason: "Payment delay",
-    evidenceLink: "Contract_proof.pdf",
-    description: "Payment was not released 24 hours after gig completion as agreed."
-  },
-  {
-    id: "DSP-002",
-    priority: "critical",
-    status: "open",
-    gigReference: "Rock Concert",
-    filedDate: "2026-02-15",
-    organizer: "Blue Note Jazz Club",
-    musician: "Mike Peterson",
-    reason: "No show",
-    evidenceLink: "Venue_confirmation.jpg",
-    description: "Musician did not show up to the venue on the scheduled date."
-  },
-  {
-    id: "DSP-003",
-    priority: "medium",
-    status: "resolved",
-    gigReference: "Wedding Reception",
-    filedDate: "2026-02-10",
-    organizer: "City Sound Productions",
-    musician: "Lisa Anderson",
-    reason: "Quality of service",
-    evidenceLink: "Video_recording.mp4",
-    description: "Performance quality was below expectations based on profile."
-  },
-  {
-    id: "DSP-004",
-    priority: "high",
-    status: "resolved",
-    gigReference: "Corporate Event",
-    filedDate: "2026-02-08",
-    organizer: "Metro Events LLC",
-    musician: "David Chen",
-    reason: "Contract breach",
-    evidenceLink: "Email_thread.pdf",
-    description: "Organizer changed gig details without mutual agreement."
-  }
-];
-
 export default function DisputesPage() {
-  // BACKEND DEVELOPER: Initialize this with data from your API.
-  // Consider using React Query or a similar library for data fetching.
-  const [disputes, setDisputes] = useState<Dispute[]>(MOCK_DISPUTES);
+  const [disputes, setDisputes] = useState<Dispute[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"open" | "resolved">("open");
   const [toast, setToast] = useState({ show: false, message: "" });
   
@@ -93,8 +41,25 @@ export default function DisputesPage() {
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchDisputes();
+  }, []);
+
+  const fetchDisputes = async () => {
+    setIsLoading(true);
+    try {
+      const data = await apiRequest("/disputes/list");
+      setDisputes(data);
+    } catch (error) {
+      console.error("Failed to fetch disputes:", error);
+      setToast({ show: true, message: "Failed to load disputes from database." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // --- Handlers ---
-  const handleAction = (id: string, action: string) => {
+  const handleAction = async (id: string, action: string) => {
     if (action === "Send Warning") {
       setSelectedDisputeId(id);
       setIsWarningModalOpen(true);
@@ -107,26 +72,29 @@ export default function DisputesPage() {
       return;
     }
 
-    // BACKEND DEVELOPER: Implement dispute actions via API.
-    // e.g., await api.post(`/disputes/${id}/action`, { actionType: action });
-    setToast({ show: true, message: `Dispute ${id} closed successfully.` });
-    
     if (action === "Close Dispute") {
-      setDisputes(prev => prev.map(d => 
-        d.id === id ? { ...d, status: "resolved" } : d
-      ));
+      try {
+        await apiRequest(`/disputes/${id}/resolve`, { method: "POST" });
+        setToast({ show: true, message: `Dispute ${id} resolved successfully.` });
+        
+        // Refresh the list
+        fetchDisputes();
+      } catch (error) {
+        console.error("Failed to resolve dispute:", error);
+        setToast({ show: true, message: "Error resolving dispute." });
+      }
     }
   };
 
   const confirmWarning = () => {
-    // BACKEND DEVELOPER: Implement warning logic via API.
+    // In a real app, this would be an API call
     setToast({ show: true, message: `Warning sent for Dispute ${selectedDisputeId}.` });
     setIsWarningModalOpen(false);
     setSelectedDisputeId(null);
   };
 
   const confirmSuspend = () => {
-    // BACKEND DEVELOPER: Implement suspension logic via API.
+    // In a real app, this would be an API call
     setToast({ show: true, message: `User suspended for Dispute ${selectedDisputeId}.` });
     setIsSuspendModalOpen(false);
     setSelectedDisputeId(null);
@@ -142,7 +110,9 @@ export default function DisputesPage() {
     open: disputes.filter(d => d.status === "open").length,
     resolved: disputes.filter(d => d.status === "resolved").length,
     critical: disputes.filter(d => d.priority === "critical" && d.status === "open").length,
-    rate: "87%"
+    rate: disputes.length > 0 
+      ? `${Math.round((disputes.filter(d => d.status === "resolved").length / disputes.length) * 100)}%`
+      : "0%"
   };
 
   // --- UI Configuration Arrays ---
@@ -173,9 +143,17 @@ export default function DisputesPage() {
   return (
     <div className="w-full pb-20">
       {/* Header Section */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-[30px] font-bold text-white leading-tight mb-1">Dispute Resolution</h1>
-        <p className="text-[#999999] text-sm sm:text-[16px]">Manage and resolve disputes between musicians and organizers</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl sm:text-[30px] font-bold text-white leading-tight mb-1">Dispute Resolution</h1>
+          <p className="text-[#999999] text-sm sm:text-[16px]">Manage and resolve disputes between musicians and organizers</p>
+        </div>
+        <button 
+          onClick={fetchDisputes}
+          className="p-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-full hover:bg-white/5 transition-all"
+        >
+          <Clock size={20} className={isLoading ? "animate-spin text-[#A2F301]" : "text-[#999999]"} />
+        </button>
       </div>
 
       {/* Stats Cards Grid */}
@@ -216,88 +194,99 @@ export default function DisputesPage() {
 
       {/* Disputes List */}
       <div className="flex flex-col gap-6">
-        {filteredDisputes.map((dispute) => (
-          <div key={dispute.id} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] p-6 sm:p-8 animate-in fade-in duration-500 shadow-2xl">
-            {/* Card Header */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-              <h2 className="text-white text-[18px] sm:text-[20px] font-bold">{dispute.id}</h2>
-              <div className={`px-2 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold border ${getPriorityStyles(dispute.priority)}`}>
-                {dispute.priority} priority
-              </div>
-              <div className={`px-2 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold border ${getStatusStyles(dispute.status)}`}>
-                {dispute.status}
-              </div>
-            </div>
-            
-            <p className="text-[#999999] text-[13px] sm:text-[14px] mb-6 sm:mb-8">
-              Gig: {dispute.gigReference} <br className="sm:hidden" /> <span className="hidden sm:inline">•</span> Filed on {dispute.filedDate}
-            </p>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 sm:gap-x-12 mb-8">
-              <div>
-                <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Organizer</p>
-                <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.organizer}</p>
-              </div>
-              <div>
-                <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Musician</p>
-                <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.musician}</p>
-              </div>
-              <div>
-                <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Reason</p>
-                <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.reason}</p>
-              </div>
-              <div>
-                <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Evidence Attached</p>
-                <div className="flex items-center gap-2 text-[#A2F301] text-[14px] sm:text-[15px] font-semibold cursor-pointer hover:underline">
-                  <Paperclip size={14} className="shrink-0" />
-                  <span className="truncate">{dispute.evidenceLink}</span>
+        {isLoading ? (
+          <div className="py-20 flex justify-center">
+            <Loader2 size={48} className="text-[#A2F301] animate-spin" />
+          </div>
+        ) : (
+          <>
+            {filteredDisputes.map((dispute) => (
+              <div key={dispute.id} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] p-6 sm:p-8 animate-in fade-in duration-500 shadow-2xl">
+                {/* Card Header */}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                  <h2 className="text-white text-[18px] sm:text-[20px] font-bold">#{dispute.id.substring(0, 8).toUpperCase()}</h2>
+                  <div className={`px-2 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold border ${getPriorityStyles(dispute.priority)}`}>
+                    {dispute.priority} priority
+                  </div>
+                  <div className={`px-2 py-0.5 rounded-[4px] text-[10px] sm:text-[11px] font-bold border ${getStatusStyles(dispute.status)}`}>
+                    {dispute.status}
+                  </div>
                 </div>
+                
+                <p className="text-[#999999] text-[13px] sm:text-[14px] mb-6 sm:mb-8">
+                  Gig: {dispute.gigReference} <br className="sm:hidden" /> <span className="hidden sm:inline">•</span> Filed on {dispute.filedDate}
+                </p>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 sm:gap-x-12 mb-8">
+                  <div>
+                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Organizer</p>
+                    <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.organizer}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Musician</p>
+                    <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.musician}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Reason</p>
+                    <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.reason}</p>
+                  </div>
+                  <div>
+                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Evidence Attached</p>
+                    <div 
+                      className="flex items-center gap-2 text-[#A2F301] text-[14px] sm:text-[15px] font-semibold cursor-pointer hover:underline"
+                      onClick={() => dispute.evidenceLink !== "No evidence" && window.open(dispute.evidenceLink, '_blank')}
+                    >
+                      <Paperclip size={14} className="shrink-0" />
+                      <span className="truncate">{dispute.evidenceLink.split('/').last || dispute.evidenceLink}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="mb-8 sm:mb-10">
+                  <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-2">Description</p>
+                  <p className="text-white/80 text-[14px] sm:text-[15px] leading-relaxed max-w-[800px]">
+                    {dispute.description}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                {dispute.status === "open" && (
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button 
+                      onClick={() => handleAction(dispute.id, "Send Warning")}
+                      className="h-[44px] px-6 rounded-[8px] bg-[#F59E0B]/10 text-[#F59E0B] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#F59E0B]/20 transition-all"
+                    >
+                      <Flag size={18} />
+                      Send Warning
+                    </button>
+                    <button 
+                      onClick={() => handleAction(dispute.id, "Suspend User")}
+                      className="h-[44px] px-6 rounded-[8px] bg-[#EF4444]/10 text-[#EF4444] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#EF4444]/20 transition-all"
+                    >
+                      <UserX size={18} />
+                      Suspend User
+                    </button>
+                    <button 
+                      onClick={() => handleAction(dispute.id, "Close Dispute")}
+                      className="h-[44px] px-6 rounded-[8px] bg-[#10B981]/10 text-[#10B981] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#10B981]/20 transition-all sm:ml-auto"
+                    >
+                      <CheckCircle2 size={18} />
+                      Close Dispute
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
 
-            {/* Description */}
-            <div className="mb-8 sm:mb-10">
-              <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-2">Description</p>
-              <p className="text-white/80 text-[14px] sm:text-[15px] leading-relaxed max-w-[800px]">
-                {dispute.description}
-              </p>
-            </div>
-
-            {/* Actions */}
-            {dispute.status === "open" && (
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <button 
-                  onClick={() => handleAction(dispute.id, "Send Warning")}
-                  className="h-[44px] px-6 rounded-[8px] bg-[#F59E0B]/10 text-[#F59E0B] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#F59E0B]/20 transition-all"
-                >
-                  <Flag size={18} />
-                  Send Warning
-                </button>
-                <button 
-                  onClick={() => handleAction(dispute.id, "Suspend User")}
-                  className="h-[44px] px-6 rounded-[8px] bg-[#EF4444]/10 text-[#EF4444] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#EF4444]/20 transition-all"
-                >
-                  <UserX size={18} />
-                  Suspend User
-                </button>
-                <button 
-                  onClick={() => handleAction(dispute.id, "Close Dispute")}
-                  className="h-[44px] px-6 rounded-[8px] bg-[#10B981]/10 text-[#10B981] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#10B981]/20 transition-all sm:ml-auto"
-                >
-                  <CheckCircle2 size={18} />
-                  Close Dispute
-                </button>
+            {filteredDisputes.length === 0 && (
+              <div className="bg-[#1A1A1A] border border-[#2A2A2A] border-dashed rounded-[8px] py-20 flex flex-col items-center justify-center">
+                <CheckCircle2 size={48} className="text-[#52525b] mb-4" />
+                <p className="text-[#999999] text-[16px]">No {activeTab} disputes to display.</p>
               </div>
             )}
-          </div>
-        ))}
-
-        {filteredDisputes.length === 0 && (
-          <div className="bg-[#1A1A1A] border border-[#2A2A2A] border-dashed rounded-[8px] py-20 flex flex-col items-center justify-center">
-            <CheckCircle2 size={48} className="text-[#52525b] mb-4" />
-            <p className="text-[#999999] text-[16px]">No {activeTab} disputes to display.</p>
-          </div>
+          </>
         )}
       </div>
 

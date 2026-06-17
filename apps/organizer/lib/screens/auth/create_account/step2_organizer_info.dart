@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/signup_provider.dart';
+import '../../../widgets/country_code_picker.dart';
 
 class Step2OrganizerInfo extends StatefulWidget {
   const Step2OrganizerInfo({super.key});
@@ -13,6 +14,7 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
   final _contactController = TextEditingController();
   final _locationController = TextEditingController();
   String? _selectedType;
+  CountryCode _selectedCountry = countries[0]; // Default to US
 
   final List<String> _organizerTypes = [
     'Event Planner',
@@ -41,7 +43,7 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
 
     Provider.of<SignUpProvider>(context, listen: false).updateStep2(
       type: _selectedType!,
-      contact: _contactController.text.trim(),
+      contact: '${_selectedCountry.code} ${_contactController.text.trim()}',
       location: _locationController.text.trim(),
     );
 
@@ -98,8 +100,24 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
               const SizedBox(height: 20),
               _buildLabel('Contact Number'),
               const SizedBox(height: 8),
-              _buildTextField(_contactController, '+1 (555) 000-0000',
-                  keyboardType: TextInputType.phone),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CountryCodePicker(
+                    selectedCountry: _selectedCountry,
+                    onCountryChanged: (code) {
+                      setState(() {
+                        _selectedCountry = code;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildTextField(_contactController, '555 000-0000',
+                        keyboardType: TextInputType.phone),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               _buildLabel('City & Location'),
               const SizedBox(height: 8),

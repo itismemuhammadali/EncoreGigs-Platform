@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Any
 
 class GigRequest(BaseModel):
     title: str
@@ -13,6 +13,7 @@ class GigRequest(BaseModel):
     organizerId: str
     imageUrl: Optional[str] = None
     duration: Optional[str] = None
+    isUrgent: bool = False
 
 class ApplicationRequest(BaseModel):
     gigId: str
@@ -43,4 +44,26 @@ class BookingConfirmRequest(BaseModel):
     duration: Optional[str] = None
     status: str = "confirmed"
     createdAt: Optional[str] = None
+    currency: Optional[str] = "usd"
+    paymentMethodId: Optional[str] = None
     sections: Optional[dict] = None
+
+class DisputeRequest(BaseModel):
+    bookingId: str
+    reporterId: str
+    reporterRole: str # 'musician' or 'organizer'
+    category: str
+    description: str
+    attachments: Optional[List[str]] = []
+
+class DisputeResponse(BaseModel):
+    id: str
+    bookingId: str
+    reporterId: str
+    reporterRole: str
+    category: str
+    description: str
+    attachments: List[str]
+    status: str
+    createdAt: Any
+    updatedAt: Optional[Any] = None

@@ -33,6 +33,7 @@ class GigService:
             "organizerImage": organizer_image,
             "imageUrl": request.imageUrl or organizer_image, # Fallback to org image
             "duration": request.duration,
+            "isUrgent": request.isUrgent,
             "status": "open",
             "applicantsCount": 0,
             "createdAt": firestore.SERVER_TIMESTAMP

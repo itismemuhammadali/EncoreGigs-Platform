@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'contract_view_screen.dart';
 import 'booking_details_screen.dart';
 import '../../services/auth_service.dart';
@@ -251,6 +252,25 @@ class _ContractCard extends StatelessWidget {
     required this.location,
   });
 
+  Future<void> _downloadContract(BuildContext context) async {
+    final String url = '${getBackendUrl()}/bookings/${contract.id}/download-contract';
+    debugPrint('Attempting to download from: $url');
+    final Uri uri = Uri.parse(url);
+    
+    try {
+      // On some emulators canLaunchUrl returns false for local IPs even if they work.
+      // We try to launch and catch the error instead.
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (e) {
+      debugPrint('Launch Error: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading contract: $e')),
+        );
+      }
+    }
+  }
+
   bool _isNetworkImage(String path) {
     return path.startsWith('http://') || path.startsWith('https://');
   }
@@ -403,7 +423,7 @@ class _ContractCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () => _downloadContract(context),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(

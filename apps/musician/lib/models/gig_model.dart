@@ -22,6 +22,7 @@ class Gig {
   final int? organizerGigsPosted;
   final String? duration;
   final String? status;
+  final bool isUrgent;
 
   Gig({
     required this.id,
@@ -45,6 +46,7 @@ class Gig {
     this.organizerGigsPosted,
     this.duration,
     this.status,
+    this.isUrgent = false,
   });
 
   factory Gig.fromFirestore(Map<String, dynamic> data, String id) {
@@ -82,6 +84,7 @@ class Gig {
       organizerGigsPosted: data['organizerGigsPosted'] ?? 0,
       duration: data['duration'] ?? 'Not specified',
       status: data['status'] ?? 'open',
+      isUrgent: data['isUrgent'] ?? false,
     );
   }
 }

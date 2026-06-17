@@ -12,7 +12,7 @@ import {
 import { ViewContractModal } from "@/components/ui/ViewContractModal";
 import { ContractHistoryModal } from "@/components/ui/ContractHistoryModal";
 import { Toast } from "@/components/ui/Toast";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, BASE_URL } from "@/lib/api";
 
 // --- Types & Interfaces ---
 interface Contract {
@@ -86,8 +86,7 @@ export default function ContractsPage() {
     setToast({ show: true, message: `Generating PDF for ${contractId}...` });
     
     try {
-      const baseUrl = "http://localhost:8000";
-      const downloadUrl = `${baseUrl}/bookings/${contract.realId}/download-contract`;
+      const downloadUrl = `${BASE_URL}/bookings/${contract.realId}/download-contract`;
       window.open(downloadUrl, '_blank');
       setToast({ show: true, message: "Download started" });
     } catch (err) {

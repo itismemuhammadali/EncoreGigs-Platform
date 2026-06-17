@@ -2,3 +2,6 @@ requests
 beautifulsoup4
 pydantic
 python-dotenv
+firebase-admin
+playwright
+playwright-stealth

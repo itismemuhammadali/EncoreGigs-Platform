@@ -108,6 +108,34 @@ class GigDetailsScreen extends StatelessWidget {
                               fontWeight: FontWeight.w500)),
                     ),
                   ),
+                  if (gig.isUrgent)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt, color: Colors.red, size: 14),
+                            SizedBox(width: 4),
+                            Text(
+                              'URGENT',
+                              style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
               Padding(

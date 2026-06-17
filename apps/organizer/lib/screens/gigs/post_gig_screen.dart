@@ -37,6 +37,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
   final List<String> _requirements = [];
   final Set<String> _selectedGenres = <String>{};
   bool _isLoading = false;
+  bool _isUrgent = false;
   File? _imageFile;
 
   @override
@@ -174,6 +175,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
       location: _locationController.text.trim(),
       imageUrl: finalImageUrl,
       duration: _durationController.text.trim(),
+      isUrgent: _isUrgent,
     );
 
     if (mounted) {
@@ -475,6 +477,65 @@ class _PostGigScreenState extends State<PostGigScreen> {
               _buildLabel('Location'),
               const SizedBox(height: 8),
               _buildField(_locationController, 'e.g., Blue Note Jazz Club, NYC'),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1F),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isUrgent ? const Color(0xFFFF4D4D) : const Color(0xFF2A2A2F),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _isUrgent ? const Color(0xFFFF4D4D).withOpacity(0.1) : Colors.white.withOpacity(0.05),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.bolt,
+                        color: _isUrgent ? const Color(0xFFFF4D4D) : const Color(0xFF666666),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Mark as Urgent',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Highlight this gig for immediate needs',
+                            style: TextStyle(
+                              color: const Color(0xFF666666),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _isUrgent,
+                      onChanged: (value) => setState(() => _isUrgent = value),
+                      activeColor: const Color(0xFFFF4D4D),
+                      activeTrackColor: const Color(0xFFFF4D4D).withOpacity(0.3),
+                      inactiveThumbColor: const Color(0xFF666666),
+                      inactiveTrackColor: const Color(0xFF2A2A2F),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 32),
             ],
           ),

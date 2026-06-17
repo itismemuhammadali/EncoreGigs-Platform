@@ -9,6 +9,7 @@ import 'my_contracts_screen.dart';
 import 'musician_management_screen.dart';
 import 'payment_history_screen.dart';
 import 'wallet_screen.dart';
+import 'dispute_management_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -116,6 +117,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const PaymentHistoryScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.gavel_outlined,
+                      title: 'Dispute Management',
+                      subtitle: 'Report and track gig issues',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DisputeManagementScreen(),
                         ),
                       ),
                     ),

@@ -19,6 +19,7 @@ class GigModel {
   final String? imageUrl;
   final String? applicationsText;
   final int applicationsCount;
+  final bool isUrgent;
 
   GigModel({
     required this.gigId,
@@ -37,6 +38,7 @@ class GigModel {
     this.imageUrl,
     this.applicationsText,
     this.applicationsCount = 0,
+    this.isUrgent = false,
   });
 
   factory GigModel.fromFirestore(Map<String, dynamic> snapshot, String id) {
@@ -64,6 +66,7 @@ class GigModel {
       imageUrl: fixEmulatorUrl(snapshot['imageUrl']),
       applicationsText: snapshot['applicationsText'],
       applicationsCount: snapshot['applicationsCount'] ?? 0,
+      isUrgent: snapshot['isUrgent'] ?? false,
     );
   }
 }

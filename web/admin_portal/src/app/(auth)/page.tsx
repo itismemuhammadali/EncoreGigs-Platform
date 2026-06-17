@@ -43,15 +43,15 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center p-6 antialiased">
+    <main className="min-h-screen bg-[#0A0A0F] flex flex-col items-center justify-center p-6 antialiased" suppressHydrationWarning>
       {/* Logo & Title Section */}
       <div className="flex flex-col items-center mb-12 text-center">
-        <div className="relative w-[124px] h-[78px] mb-8 group transition-transform duration-500 hover:scale-105">
+        <div className="relative mb-8 group transition-transform duration-500 hover:scale-105">
           <Image
             src="/logo.png"
             alt="OnlyGigz Logo"
-            fill
-            sizes="124px"
+            width={124}
+            height={78}
             className="object-contain"
             priority
           />

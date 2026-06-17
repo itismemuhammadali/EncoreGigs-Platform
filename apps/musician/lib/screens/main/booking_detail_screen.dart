@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import 'dart:ui' as ui;
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/booking_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
+import '../../constants.dart';
 import 'chat_screen.dart';
 import 'contract_review_screen.dart';
 import 'contract_success_screen.dart';
@@ -49,6 +51,21 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final min = date.minute.toString().padLeft(2, '0');
     final period = date.hour >= 12 ? 'PM' : 'AM';
     return '$hour:$min $period';
+  }
+
+  Future<void> _downloadContract() async {
+    final String url = '${getBackendUrl()}/bookings/${widget.booking.id}/download-contract';
+    final Uri uri = Uri.parse(url);
+    
+    try {
+      await launchUrl(uri, mode: LaunchMode.platformDefault);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading contract: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -226,6 +243,40 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                                         : 'Please review and sign the contract to confirm the booking.'),
                                 style: const TextStyle(color: Color(0xFF999999), fontSize: 13, height: 1.5),
                               ),
+                              if (isSigned || isPaymentReleased) ...[
+                                const SizedBox(height: 16),
+                                GestureDetector(
+                                  onTap: _downloadContract,
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: const Color(0xFFA1F301), width: 1.5),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        SvgPicture.asset(
+                                          'assets/download_icon.svg',
+                                          width: 16,
+                                          height: 16,
+                                          colorFilter: const ColorFilter.mode(Color(0xFFA1F301), BlendMode.srcIn),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Download Agreement',
+                                          style: TextStyle(
+                                            color: Color(0xFFA1F301),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                               if (!isSigned && !isPaymentReleased) ...[
                                 const SizedBox(height: 16),
                                 GestureDetector(

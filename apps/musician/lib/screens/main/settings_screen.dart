@@ -8,6 +8,7 @@ import 'package:onlygigz_musician/screens/main/notifications_screen.dart';
 import 'package:onlygigz_musician/screens/main/privacy_policy_screen.dart';
 import 'package:onlygigz_musician/screens/main/terms_of_service_screen.dart';
 import 'package:onlygigz_musician/screens/main/help_center_screen.dart';
+import 'package:onlygigz_musician/screens/main/dispute_management_screen.dart';
 import 'package:onlygigz_musician/screens/main/wallet_overview_screen.dart';
 import 'package:onlygigz_musician/screens/main/payment_method_screen.dart';
 import 'package:onlygigz_musician/screens/main/privacy_settings_screen.dart';
@@ -234,6 +235,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildGroup([
                           _buildItem(svgIcon: 'assets/help_icon.svg', title: 'Help Center', subtitle: '',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpCenterScreen()))),
+                          _buildItem(icon: Icons.gavel_outlined, title: 'Dispute Management', subtitle: 'Report and track gig issues',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisputeManagementScreen()))),
                           _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Terms of Service', subtitle: '',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()))),
                           _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Privacy Policy', subtitle: '',

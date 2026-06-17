@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, gigs, bookings, chat, reviews, security, reports
+from backend.routers import auth, gigs, bookings, chat, reviews, security, reports, scraper, disputes
+from backend.payments.router import router as payments_router
 import uvicorn
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="OnlyGigz API")
 
@@ -13,9 +18,9 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
-        "http://192.168.100.58:3000",
-        "http://192.168.100.58:3001",
-        "http://192.168.100.58:8000",
+        "http://192.168.100.55:3000",
+        "http://192.168.100.55:3001",
+        "http://192.168.100.55:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -30,6 +35,9 @@ app.include_router(chat.router)
 app.include_router(reviews.router)
 app.include_router(security.router)
 app.include_router(reports.router)
+app.include_router(scraper.router)
+app.include_router(disputes.router)
+app.include_router(payments_router)
 
 @app.get("/")
 async def root():

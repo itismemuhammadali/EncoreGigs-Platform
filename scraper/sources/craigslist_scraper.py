@@ -5,11 +5,14 @@ from scraper.sources.base_scraper import BaseScraper
 from scraper.models.gig import GigDetails, OrganizerDetails
 from datetime import datetime
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 class CraigslistScraper(BaseScraper):
     def __init__(self, city: str = "austin"):
+        super().__init__()
         self.city = city
-        self.base_url = f"https://{city}.craigslist.org/search/ggg"
+        # Target 'muc' (musicians) community section with a search query for better variety
+        self.base_url = f"https://{city}.craigslist.org/search/muc?query=music"
 
     @property
     def source_name(self) -> str:
@@ -18,7 +21,7 @@ class CraigslistScraper(BaseScraper):
     def _get_detail_page(self, url: str) -> dict:
         """Visits the individual gig page to get deeper details."""
         try:
-            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            res = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
             if res.status_code != 200:
                 return {}
             
@@ -54,47 +57,86 @@ class CraigslistScraper(BaseScraper):
                 "images": images
             }
         except Exception as e:
-            print(f"Error fetching details from {url}: {e}")
+            # print(f"Error fetching details from {url}: {e}")
             return {}
+
+    def process_result(self, res):
+        """Processes a single search result into a GigDetails object."""
+        try:
+            link_elem = res if res.name == 'a' else res.select_one('a')
+            if not link_elem: return None
+            link = link_elem['href']
+            if not link.startswith('http'):
+                link = f"https://{self.city.craigslist.org}{link}"
+            
+            title_elem = res.select_one('.title, .result-title, .titlestring')
+            title = title_elem.text.strip() if title_elem else link.split('/')[-1].replace('.html', '').replace('-', ' ')
+            
+            # Preliminary check on title
+            if not self.is_music_related(title):
+                return None
+            
+            # Visit detail page
+            details = self._get_detail_page(link)
+            description = details.get("description", "No description available.")
+            
+            # Check description too for music relevance
+            if not self.is_music_related(description):
+                return None
+            
+            organizer = OrganizerDetails(
+                name="Craigslist Poster",
+                organization_type="Other",
+                description="Organization details available on Craigslist post."
+            )
+
+            external_id = res.get('data-pid')
+            if not external_id and link:
+                match = re.search(r'/(\d+)\.html', link)
+                if match:
+                    external_id = match.group(1)
+            
+            return GigDetails(
+                title=title,
+                description=description,
+                budget=details.get("compensation", "Not specified"),
+                location=f"{self.city.capitalize()}, TX",
+                image_url=details.get("images")[0] if details.get("images") else None,
+                source_url=link,
+                source_type=self.source_name,
+                external_id=external_id or f"cl_{hash(link)}",
+                organizer=organizer
+            )
+        except Exception:
+            return None
 
     def scrape(self) -> List[GigDetails]:
         print(f"Scraping Craigslist ({self.city})...")
         gigs = []
         
         try:
-            response = requests.get(self.base_url, headers={"User-Agent": "Mozilla/5.0"})
+            response = requests.get(self.base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
             if response.status_code != 200:
                 return []
 
             soup = BeautifulSoup(response.text, 'html.parser')
-            results = soup.select('.result-row')
+            # Try multiple selectors as Craigslist updates frequently
+            results = soup.select('li.cl-static-search-result, li.result-row, .gallery-card')
             
-            for res in results[:5]: # Limit to 5 for thoroughness in testing
-                title_elem = res.select_one('.result-title')
-                link = title_elem['href'] if title_elem else ""
-                title = title_elem.text if title_elem else "Unknown Gig"
-                
-                # Visit detail page
-                details = self._get_detail_page(link)
-                
-                organizer = OrganizerDetails(
-                    name="Craigslist Poster",
-                    organization_type="Other",
-                    description="Organization details available on Craigslist post."
-                )
+            if not results:
+                # Fallback to broad search for links
+                results = soup.select('a[href*="/muc/"]')
 
-                gig = GigDetails(
-                    title=title,
-                    description=details.get("description", "No description available."),
-                    budget=details.get("compensation", "Not specified"),
-                    location=f"{self.city.capitalize()}, TX",
-                    image_url=details.get("images")[0] if details.get("images") else None,
-                    source_url=link,
-                    source_type=self.source_name,
-                    external_id=res.get('data-pid', 'unknown'),
-                    organizer=organizer
-                )
-                gigs.append(gig)
+            # Limit to top 40 for speed in real-time demo
+            target_results = results[:40]
+            print(f"Found {len(results)} potential results on Craigslist. Processing top {len(target_results)} in parallel...", flush=True)
+            
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = [executor.submit(self.process_result, res) for res in target_results]
+                for future in futures:
+                    gig = future.result()
+                    if gig:
+                        gigs.append(gig)
                 
         except Exception as e:
             print(f"Error: {e}")
