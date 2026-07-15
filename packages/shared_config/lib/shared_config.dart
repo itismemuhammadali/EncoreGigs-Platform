@@ -35,9 +35,9 @@ List<String> get BACKEND_HOSTS {
   if (kIsWeb) return ['localhost', '127.0.0.1'];
   if (Platform.isAndroid) {
     return [
+      PRIMARY_BACKEND_HOST,
       '10.0.2.2', // Android emulator loopback to host
       '127.0.0.1',
-      PRIMARY_BACKEND_HOST,
     ];
   }
   // iOS and others

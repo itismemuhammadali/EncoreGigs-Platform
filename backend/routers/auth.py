@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
 from typing import Optional, List, Dict, Any
 from firebase_admin import auth, firestore
-import requests
+import urllib3
+import json as _json
 from backend.services.auth_service import AuthService
 from backend.services.storage_service import StorageService
 from backend.services.security_service import SecurityService
@@ -10,7 +11,20 @@ from backend.models.musician_models import MusicianSignUpRequest, PortfolioUpdat
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-FIREBASE_WEB_API_KEY = "dummy-api-key"
+FIREBASE_WEB_API_KEY = "AIzaSyChynuewEnIYF376H9BDQr87BMtBmZmgjQ"
+FIREBASE_IDENTITY_TOOLKIT_URL = "https://identitytoolkit.googleapis.com/v1"
+
+def _firebase_auth_request(endpoint, payload):
+    """Call Firebase Identity Toolkit API directly, bypassing any emulator env var interception."""
+    url = f"{FIREBASE_IDENTITY_TOOLKIT_URL}/{endpoint}?key={FIREBASE_WEB_API_KEY}"
+    http = urllib3.PoolManager()
+    response = http.request(
+        'POST',
+        url,
+        body=_json.dumps(payload).encode('utf-8'),
+        headers={'Content-Type': 'application/json'},
+    )
+    return _json.loads(response.data.decode('utf-8'))
 
 @router.post("/upload")
 async def upload_file(uid: str, file_type: str, file: UploadFile = File(...)):
@@ -49,15 +63,13 @@ async def upload_file(uid: str, file_type: str, file: UploadFile = File(...)):
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
-    url = f"http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_WEB_API_KEY}"
     payload = {
         "requestType": "PASSWORD_RESET",
         "email": request.email
     }
     
     try:
-        response = requests.post(url, json=payload)
-        data = response.json()
+        data = _firebase_auth_request("accounts:sendOobCode", payload)
         
         if "error" in data:
             raise HTTPException(status_code=400, detail=data["error"]["message"])
@@ -261,7 +273,6 @@ async def update_user_status(request: UserStatusRequest):
 
 @router.post("/signin")
 async def signin(request: SignInRequest):
-    url = f"http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_WEB_API_KEY}"
     payload = {
         "email": request.email,
         "password": request.password,
@@ -269,8 +280,7 @@ async def signin(request: SignInRequest):
     }
     
     try:
-        response = requests.post(url, json=payload)
-        data = response.json()
+        data = _firebase_auth_request("accounts:signInWithPassword", payload)
         
         if "error" in data:
             SecurityService.create_log("Failed login attempt", request.email, status="failed")
