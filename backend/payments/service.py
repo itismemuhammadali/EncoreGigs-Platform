@@ -112,10 +112,8 @@ class StripeManager:
             raise ValueError(f"Organizer {organizer_id} not found")
 
         current_balance = float(organizer_doc.to_dict().get("wallet_balance", 0.0))
-        if current_balance < amount:
-            raise ValueError(f"Insufficient wallet balance. Available: ${current_balance:.2f}, Required: ${amount:.2f}")
-
         new_balance = current_balance - amount
+
         organizer_ref.update({"wallet_balance": new_balance})
 
         db.collection("bookings").document(booking_id).update({

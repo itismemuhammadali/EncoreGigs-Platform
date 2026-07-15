@@ -140,10 +140,11 @@ class _ContractScreenState extends State<ContractScreen> {
     debugPrint('--- Signature Confirm Started ---');
     setState(() => _isSubmitting = true);
 
+    String signatureUrl = '';
+
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
 
-      // 1. Capture signature as image
       debugPrint('Step 1: Capturing Signature...');
       final RenderRepaintBoundary? boundary =
           _signatureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
@@ -172,15 +173,13 @@ class _ContractScreenState extends State<ContractScreen> {
       final String path =
           'signatures/${authService.user?.uid}_${widget.musicianId}_$timestamp.png';
 
-      // 2. Upload signature to Storage
       debugPrint('Step 2: Uploading to Storage at $path...');
-      final String? signatureUrl = await authService.uploadData(pngBytes, path);
-      if (signatureUrl == null) {
+      signatureUrl = await authService.uploadData(pngBytes, path) ?? '';
+      if (signatureUrl.isEmpty) {
         throw Exception('Failed to upload signature to Storage');
       }
       debugPrint('Upload success, URL: $signatureUrl');
 
-      // 3. Confirm booking in database
       debugPrint('Step 3: Confirming booking via backend...');
       
       final Map<String, String> contractSections = {
@@ -207,7 +206,7 @@ class _ContractScreenState extends State<ContractScreen> {
       );
 
       if (error != null) {
-        throw Exception('Backend Error: $error');
+        throw Exception(error);
       }
       debugPrint('Booking confirmed successfully in Firestore');
 
@@ -226,7 +225,7 @@ class _ContractScreenState extends State<ContractScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving signature: ${e.toString()}'),
+            content: Text('Error: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
