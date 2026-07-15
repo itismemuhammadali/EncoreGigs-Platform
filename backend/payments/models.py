@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Any
 
 class MusicianOnboardRequest(BaseModel):
     musicianId: str
@@ -20,7 +20,7 @@ class OrganizerCustomerResponse(BaseModel):
 class BookingDepositRequest(BaseModel):
     organizerId: str
     amount: float
-    paymentMethodId: str
+    paymentMethodId: Optional[str] = None
     currency: Optional[str] = "usd"
 
 class BookingDepositResponse(BaseModel):
@@ -38,3 +38,24 @@ class BookingReleaseResponse(BaseModel):
 class BookingRefundResponse(BaseModel):
     refundId: str
     status: str
+
+class WalletDataResponse(BaseModel):
+    payment_methods: List[Any]
+    stripe_customer_id: str
+    wallet_balance: float
+
+class TransactionResponse(BaseModel):
+    transactions: List[Any]
+
+class EphemeralKeyRequest(BaseModel):
+    organizerId: str
+
+class EphemeralKeyResponse(BaseModel):
+    secret: str
+
+class SetupIntentRequest(BaseModel):
+    organizerId: str
+
+class SetupIntentResponse(BaseModel):
+    clientSecret: str
+    customerId: str

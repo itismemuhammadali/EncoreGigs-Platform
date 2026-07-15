@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -93,6 +95,68 @@ class AuthService extends ChangeNotifier {
         }
         return message;
       }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<UserCredential?> _signInWithGoogleCredential() async {
+    final googleUser = await GoogleSignIn(scopes: ['email']).signIn();
+    if (googleUser == null) return null;
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    return await _auth.signInWithCredential(credential);
+  }
+
+  Future<UserCredential?> _signInWithAppleCredential() async {
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+    );
+    final oauthCredential = OAuthProvider('apple.com').credential(
+      idToken: appleCredential.identityToken,
+      accessToken: appleCredential.authorizationCode,
+    );
+    return await _auth.signInWithCredential(oauthCredential);
+  }
+
+  Future<String?> _handleSocialSignIn(UserCredential userCredential, String provider) async {
+    final user = userCredential.user;
+    if (user == null) return 'Sign in failed';
+
+    final doc = await FirebaseFirestore.instance.collection('musicians').doc(user.uid).get();
+    if (doc.exists) {
+      return null;
+    }
+
+    await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set({
+      'email': user.email,
+      'fullName': user.displayName ?? '',
+      'profileImageUrl': user.photoURL ?? '',
+      'authProvider': provider,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return 'new_user';
+  }
+
+  Future<String?> signInWithGoogle() async {
+    try {
+      final credential = await _signInWithGoogleCredential();
+      if (credential == null) return 'Google sign in was cancelled';
+      return await _handleSocialSignIn(credential, 'google');
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> signInWithApple() async {
+    try {
+      final credential = await _signInWithAppleCredential();
+      if (credential == null) return 'Apple sign in was cancelled';
+      return await _handleSocialSignIn(credential, 'apple');
     } catch (e) {
       return e.toString();
     }

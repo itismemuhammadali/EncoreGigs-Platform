@@ -8,6 +8,9 @@ import 'notifications_screen.dart';
 import 'gig_detail_screen.dart';
 import '../../widgets/bottom_navigation_bar.dart';
 import '../../widgets/gig_card.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../main/add_bank_account_screen.dart';
+import '../main/payment_method_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -214,6 +217,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+            ),
+
+            // Stripe Onboarding Banner
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('musicians')
+                  .doc(Provider.of<AuthService>(context, listen: false).user?.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const SizedBox.shrink();
+                final data = snapshot.data!.data() as Map<String, dynamic>?;
+                final stripeStatus = data?['stripe_status'] ?? '';
+                if (stripeStatus == 'active') return const SizedBox.shrink();
+                
+                return GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PaymentMethodScreen()),
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A1A00),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFB347).withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet, color: Color(0xFFFFB347), size: 22),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Complete Payment Setup',
+                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                              SizedBox(height: 2),
+                              Text('Set up your bank account to receive earnings',
+                                  style: TextStyle(color: Color(0xFF999999), fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFB347), size: 16),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
 
             // Gigs list with Backend

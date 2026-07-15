@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/auth_service.dart';
-
 import 'package:onlygigz_organizer/services/api_service.dart';
 
 class StatsRow extends StatefulWidget {
@@ -14,56 +12,71 @@ class StatsRow extends StatefulWidget {
 }
 
 class _StatsRowState extends State<StatsRow> {
-  final ApiService _apiService = ApiService();
+  Map<String, dynamic>? _stats;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    if (currentUserId == null) return;
+    
+    try {
+      final stats = await apiService.getDashboardStats(currentUserId);
+      if (mounted) setState(() => _stats = stats);
+    } catch (e) {
+      debugPrint('Error loading stats: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = Provider.of<AuthService>(context, listen: false).user?.uid;
-    if (currentUserId == null) return const SizedBox.shrink();
+    final stats = _stats ?? {
+      "activeGigs": 0,
+      "totalApplications": 0,
+      "totalBookings": 0
+    };
 
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _apiService.getDashboardStats(currentUserId),
-      builder: (context, snapshot) {
-        final stats = snapshot.data ?? {
-          "activeGigs": 0,
-          "totalApplications": 0,
-          "totalBookings": 0
-        };
-
-        return Row(
-          children: [
-            // Active Gigs
-            Expanded(
-              child: _StatCard(
-                iconPath: 'assets/bookings_icon.svg',
-                iconColor: const Color(0xFFA2F301),
-                value: '${stats["activeGigs"]}',
-                label: 'Active Gigs',
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Applications
-            Expanded(
-              child: _StatCard(
-                iconPath: 'assets/users_icon.svg',
-                iconColor: const Color(0xFF4A9EFF),
-                value: '${stats["totalApplications"]}',
-                label: 'Applications',
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Bookings
-            Expanded(
-              child: _StatCard(
-                iconPath: 'assets/bookings_icon.svg',
-                iconColor: const Color(0xFFFFB347),
-                value: '${stats["totalBookings"]}',
-                label: 'Bookings',
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            iconPath: 'assets/bookings_icon.svg',
+            iconColor: const Color(0xFFA2F301),
+            value: '${stats["activeGigs"]}',
+            label: 'Active Gigs',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            iconPath: 'assets/users_icon.svg',
+            iconColor: const Color(0xFF4A9EFF),
+            value: '${stats["totalApplications"]}',
+            label: 'Applications',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatCard(
+            iconPath: 'assets/bookings_icon.svg',
+            iconColor: const Color(0xFFFFB347),
+            value: '${stats["totalBookings"]}',
+            label: 'Bookings',
+          ),
+        ),
+      ],
     );
   }
 }

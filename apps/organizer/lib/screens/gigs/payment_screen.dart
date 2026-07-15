@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import 'package:intl/intl.dart';
 import 'contract_screen.dart';
 import '../profile/wallet_screen.dart';
@@ -45,9 +48,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _currentBalance = widget.walletBalance;
+    _fetchRealBalance();
+  }
+
+  Future<void> _fetchRealBalance() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final organizerId = authService.currentUser?.uid;
+      if (organizerId == null) return;
+      
+      final walletData = await apiService.getWalletData(organizerId);
+      final newBalance = (walletData['wallet_balance'] ?? 0.0).toDouble();
+      if (mounted) setState(() => _currentBalance = newBalance);
+    } catch (e) {
+      debugPrint('Error fetching balance: $e');
+    }
   }
 
   bool get _hasSufficientFunds => _currentBalance >= widget.amount;
+
+  Future<void> _refreshBalance() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final organizerId = authService.currentUser?.uid;
+      if (organizerId == null) return;
+      
+      final walletData = await apiService.getWalletData(organizerId);
+      final newBalance = (walletData['wallet_balance'] ?? 0.0).toDouble();
+      if (mounted) setState(() => _currentBalance = newBalance);
+    } catch (e) {
+      debugPrint('Error refreshing balance: $e');
+    }
+  }
 
   Widget _placeholderImage() {
     return Container(
@@ -378,10 +412,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                     builder: (_) => const WalletScreen(),
                                   ),
                                 );
-                                // Simulate funds added on return
-                                setState(() {
-                                  _currentBalance = widget.amount + 1000;
-                                });
+                                _refreshBalance();
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(

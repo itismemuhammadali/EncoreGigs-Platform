@@ -1,31 +1,18 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   DollarSign,
   TrendingUp,
   Clock,
   CheckCircle,
   Eye,
-  Search
+  Search,
+  Loader2
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
-
-/** 
- * BACKEND DEVELOPER NOTE:
- * Integration points:
- * 1. Fetch payment analytics for the stat cards.
- * 2. Fetch transaction list with server-side filtering/pagination.
- * 3. Fetch specific transaction details for the view action.
- */
-
-interface PaymentStat {
-  label: string;
-  value: string;
-  subtext: string;
-  trend?: string;
-  icon: React.ElementType;
-}
+import { TransactionDetailsModal } from "@/components/ui/TransactionDetailsModal";
+import { PaymentActionModal } from "@/components/ui/PaymentActionModal";
 
 interface Transaction {
   id: string;
@@ -38,30 +25,48 @@ interface Transaction {
   status: "pending" | "completed";
 }
 
-import { TransactionDetailsModal } from "@/components/ui/TransactionDetailsModal";
-import { PaymentActionModal } from "@/components/ui/PaymentActionModal";
-
 export default function PaymentsEscrow() {
   const [activeTab, setActiveTab] = useState<"all" | "held" | "released" | "pending">("all");
   const [detailsModal, setDetailsModal] = useState<{ show: boolean; tx: Transaction | null }>({ show: false, tx: null });
   const [actionModal, setActionModal] = useState<{ show: boolean; type: "release" | "refund" }>({ show: false, type: "release" });
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: "" });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState([
+    { label: "Total Escrow Funds", value: "$0", subtext: "Locked amount", icon: DollarSign },
+    { label: "Released This Month", value: "$0", subtext: "from last month", trend: "+0%", icon: TrendingUp },
+    { label: "Pending Releases", value: "0", subtext: "0 transactions", icon: Clock },
+    { label: "Completed Payments", value: "0", subtext: "This month", icon: CheckCircle },
+  ]);
 
-  const stats: PaymentStat[] = [
-    { label: "Total Escrow Funds", value: "$312,450", subtext: "Locked amount", icon: DollarSign },
-    { label: "Released This Month", value: "$156,800", subtext: "from last month", trend: "+32%", icon: TrendingUp },
-    { label: "Pending Releases", value: "$87,200", subtext: "15 transactions", icon: Clock },
-    { label: "Completed Payments", value: "847", subtext: "This month", icon: CheckCircle },
-  ];
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
-  const transactions: Transaction[] = [
-    { id: "TXN-001", organizer: "Metro Events LLC", musician: "Sarah Johnson", gig: "Jazz Night at Blue Note", amount: "$2,500", escrowStatus: "held", date: "2026-02-15", status: "pending" },
-    { id: "TXN-001-B", organizer: "Metro Events LLC", musician: "Sarah Johnson", gig: "Jazz Night at Blue Note", amount: "$2,500", escrowStatus: "released", date: "2026-02-15", status: "completed" },
-    { id: "TXN-002", organizer: "Urban Arts Co.", musician: "Michael Smith", gig: "Art Gala at The Loft", amount: "$3,200", escrowStatus: "held", date: "2026-03-10", status: "pending" },
-    { id: "TXN-003", organizer: "Culinary Creations Inc.", musician: "Emma Brown", gig: "Gourmet Food Festival", amount: "$4,750", escrowStatus: "released", date: "2026-04-05", status: "completed" },
-    { id: "TXN-004", organizer: "Tech Innovations Ltd.", musician: "James Wilson", gig: "Tech Expo 2026", amount: "$5,000", escrowStatus: "held", date: "2026-05-20", status: "pending" },
-    { id: "TXN-005", organizer: "Health Wellness Corp.", musician: "Linda Lee", gig: "Wellness Retreat 2026", amount: "$6,300", escrowStatus: "released", date: "2026-06-15", status: "completed" },
-  ];
+  const fetchTransactions = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/reports/payments');
+      const data = await response.json();
+      setTransactions(data);
+      
+      // Calculate real stats from data
+      const heldAmount = data.filter((t: any) => t.escrowStatus === 'held')
+                             .reduce((acc: number, curr: any) => acc + parseFloat(curr.amount.replace('$', '').replace(',', '')), 0);
+      const pendingCount = data.filter((t: any) => t.status === 'pending').length;
+      const completedCount = data.filter((t: any) => t.status === 'completed').length;
+
+      setStats([
+        { label: "Total Escrow Funds", value: `$${heldAmount.toLocaleString()}`, subtext: "Locked amount", icon: DollarSign },
+        { label: "Released This Month", value: "Live", subtext: "Real-time data", trend: "+100%", icon: TrendingUp },
+        { label: "Pending Releases", value: pendingCount.toString(), subtext: "Active transactions", icon: Clock },
+        { label: "Completed Payments", value: completedCount.toString(), subtext: "Total successful", icon: CheckCircle },
+      ]);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
@@ -71,7 +76,7 @@ export default function PaymentsEscrow() {
       if (activeTab === "pending") return tx.status === "pending";
       return true;
     });
-  }, [activeTab]);
+  }, [activeTab, transactions]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
@@ -127,55 +132,68 @@ export default function PaymentsEscrow() {
       {/* --- TRANSACTIONS TABLE CONTAINER --- */}
       <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl overflow-hidden shadow-2xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#262626] border-y border-[#2A2A2A]">
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Transaction ID</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Organizer</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Musician</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Gig Reference</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Amount</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Escrow Status</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Date</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Status</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#2A2A2A]">
-              {filteredTransactions.map((tx, i) => (
-                <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
-                  <td className="px-6 py-5 text-[#b3ff00] font-bold text-[14px]">{tx.id}</td>
-                  <td className="px-6 py-5 text-[#FFFFFF] text-[14px] font-medium">{tx.organizer}</td>
-                  <td className="px-6 py-5 text-[#FFFFFF] text-[14px] font-medium">{tx.musician}</td>
-                  <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{tx.gig}</td>
-                  <td className="px-6 py-5 text-white font-bold text-[14px]">{tx.amount}</td>
-                  <td className="px-6 py-5">
-                    <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${
-                      tx.escrowStatus === 'released' ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
-                    }`}>
-                      {tx.escrowStatus}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{tx.date}</td>
-                  <td className="px-6 py-5">
-                    <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${
-                      tx.status === 'completed' ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
-                    }`}>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5 text-right">
-                    <button 
-                      onClick={() => setDetailsModal({ show: true, tx })}
-                      className="text-[#b3ff00] text-[13px] font-bold hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+          {isLoading ? (
+            <div className="p-20 flex flex-col items-center justify-center space-y-4">
+              <Loader2 className="w-10 h-10 text-[#b3ff00] animate-spin" />
+              <p className="text-[#71717a]">Loading real-time escrow data...</p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-[#262626] border-y border-[#2A2A2A]">
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Transaction ID</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Organizer</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Musician</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Gig Reference</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Amount</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Escrow Status</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Date</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize">Status</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-white capitalize text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#2A2A2A]">
+                {filteredTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-10 text-center text-[#71717a]">No transactions found</td>
+                  </tr>
+                ) : (
+                  filteredTransactions.map((tx, i) => (
+                    <tr key={i} className="hover:bg-white/[0.02] transition-colors group">
+                      <td className="px-6 py-5 text-[#b3ff00] font-bold text-[14px]">{tx.id}</td>
+                      <td className="px-6 py-5 text-[#FFFFFF] text-[14px] font-medium">{tx.organizer}</td>
+                      <td className="px-6 py-5 text-[#FFFFFF] text-[14px] font-medium">{tx.musician}</td>
+                      <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{tx.gig}</td>
+                      <td className="px-6 py-5 text-white font-bold text-[14px]">{tx.amount}</td>
+                      <td className="px-6 py-5">
+                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${
+                          tx.escrowStatus === 'released' ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                        }`}>
+                          {tx.escrowStatus}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-[#a1a1aa] text-[14px]">{tx.date}</td>
+                      <td className="px-6 py-5">
+                        <span className={`px-3 py-1 rounded-full text-[12px] font-medium ${
+                          tx.status === 'completed' ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                        }`}>
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <button 
+                          onClick={() => setDetailsModal({ show: true, tx })}
+                          className="text-[#b3ff00] text-[13px] font-bold hover:underline"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

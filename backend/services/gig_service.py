@@ -190,106 +190,91 @@ class GigService:
     def get_recent_activity(organizer_id: str, limit: int = 10):
         activity = []
         
-        # 1. Recent Gigs Posted
-        gigs = db.collection("gigs")\
-                 .where("organizerId", "==", organizer_id)\
-                 .order_by("createdAt", direction=firestore.Query.DESCENDING)\
-                 .limit(limit)\
-                 .get()
-        
-        for doc in gigs:
-            data = doc.to_dict()
-            activity.append({
-                "id": doc.id,
-                "type": "gig",
-                "title": f"New gig posted: {data.get('title', 'Gig')}",
-                "subtitle": data.get("location", "Various locations"),
-                "timestamp": data.get("createdAt"),
-                "imageAsset": data.get("imageUrl", ""),
-                "metadata": data
-            })
+        try:
+            gigs = db.collection("gigs").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            for doc in gigs:
+                data = doc.to_dict()
+                ts = data.get("createdAt")
+                if hasattr(ts, 'timestamp'):
+                    ts = ts.isoformat()
+                activity.append({
+                    "id": doc.id, "type": "gig",
+                    "title": f"New gig posted: {data.get('title', 'Gig')}",
+                    "subtitle": data.get("location", "Various locations"),
+                    "timestamp": ts, "imageAsset": data.get("imageUrl", ""),
+                    "metadata": {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v for k, v in data.items()}
+                })
+        except Exception as e:
+            print(f"Activity gigs query failed: {e}")
 
-        # 2. Recent Applications
-        apps = db.collection("applications")\
-                 .where("organizerId", "==", organizer_id)\
-                 .order_by("appliedAt", direction=firestore.Query.DESCENDING)\
-                 .limit(limit)\
-                 .get()
+        try:
+            apps = db.collection("applications").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("appliedAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            for doc in apps:
+                data = doc.to_dict()
+                ts = data.get("appliedAt")
+                if hasattr(ts, 'timestamp'):
+                    ts = ts.isoformat()
+                activity.append({
+                    "id": doc.id, "type": "application",
+                    "title": f"New application from {data.get('musicianName', 'Musician')}",
+                    "subtitle": data.get("gigTitle", "New Gig"),
+                    "timestamp": ts, "imageAsset": data.get("musicianImage", ""),
+                    "metadata": {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v for k, v in data.items()}
+                })
+        except Exception as e:
+            print(f"Activity applications query failed: {e}")
+            
+        try:
+            bookings = db.collection("bookings").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            for doc in bookings:
+                data = doc.to_dict()
+                ts = data.get("musicianSignedAt") or data.get("createdAt")
+                if hasattr(ts, 'timestamp'):
+                    ts = ts.isoformat()
+                musician_signed = data.get("musicianSignedAt") is not None
+                musician_name = data.get("musicianName", "Musician")
+                activity.append({
+                    "id": doc.id, "type": "signature",
+                    "title": f"{musician_name} signed the agreement" if musician_signed else f"Booking created with {musician_name}",
+                    "subtitle": data.get("gigTitle", "Gig Agreement"),
+                    "timestamp": ts, "imageAsset": data.get("musicianImage", ""),
+                    "metadata": {k: str(v) if not isinstance(v, (str, int, float, bool, list, dict, type(None))) else v for k, v in data.items()}
+                })
+        except Exception as e:
+            print(f"Activity bookings query failed: {e}")
+            
+        try:
+            chats = db.collection("chats").where(filter=firestore.FieldFilter("participantIds", "array_contains", organizer_id)).order_by("lastMessageTime", direction=firestore.Query.DESCENDING).limit(limit).get()
         
-        for doc in apps:
-            data = doc.to_dict()
-            activity.append({
-                "id": doc.id,
-                "type": "application",
-                "title": f"New application from {data.get('musicianName', 'Musician')}",
-                "subtitle": data.get("gigTitle", "New Gig"),
-                "timestamp": data.get("appliedAt"),
-                "imageAsset": data.get("musicianImage", ""),
-                "metadata": data
-            })
+            for doc in chats:
+                data = doc.to_dict()
+                other_participant_name = "User"
+                other_participant_image = ""
+                other_participant_id = ""
+                p_names = data.get("participantNames", {})
+                p_images = data.get("participantImages", {})
             
-        # 2. Recent Bookings/Signatures
-        bookings = db.collection("bookings")\
-                     .where("organizerId", "==", organizer_id)\
-                     .order_by("createdAt", direction=firestore.Query.DESCENDING)\
-                     .limit(limit)\
-                     .get()
-        
-        for doc in bookings:
-            data = doc.to_dict()
-            musician_signed = data.get("musicianSignedAt") is not None
-            musician_name = data.get("musicianName", "Musician")
+                for p_id, name in p_names.items():
+                    if p_id != organizer_id:
+                        other_participant_name = name
+                        other_participant_id = p_id
+                        other_participant_image = p_images.get(p_id, "")
+                        break
+                
+                ts = data.get("lastMessageTime")
+                if hasattr(ts, 'timestamp'):
+                    ts = ts.isoformat()
+                activity.append({
+                    "id": doc.id, "type": "message",
+                    "title": f"Message from {other_participant_name}",
+                    "subtitle": data.get("lastMessage", "No messages yet"),
+                    "timestamp": ts, "imageAsset": other_participant_image,
+                    "metadata": {"otherUserId": other_participant_id, "otherName": other_participant_name, "otherImage": other_participant_image}
+                })
+        except Exception as e:
+            print(f"Activity chats query failed: {e}")
             
-            activity.append({
-                "id": doc.id,
-                "type": "signature",
-                "title": f"{musician_name} signed the agreement" if musician_signed else f"Booking created with {musician_name}",
-                "subtitle": data.get("gigTitle", "Gig Agreement"),
-                "timestamp": data.get("musicianSignedAt") or data.get("createdAt"),
-                "imageAsset": data.get("musicianImage", ""),
-                "metadata": data
-            })
-            
-        # 3. Recent Chats (simplified - just getting chat entries where user is participant)
-        chats = db.collection("chats")\
-                  .where("participantIds", "array_contains", organizer_id)\
-                  .order_by("lastMessageTime", direction=firestore.Query.DESCENDING)\
-                  .limit(limit)\
-                  .get()
-        
-        for doc in chats:
-            data = doc.to_dict()
-            # Find the other participant's name/image
-            other_participant_name = "User"
-            other_participant_image = ""
-            other_participant_id = ""
-            
-            p_names = data.get("participantNames", {})
-            p_images = data.get("participantImages", {})
-            
-            for p_id, name in p_names.items():
-                if p_id != organizer_id:
-                    other_participant_name = name
-                    other_participant_id = p_id
-                    other_participant_image = p_images.get(p_id, "")
-                    break
-            
-            activity.append({
-                "id": doc.id,
-                "type": "message",
-                "title": f"Message from {other_participant_name}",
-                "subtitle": data.get("lastMessage", "No messages yet"),
-                "timestamp": data.get("lastMessageTime"),
-                "imageAsset": other_participant_image,
-                "metadata": {
-                    "otherUserId": other_participant_id,
-                    "otherName": other_participant_name,
-                    "otherImage": other_participant_image
-                }
-            })
-            
-        # Sort combined activity by timestamp descending
-        activity.sort(key=lambda x: x["timestamp"] if x["timestamp"] else 0, reverse=True)
+        activity.sort(key=lambda x: str(x.get("timestamp", "")) if x.get("timestamp") else "", reverse=True)
         return activity[:limit]
 
     @staticmethod
@@ -398,7 +383,7 @@ class GigService:
     def get_dashboard_stats(organizer_id: str):
         # Count gigs
         gigs = db.collection("gigs").where("organizerId", "==", organizer_id).get()
-        open_gigs = [g for g in gigs if g.get("status") == "open"]
+        active_gigs = [g for g in gigs if g.get("status") in ("open", "hired")]
         
         # Count applications
         apps = db.collection("applications").where("organizerId", "==", organizer_id).get()
@@ -408,8 +393,8 @@ class GigService:
         
         return {
             "totalGigs": len(gigs),
-            "openGigs": len(open_gigs),
-            "activeGigs": len(open_gigs), # Alias for UI
+            "openGigs": len(active_gigs),
+            "activeGigs": len(active_gigs), # Alias for UI
             "totalApplications": len(apps),
             "totalBookings": len(bookings), # Alias for UI
             "activeBookings": len(bookings)

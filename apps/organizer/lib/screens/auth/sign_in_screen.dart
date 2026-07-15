@@ -51,6 +51,27 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  Future<void> _handleSocialSignIn(String provider) async {
+    setState(() => _isLoading = true);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final result = provider == 'google'
+        ? await authService.signInWithGoogle()
+        : await authService.signInWithApple();
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (result == null) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else if (result == 'new_user') {
+        Navigator.of(context).pushReplacementNamed('/signup/step1');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result)),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -221,7 +242,7 @@ class _SignInScreenState extends State<SignInScreen> {
               _buildSocialButton(
                 iconPath: 'assets/google_icon.svg',
                 label: 'Continue with Google',
-                onTap: () {},
+                onTap: () => _handleSocialSignIn('google'),
               ),
               const SizedBox(height: 12),
               _buildSocialButton(
@@ -234,7 +255,7 @@ class _SignInScreenState extends State<SignInScreen> {
               _buildSocialButton(
                 iconPath: 'assets/apple_icon.svg',
                 label: 'Continue with Apple',
-                onTap: () {},
+                onTap: () => _handleSocialSignIn('apple'),
               ),
               const SizedBox(height: 48),
               // Sign up link

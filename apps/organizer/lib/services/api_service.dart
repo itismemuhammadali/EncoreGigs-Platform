@@ -5,8 +5,32 @@ import '../constants.dart';
 
 class ApiService {
   String get _baseUrl => getBackendUrl();
+  
+  final Map<String, _CacheEntry> _cache = {};
+  static const Duration _cacheTtl = Duration(minutes: 2);
+
+  dynamic _getFromCache(String key) {
+    final entry = _cache[key];
+    if (entry != null && !entry.isExpired) {
+      return entry.data;
+    }
+    _cache.remove(key);
+    return null;
+  }
+
+  void _setCache(String key, dynamic data) {
+    _cache[key] = _CacheEntry(data, DateTime.now().add(_cacheTtl));
+  }
+
+  void clearCache() {
+    _cache.clear();
+  }
 
   Future<List<Map<String, dynamic>>> getGigs({String? status, String? organizerId, String? searchQuery}) async {
+    final cacheKey = 'gigs_${status ?? ''}_${organizerId ?? ''}_${searchQuery ?? ''}';
+    final cached = _getFromCache(cacheKey);
+    if (cached != null) return cached;
+
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (organizerId != null) queryParams['organizer_id'] = organizerId;
@@ -16,7 +40,9 @@ class ApiService {
     final response = await http.get(uri);
 
     if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      final data = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      _setCache(cacheKey, data);
+      return data;
     } else {
       throw Exception('Failed to load gigs: ${response.body}');
     }
@@ -42,6 +68,7 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('Failed to create gig: ${response.body}');
     }
+    clearCache();
   }
 
   Future<List<Map<String, dynamic>>> getApplications({String? gigId, String? musicianId, String? organizerId, String? status}) async {
@@ -207,4 +234,127 @@ class ApiService {
       throw Exception('Failed to load dispute: ${response.body}');
     }
   }
+
+  Future<Map<String, dynamic>> createDeposit(String bookingId, String organizerId, double amount, [String? paymentMethodId]) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/booking/$bookingId/deposit'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'organizerId': organizerId,
+        'amount': amount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create deposit: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> releasePayment(String bookingId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/booking/$bookingId/release'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to release payment: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getWalletData(String organizerId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/payments/organizer/$organizerId/wallet'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load wallet data: ${response.body}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getTransactions(String organizerId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/payments/organizer/$organizerId/transactions'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data['transactions']);
+    } else {
+      throw Exception('Failed to load transactions: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createEphemeralKey(String organizerId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/ephemeral-key'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizerId': organizerId}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create ephemeral key: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createSetupIntent(String organizerId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/setup-intent'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizerId': organizerId}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create setup intent: ${response.body}');
+    }
+  }
+
+  Future<void> savePaymentMethod(String organizerId, String paymentMethodId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/save-payment-method'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'organizerId': organizerId,
+        'paymentMethodId': paymentMethodId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to save payment method: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> addFunds(String organizerId, String paymentMethodId, double amount) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/add-funds'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'organizerId': organizerId,
+        'paymentMethodId': paymentMethodId,
+        'amount': amount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to add funds: ${response.body}');
+    }
+  }
+}
+
+class _CacheEntry {
+  final dynamic data;
+  final DateTime expiresAt;
+  _CacheEntry(this.data, this.expiresAt);
+  bool get isExpired => DateTime.now().isAfter(expiresAt);
 }

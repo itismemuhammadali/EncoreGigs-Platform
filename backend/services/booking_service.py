@@ -99,14 +99,12 @@ class BookingService:
             doc_ref = db.collection("bookings").document()
             doc_ref.set(booking_data)
 
-            if request.paymentMethodId:
-                StripeManager.deposit_to_escrow(
-                    booking_id=doc_ref.id,
-                    organizer_id=request.organizerId,
-                    amount=request.amount,
-                    payment_method_id=request.paymentMethodId,
-                    currency=request.currency or "usd"
-                )
+            StripeManager.deposit_to_escrow(
+                booking_id=doc_ref.id,
+                organizer_id=request.organizerId,
+                amount=request.amount,
+                currency=request.currency or "usd"
+            )
             
             # Update gig status
             db.collection("gigs").document(request.gigId).update({

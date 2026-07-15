@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../providers/musician_signup_provider.dart';
+import '../../services/auth_service.dart';
 import 'complete_profile_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
@@ -51,7 +52,20 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
-    // Save to provider
+    final password = _passwordController.text;
+    final errors = <String>[];
+    if (!RegExp(r'[A-Z]').hasMatch(password)) errors.add('one uppercase letter');
+    if (!RegExp(r'[a-z]').hasMatch(password)) errors.add('one lowercase letter');
+    if (!RegExp(r'[0-9]').hasMatch(password)) errors.add('one number');
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]').hasMatch(password)) errors.add('one special character');
+    if (password.length < 8) errors.add('at least 8 characters');
+    if (errors.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password must contain ${errors.join(', ')}')),
+      );
+      return;
+    }
+
     Provider.of<MusicianSignUpProvider>(context, listen: false).updateCredentials(
       _emailController.text.trim(),
       _passwordController.text,
@@ -62,6 +76,25 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         builder: (context) => const CompleteProfileScreen(),
       ),
     );
+  }
+
+  Future<void> _handleSocialSignIn(String provider) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final result = provider == 'google'
+        ? await authService.signInWithGoogle()
+        : await authService.signInWithApple();
+
+    if (mounted) {
+      if (result == null || result == 'new_user') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result)),
+        );
+      }
+    }
   }
 
   @override
@@ -128,7 +161,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 _buildSocialButton(
                   iconPath: 'assets/google_icon.svg',
                   label: 'Continue with Google',
-                  onTap: () {},
+                  onTap: () => _handleSocialSignIn('google'),
                 ),
                 const SizedBox(height: 12),
                 _buildSocialButton(
@@ -141,7 +174,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 _buildSocialButton(
                   iconPath: 'assets/apple_icon.svg',
                   label: 'Continue with Apple',
-                  onTap: () {},
+                  onTap: () => _handleSocialSignIn('apple'),
                 ),
                 const SizedBox(height: 24),
                 Row(

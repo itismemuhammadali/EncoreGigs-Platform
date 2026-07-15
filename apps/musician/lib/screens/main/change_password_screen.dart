@@ -42,6 +42,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
+    final password = newPasswordController.text;
+    final errors = <String>[];
+    if (!RegExp(r'[A-Z]').hasMatch(password)) errors.add('one uppercase letter');
+    if (!RegExp(r'[a-z]').hasMatch(password)) errors.add('one lowercase letter');
+    if (!RegExp(r'[0-9]').hasMatch(password)) errors.add('one number');
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]').hasMatch(password)) errors.add('one special character');
+    if (errors.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password must contain ${errors.join(', ')}')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {

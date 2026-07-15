@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:provider/provider.dart';
+import '../../../services/api_service.dart';
+import '../../../services/auth_service.dart';
 
 class SignatureCanvasScreen extends StatefulWidget {
   final String contractTitle;
@@ -31,7 +35,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
     });
   }
 
-  Future<void> _saveSignature() async {
+  Future<void> _handleSignatureAndPayment() async {
     if (_points.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please sign before saving')),
@@ -42,13 +46,33 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // In a real app, we would convert points to an image and upload to Storage
-      // For this demo, we'll just update the Firestore document with the signature timestamp
-      // and a placeholder signature URL.
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
       
+      // 1. Fetch booking details to get the amount
+      final bookingDoc = await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).get();
+      if (!bookingDoc.exists) throw Exception('Booking not found');
+      
+      final bookingData = bookingDoc.data()!;
+      final double amount = (bookingData['amount'] ?? 0).toDouble();
+      final String organizerId = authService.currentUser?.uid ?? '';
+
+      // 2. Create Deposit from wallet (deducts balance, sets escrow to held)
+      final depositResult = await apiService.createDeposit(
+        widget.bookingId,
+        organizerId,
+        amount,
+        '',
+      );
+
+      if (depositResult['status'] != 'held') {
+        throw Exception(depositResult['message'] ?? 'Failed to hold funds in escrow');
+      }
+
+      // 3. Update Firestore with signature
       await FirebaseFirestore.instance.collection('bookings').doc(widget.bookingId).update({
         'organizerSignedAt': FieldValue.serverTimestamp(),
-        'status': 'Payment in escrow', // Or another appropriate status
+        'status': 'Payment in escrow',
       });
 
       if (mounted) {
@@ -58,7 +82,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save signature: $e')),
+          SnackBar(content: Text('Error: ${e.toString()}')),
         );
       }
     } finally {
@@ -90,7 +114,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text(
-                        'Draw Your Signature',
+                        'Sign & Fund Gig',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -99,7 +123,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        'Sign with your finger or mouse',
+                        'Sign to release funds to escrow',
                         style: TextStyle(
                           color: Color(0xFF888888),
                           fontSize: 14,
@@ -157,7 +181,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                             });
                           },
                           child: Container(
-                            color: Colors.transparent, // Glass surface
+                            color: Colors.transparent,
                             child: CustomPaint(
                               painter: SignaturePainter(_points),
                               size: Size.infinite,
@@ -170,10 +194,10 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                       IgnorePointer(
                         child: Center(
                           child: Text(
-                            'Sign here',
+                            'Sign here to authorize payment',
                             style: TextStyle(
-                              color: const Color(0xFF888888).withValues(alpha: 0.5),
-                              fontSize: 18,
+                              color: const Color(0xFF888888).withOpacity(0.5),
+                              fontSize: 16,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
@@ -187,6 +211,23 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                 ),
               ),
             ),
+            // Security Note
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline, color: Color(0xFF888888), size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Funds will be held securely by OnlyGigz until gig completion.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             // Buttons
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -202,7 +243,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                           color: const Color(0xFF1A1A1F),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
+                            color: const Color(0xFFFF3B30).withOpacity(0.3),
                           ),
                         ),
                         child: Row(
@@ -228,10 +269,10 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Save Signature button
+                  // Save Signature & Pay button
                   Expanded(
                     child: GestureDetector(
-                      onTap: _isSaving ? null : _saveSignature,
+                      onTap: _isSaving ? null : _handleSignatureAndPayment,
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
@@ -242,13 +283,13 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
                             Icon(
-                              Icons.check_circle_outline,
+                              Icons.payment,
                               color: Colors.black,
                               size: 20,
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Save Signature',
+                              'Sign & Pay',
                               style: TextStyle(
                                 color: Colors.black,
                                 fontSize: 16,

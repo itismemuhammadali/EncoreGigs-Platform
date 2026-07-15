@@ -13,6 +13,7 @@ class _AddBankAccountScreenState extends State<AddBankAccountScreen> {
   final _holderNameController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _routingController = TextEditingController();
+  final _zipController = TextEditingController();
   bool _isChecking = true;
   bool _setAsDefault = false;
 
@@ -22,6 +23,7 @@ class _AddBankAccountScreenState extends State<AddBankAccountScreen> {
     _holderNameController.dispose();
     _accountNumberController.dispose();
     _routingController.dispose();
+    _zipController.dispose();
     super.dispose();
   }
 
@@ -145,6 +147,11 @@ class _AddBankAccountScreenState extends State<AddBankAccountScreen> {
               _buildLabel('Routing Number'),
               const SizedBox(height: 8),
               _buildField(_routingController, '021000021',
+                  keyboardType: TextInputType.number),
+              const SizedBox(height: 16),
+              _buildLabel('ZIP Code'),
+              const SizedBox(height: 8),
+              _buildField(_zipController, '90210',
                   keyboardType: TextInputType.number),
               const SizedBox(height: 16),
               _buildLabel('Account Type'),

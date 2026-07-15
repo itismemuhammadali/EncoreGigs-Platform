@@ -46,6 +46,20 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
       return;
     }
 
+    final password = _passwordController.text;
+    final errors = <String>[];
+    if (!RegExp(r'[A-Z]').hasMatch(password)) errors.add('one uppercase letter');
+    if (!RegExp(r'[a-z]').hasMatch(password)) errors.add('one lowercase letter');
+    if (!RegExp(r'[0-9]').hasMatch(password)) errors.add('one number');
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]').hasMatch(password)) errors.add('one special character');
+    if (password.length < 8) errors.add('at least 8 characters');
+    if (errors.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Password must contain ${errors.join(', ')}')),
+      );
+      return;
+    }
+
     Provider.of<SignUpProvider>(context, listen: false).updateStep1(
       name: _nameController.text.trim(),
       orgName: _organizationController.text.trim(),

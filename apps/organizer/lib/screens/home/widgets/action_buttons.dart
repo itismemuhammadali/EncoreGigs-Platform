@@ -3,8 +3,9 @@ import '../../gigs/post_gig_screen.dart';
 
 class ActionButtons extends StatelessWidget {
   final VoidCallback? onMessages;
+  final VoidCallback? onPostGig;
 
-  const ActionButtons({super.key, this.onMessages});
+  const ActionButtons({super.key, this.onMessages, this.onPostGig});
 
   @override
   Widget build(BuildContext context) {
@@ -12,9 +13,12 @@ class ActionButtons extends StatelessWidget {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PostGigScreen()),
-            ),
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PostGigScreen()),
+              );
+              onPostGig?.call();
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 20),
               decoration: BoxDecoration(

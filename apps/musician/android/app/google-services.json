@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "941385767816",
+    "project_id": "onlygigz-33557",
+    "storage_bucket": "onlygigz-33557.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941385767816:android:cb0d9a49949215ad42383d",
+        "android_client_info": {
+          "package_name": "com.onlygigz.musician"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "941385767816-jphae0a3ufqti405tn5trh05ij3g4rcj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChynuewEnIYF376H9BDQr87BMtBmZmgjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941385767816-jphae0a3ufqti405tn5trh05ij3g4rcj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "941385767816-8kqvvs4rtedgsd90nm7p0h9t504afl9e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.onlygigz.musician"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941385767816:android:078fdaf2e77bf25342383d",
+        "android_client_info": {
+          "package_name": "com.onlygigz.organizer"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "941385767816-jphae0a3ufqti405tn5trh05ij3g4rcj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyChynuewEnIYF376H9BDQr87BMtBmZmgjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941385767816-jphae0a3ufqti405tn5trh05ij3g4rcj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "941385767816-8kqvvs4rtedgsd90nm7p0h9t504afl9e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.onlygigz.musician"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

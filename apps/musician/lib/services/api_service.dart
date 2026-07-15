@@ -173,4 +173,105 @@ class ApiService {
       throw Exception('Failed to load dispute: ${response.body}');
     }
   }
+
+  Future<Map<String, dynamic>> onboardMusician(String musicianId, String refreshUrl, String returnUrl) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/musician/onboard'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'musicianId': musicianId,
+        'refreshUrl': refreshUrl,
+        'returnUrl': returnUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to onboard musician: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> releasePayment(String bookingId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/booking/$bookingId/release'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to release payment: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> createSetupIntent(String musicianId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/setup-intent'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'organizerId': musicianId}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to create setup intent: ${response.body}');
+    }
+  }
+
+  Future<void> savePaymentMethod(String userId, String paymentMethodId) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/organizer/save-payment-method'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'organizerId': userId,
+        'paymentMethodId': paymentMethodId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to save payment method: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> musicianPayout(String musicianId, double amount) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/payments/musician/payout'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'musicianId': musicianId,
+        'amount': amount,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to process payout: \${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getConnectedAccount(String musicianId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/payments/musician/$musicianId/connected-account'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load connected account: \${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getWalletData(String userId) async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/payments/organizer/$userId/wallet'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load wallet data: ${response.body}');
+    }
+  }
 }

@@ -1,10 +1,34 @@
 import 'package:flutter/foundation.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 
-const String PRIMARY_BACKEND_HOST = '192.168.100.55';
+const String PRIMARY_BACKEND_HOST = '192.168.100.58';
 const String FALLBACK_BACKEND_HOST = '10.0.2.2'; // Standard Android Emulator loopback
 const String OLD_BACKEND_HOST = '192.168.1.76';
+
+const String STRIPE_PUBLISHABLE_KEY_DEFAULT = 'pk_test_51TWa16C4PTfB0I2XPl7KWaEgeyQOWAKXvicPoQoF3GxAmIFBYMeKI2Y9AsRNvdny7dzVJ7Inj9W15zVP7CfyKDPF003AgOz7G8';
+
+String _stripePublishableKey = STRIPE_PUBLISHABLE_KEY_DEFAULT;
+String get STRIPE_PUBLISHABLE_KEY => _stripePublishableKey;
+
+Future<void> initStripeKey() async {
+  try {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    await remoteConfig.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(minutes: 5),
+    ));
+    await remoteConfig.fetchAndActivate();
+    final key = remoteConfig.getString('stripe_publishable_key');
+    if (key.isNotEmpty) {
+      _stripePublishableKey = key;
+      debugPrint('Stripe publishable key loaded from Remote Config');
+    }
+  } catch (e) {
+    debugPrint('Failed to load Stripe key from Remote Config: $e');
+  }
+}
 
 // List of available hosts in order of priority
 List<String> get BACKEND_HOSTS {

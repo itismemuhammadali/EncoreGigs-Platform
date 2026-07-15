@@ -20,6 +20,11 @@ class GigsScreen extends StatefulWidget {
 class _GigsScreenState extends State<GigsScreen> {
   final ApiService _apiService = ApiService();
   String _selectedFilter = 'All';
+  Key _refreshKey = UniqueKey();
+
+  void _refreshData() {
+    setState(() => _refreshKey = UniqueKey());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,14 +70,14 @@ class _GigsScreenState extends State<GigsScreen> {
                       color: Colors.white,
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
-                    ),
+                   ),
                   ),
                   GestureDetector(
                     onTap: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const PostGigScreen(returnToGigs: true)),
                       );
-                      setState(() {}); // Refresh list after posting
+                      _refreshData();
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -103,6 +108,7 @@ class _GigsScreenState extends State<GigsScreen> {
             // Gig cards list - Fetching from Backend
             Expanded(
               child: FutureBuilder<List<Map<String, dynamic>>>(
+                key: _refreshKey,
                 future: _apiService.getGigs(organizerId: currentUserId),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -151,13 +157,18 @@ class _GigsScreenState extends State<GigsScreen> {
                     );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                    itemCount: filteredGigs.length,
-                    itemBuilder: (context, index) {
-                      final gig = filteredGigs[index];
-                      return gig_card.GigCard(gig: gig);
-                    },
+                  return RefreshIndicator(
+                    onRefresh: () async => _refreshData(),
+                    color: const Color(0xFFA2F301),
+                    backgroundColor: const Color(0xFF1A1A1F),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      itemCount: filteredGigs.length,
+                      itemBuilder: (context, index) {
+                        final gig = filteredGigs[index];
+                        return gig_card.GigCard(gig: gig);
+                      },
+                    ),
                   );
                 },
               ),

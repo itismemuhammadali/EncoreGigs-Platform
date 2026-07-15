@@ -309,6 +309,7 @@ class BookingDetailsScreen extends StatelessWidget {
             builder: (_) => ReleasePaymentDialog(
               amount: amount,
               musicianName: musician,
+              bookingId: bookingId,
               onConfirm: () async {
                 try {
                   await FirebaseFirestore.instance

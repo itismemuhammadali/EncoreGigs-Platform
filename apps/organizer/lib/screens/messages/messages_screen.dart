@@ -15,6 +15,11 @@ class MessagesScreen extends StatefulWidget {
 
 class _MessagesScreenState extends State<MessagesScreen> {
   String _searchQuery = '';
+  Key _refreshKey = UniqueKey();
+
+  void _refreshData() {
+    setState(() => _refreshKey = UniqueKey());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,8 +77,13 @@ class _MessagesScreenState extends State<MessagesScreen> {
             ),
             // Message list
             Expanded(
-              child: StreamBuilder<List<ChatModel>>(
-                stream: chatService.getChats(),
+              child: RefreshIndicator(
+                color: const Color(0xFFA2F301),
+                backgroundColor: const Color(0xFF1A1A1F),
+                onRefresh: () async => _refreshData(),
+                child: StreamBuilder<List<ChatModel>>(
+                  key: _refreshKey,
+                  stream: chatService.getChats(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator(color: Color(0xFFA2F301)));
@@ -120,6 +130,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
                     },
                   );
                 },
+              ),
               ),
             ),
           ],

@@ -13,6 +13,7 @@ class BookingModel {
   final String? paymentStatus;
   final bool isPaymentPending;
   final String musicianId;
+  final String amount;
 
   const BookingModel({
     required this.id,
@@ -23,6 +24,7 @@ class BookingModel {
     required this.imagePath,
     required this.status,
     required this.musicianId,
+    required this.amount,
     this.paymentStatus,
     this.isPaymentPending = false,
   });
@@ -46,7 +48,7 @@ class BookingCard extends StatelessWidget {
           date: booking.dateTime.split(' • ').first,
           time: booking.dateTime.contains('•') ? booking.dateTime.split('• ').last : '8:00 PM - 11:00 PM',
           location: booking.location,
-          amount: '\$750',
+          amount: booking.amount,
           paymentStatus: booking.paymentStatus ?? 'Held in escrow',
           musicianId: booking.musicianId,
         ),

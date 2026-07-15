@@ -44,7 +44,35 @@ class RecentActivity extends StatefulWidget {
 }
 
 class _RecentActivityState extends State<RecentActivity> {
-  final ApiService _apiService = ApiService();
+  List<Map<String, dynamic>> _activities = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivity();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadActivity();
+  }
+
+  Future<void> _loadActivity() async {
+    final apiService = Provider.of<ApiService>(context, listen: false);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    try {
+      final data = await apiService.getRecentActivity(currentUserId);
+      if (mounted) setState(() { _activities = data; _isLoading = false; });
+    } catch (e) {
+      debugPrint('Error loading activity: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,20 +92,23 @@ class _RecentActivityState extends State<RecentActivity> {
           ),
         ),
         const SizedBox(height: 12),
-        FutureBuilder<List<Map<String, dynamic>>>(
-          future: _apiService.getRecentActivity(currentUserId),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFA2F301)));
-            }
-
-            final data = snapshot.data ?? [];
-            if (data.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('No recent activity', style: TextStyle(color: Color(0xFF666666))),
-              );
-            }
+        if (_isLoading)
+          const Center(child: CircularProgressIndicator(color: Color(0xFFA2F301)))
+        else if (_activities.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Text('No recent activity', style: TextStyle(color: Color(0xFF666666))),
+          )
+        else
+          Builder(
+            builder: (context) {
+              final data = _activities;
+              if (data.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('No recent activity', style: TextStyle(color: Color(0xFF666666))),
+                );
+              }
 
             final activities = data.map((item) {
               ActivityType type;
@@ -110,11 +141,11 @@ class _RecentActivityState extends State<RecentActivity> {
               );
             }).toList();
 
-            return Column(
-              children: activities.map((item) => _ActivityCard(item: item)).toList(),
-            );
-          },
-        ),
+              return Column(
+                children: activities.map((item) => _ActivityCard(item: item)).toList(),
+              );
+            },
+          ),
       ],
     );
   }

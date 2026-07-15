@@ -84,7 +84,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
 
   Future<void> _pickFiles() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['jpg', 'pdf', 'doc', 'png', 'jpeg'],

@@ -16,6 +16,11 @@ class BookingsScreen extends StatefulWidget {
 
 class _BookingsScreenState extends State<BookingsScreen> {
   String _selectedFilter = 'All';
+  Key _refreshKey = UniqueKey();
+
+  void _refreshData() {
+    setState(() => _refreshKey = UniqueKey());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,8 +101,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ),
             // Booking cards
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
+              child: RefreshIndicator(
+                color: const Color(0xFFA2F301),
+                backgroundColor: const Color(0xFF1A1A1F),
+                onRefresh: () async => _refreshData(),
+                child: StreamBuilder<QuerySnapshot>(
+                  key: _refreshKey,
+                  stream: FirebaseFirestore.instance
                     .collection('bookings')
                     .where('organizerId', isEqualTo: currentUserId)
                     .orderBy('createdAt', descending: true)
@@ -151,6 +161,7 @@ final bookingModel = BookingModel(
   imagePath: fixEmulatorUrl(musData['profileImageUrl'] ?? 'assets/recent_activity_image1.jpg'),
   status: status,
   musicianId: musicianId,
+  amount: '\$${bookingData['amount'] ?? 0}',
   paymentStatus: (status == 'payment released' || status == 'completed') 
       ? 'Payment Released' 
       : (status == 'Waiting for musician signature' 
@@ -180,6 +191,7 @@ final bookingModel = BookingModel(
                     },
                   );
                 },
+              ),
               ),
             ),
           ],

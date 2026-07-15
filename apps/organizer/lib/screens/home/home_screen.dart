@@ -19,6 +19,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
+  Key _homeRefreshKey = UniqueKey();
+  Key _gigsKey = UniqueKey();
 
   Widget _buildHomeBody() {
     return SafeArea(
@@ -43,20 +45,27 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const StatsRow(),
-                  const SizedBox(height: 16),
-                  ActionButtons(
-                    onMessages: () => setState(() => _currentNavIndex = 2),
-                  ),
-                  const SizedBox(height: 24),
-                  const RecentActivity(),
-                  const SizedBox(height: 20),
-                ],
+            child: RefreshIndicator(
+              color: const Color(0xFFA2F301),
+              backgroundColor: const Color(0xFF1A1A1F),
+              onRefresh: () async => _refreshHome(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatsRow(key: ValueKey('stats_$_homeRefreshKey')),
+                    const SizedBox(height: 16),
+                    ActionButtons(
+                      onMessages: () => setState(() => _currentNavIndex = 2),
+                      onPostGig: _refreshHome,
+                    ),
+                    const SizedBox(height: 24),
+                    RecentActivity(key: ValueKey('activity_$_homeRefreshKey')),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
           ),
@@ -65,29 +74,34 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _getScreen() {
-    switch (_currentNavIndex) {
-      case 1:
-        return const GigsScreen();
-      case 2:
-        return const MessagesScreen();
-      case 3:
-        return const BookingsScreen();
-      case 4:
-        return const ProfileScreen();
-      default:
-        return _buildHomeBody();
-    }
+  void _refreshHome() {
+    setState(() => _homeRefreshKey = UniqueKey());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      body: _getScreen(),
+      body: IndexedStack(
+        index: _currentNavIndex,
+        children: [
+          _buildHomeBody(),
+          GigsScreen(key: _gigsKey),
+          const MessagesScreen(),
+          const BookingsScreen(),
+          const ProfileScreen(),
+        ],
+      ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentNavIndex,
-        onTap: (index) => setState(() => _currentNavIndex = index),
+        onTap: (index) {
+          setState(() {
+            _currentNavIndex = index;
+            if (index == 1) {
+              _gigsKey = UniqueKey();
+            }
+          });
+        },
       ),
     );
   }

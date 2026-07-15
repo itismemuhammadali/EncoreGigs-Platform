@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
@@ -21,36 +22,21 @@ import 'package:onlygigz_musician/screens/main/bookings_screen.dart';
 import 'package:onlygigz_musician/screens/main/profile_screen.dart';
 
 import 'constants.dart';
+import 'package:shared_config/shared_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 0. Initialize Stripe
+  await initStripeKey();
+  Stripe.publishableKey = STRIPE_PUBLISHABLE_KEY;
+  await Stripe.instance.applySettings();
+  
   // 1. Initialize Firebase BEFORE runApp to ensure stable state for providers
   if (Firebase.apps.isEmpty) {
-    const firebaseOptions = FirebaseOptions(
-      apiKey: "AIzaSyB-DUMMY-KEY-FOR-EMULATOR-VALID",
-      appId: "1:1234567890:ios:abcdef123456",
-      messagingSenderId: "1234567890",
-      projectId: "demo-onlygigz",
-      storageBucket: "demo-onlygigz.appspot.com",
-      iosBundleId: "com.onlygigz.musician",
-    );
-
     try {
-      await Firebase.initializeApp(options: firebaseOptions);
-      
-      // Connect to Emulators immediately after init
-      final String host = getEmulatorHost();
-      debugPrint('Connecting to Firebase emulators on host: $host');
-      
-      await FirebaseAuth.instance.useAuthEmulator(host, 9099);
-      FirebaseFirestore.instance.settings = Settings(
-        host: '$host:8080',
-        sslEnabled: false,
-        persistenceEnabled: false,
-      );
-      await FirebaseStorage.instance.useStorageEmulator(host, 9199);
-      debugPrint('Firebase emulators connected (Auth:9099, Firestore:8080, Storage:9199)');
+      await Firebase.initializeApp();
+      debugPrint('Firebase initialized with native config');
     } catch (e) {
       debugPrint('Firebase initialization error: $e');
     }
