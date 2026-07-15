@@ -593,6 +593,25 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<String?> createUser(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendUrl/auth/create-user'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        await _auth.signInWithEmailAndPassword(email: email, password: password);
+        return null;
+      }
+      final data = jsonDecode(response.body);
+      return data['detail']?.toString() ?? 'Failed to create account';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<String?> createDispute({
     required String bookingId,
     required String category,

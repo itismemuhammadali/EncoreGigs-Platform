@@ -11,3 +11,11 @@ async def get_dashboard_analytics():
         return analytics
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/payments")
+async def get_payment_transactions():
+    try:
+        transactions = ReportService.get_payment_transactions()
+        return transactions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_config/email_verification_dialog.dart';
 import '../../../providers/signup_provider.dart';
+import '../../../services/auth_service.dart';
 
 class Step1AccountDetails extends StatefulWidget {
   const Step1AccountDetails({super.key});
@@ -28,7 +30,7 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
     super.dispose();
   }
 
-  void _handleNext() {
+  void _handleNext() async {
     if (_nameController.text.isEmpty ||
         _organizationController.text.isEmpty ||
         _emailController.text.isEmpty ||
@@ -60,14 +62,35 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
       return;
     }
 
+    final email = _emailController.text.trim();
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    final createError = await authService.createUser(email, _passwordController.text);
+    if (!mounted) return;
+
+    if (createError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(createError), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
     Provider.of<SignUpProvider>(context, listen: false).updateStep1(
       name: _nameController.text.trim(),
       orgName: _organizationController.text.trim(),
-      email: _emailController.text.trim(),
+      email: email,
       password: _passwordController.text,
     );
 
-    Navigator.of(context).pushNamed('/signup/step2');
+    showEmailVerificationDialog(
+      context: context,
+      email: email,
+      onVerified: () {
+        Navigator.of(context).pushNamed('/signup/step2');
+      },
+      onSendVerification: authService.sendVerificationEmail,
+      onCheckVerification: authService.checkEmailVerification,
+    );
   }
 
   @override

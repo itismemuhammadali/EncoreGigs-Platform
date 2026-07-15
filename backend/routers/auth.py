@@ -184,14 +184,16 @@ async def signup_admin(request: AdminSignUpRequest):
 async def signup_musician(request: MusicianSignUpRequest):
     try:
         from datetime import datetime
-        # Create user in Firebase Auth
-        user = auth.create_user(
-            email=request.email,
-            password=request.password,
-            display_name=request.fullName
-        )
+        try:
+            existing_user = auth.get_user_by_email(request.email)
+            user = auth.update_user(existing_user.uid, display_name=request.fullName)
+        except auth.UserNotFoundError:
+            user = auth.create_user(
+                email=request.email,
+                password=request.password,
+                display_name=request.fullName
+            )
         
-        # Store in Firestore via Service
         from backend.database import db
         user_data = {
             "uid": user.uid,
@@ -221,11 +223,15 @@ async def signup_musician(request: MusicianSignUpRequest):
 async def signup(request: SignUpRequest):
     try:
         from datetime import datetime
-        user = auth.create_user(
-            email=request.email,
-            password=request.password,
-            display_name=request.name
-        )
+        try:
+            existing_user = auth.get_user_by_email(request.email)
+            user = auth.update_user(existing_user.uid, display_name=request.name)
+        except auth.UserNotFoundError:
+            user = auth.create_user(
+                email=request.email,
+                password=request.password,
+                display_name=request.name
+            )
         
         from backend.database import db
         user_data = {
@@ -317,6 +323,20 @@ class SendVerificationRequest(BaseModel):
 
 class CheckVerificationRequest(BaseModel):
     uid: str
+
+
+class CreateUserRequest(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/create-user")
+async def create_user(request: CreateUserRequest):
+    try:
+        user = auth.create_user(email=request.email, password=request.password)
+        return {"uid": user.uid, "email": user.email}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/send-verification-email")

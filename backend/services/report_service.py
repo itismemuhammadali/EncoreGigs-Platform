@@ -126,3 +126,30 @@ class ReportService:
                 { "label": "Gigs Imported", "value": "840", "subtext": "45% of total gigs", "color": "text-[#A2F301]" }
             ]
         }
+
+    @staticmethod
+    def get_payment_transactions():
+        bookings = db.collection("bookings").get()
+        transactions = []
+        
+        for doc in bookings:
+            data = doc.to_dict()
+            status = data.get("status", "pending")
+            escrow_status = data.get("escrow_status", "pending")
+            created_at = data.get("createdAt")
+            
+            # Map Firestore data to Admin Portal Transaction interface
+            date_str = created_at.strftime("%Y-%m-%d") if hasattr(created_at, 'strftime') else str(created_at)
+            
+            transactions.append({
+                "id": doc.id[:8].upper(), # Show short ID
+                "organizer": data.get("organizerName", "Unknown"),
+                "musician": data.get("musicianName", "Unknown"),
+                "gig": data.get("gigTitle", "Unknown"),
+                "amount": f"${float(data.get('amount', 0)):,.2f}",
+                "escrowStatus": "released" if escrow_status == "released" else "held",
+                "date": date_str,
+                "status": "completed" if status == "completed" or status == "payment released" else "pending"
+            })
+            
+        return transactions

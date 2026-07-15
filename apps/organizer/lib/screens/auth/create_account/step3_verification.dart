@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_config/email_verification_dialog.dart';
 import '../../../providers/signup_provider.dart';
 import '../../../services/auth_service.dart';
 
@@ -59,18 +58,7 @@ class _Step3VerificationState extends State<Step3Verification> {
       if (!mounted) return;
 
       if (error == null) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          showEmailVerificationDialog(
-            context: context,
-            email: signUpProvider.email,
-            onVerified: () {
-              Navigator.of(context).pushNamedAndRemoveUntil('/signup/pending', (route) => false);
-            },
-            onSendVerification: authService.sendVerificationEmail,
-            onCheckVerification: authService.checkEmailVerification,
-          );
-        }
+        Navigator.of(context).pushNamedAndRemoveUntil('/signup/pending', (route) => false);
       } else {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(

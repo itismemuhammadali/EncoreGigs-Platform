@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_config/email_verification_dialog.dart';
 import '../../providers/musician_signup_provider.dart';
 import '../../services/auth_service.dart';
 import 'complete_profile_screen.dart';
@@ -35,7 +36,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     super.dispose();
   }
 
-  void _handleContinue() {
+  void _handleContinue() async {
     if (_emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
@@ -66,15 +67,36 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    final email = _emailController.text.trim();
+    final authService = Provider.of<AuthService>(context, listen: false);
+
+    final createError = await authService.createUser(email, _passwordController.text);
+    if (!mounted) return;
+
+    if (createError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(createError), backgroundColor: Colors.redAccent),
+      );
+      return;
+    }
+
     Provider.of<MusicianSignUpProvider>(context, listen: false).updateCredentials(
-      _emailController.text.trim(),
+      email,
       _passwordController.text,
     );
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const CompleteProfileScreen(),
-      ),
+    showEmailVerificationDialog(
+      context: context,
+      email: email,
+      onVerified: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => const CompleteProfileScreen(),
+          ),
+        );
+      },
+      onSendVerification: authService.sendVerificationEmail,
+      onCheckVerification: authService.checkEmailVerification,
     );
   }
 

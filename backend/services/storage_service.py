@@ -46,7 +46,7 @@ class StorageService:
         """
         try:
             print(f"DEBUG: Starting upload to path: {path}")
-            bucket_name = 'demo-onlygigz.appspot.com'
+            bucket_name = 'onlygigz-33557.firebasestorage.app'
             
             # If in emulator mode, use direct client with AnonymousCredentials
             if os.getenv("FIREBASE_STORAGE_EMULATOR_HOST"):
