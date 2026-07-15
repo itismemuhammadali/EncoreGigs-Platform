@@ -7,13 +7,18 @@ from firebase_admin import firestore
 
 from backend.database import db
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+
+def _get_stripe_key():
+    return os.getenv("STRIPE_SECRET_KEY", "")
+
 
 class StripeManager:
     @staticmethod
     def _assert_api_key():
-        if not stripe.api_key:
+        key = _get_stripe_key()
+        if not key:
             raise ValueError("STRIPE_SECRET_KEY is required in environment")
+        stripe.api_key = key
 
     @staticmethod
     def _get_fee_percentage() -> float:
