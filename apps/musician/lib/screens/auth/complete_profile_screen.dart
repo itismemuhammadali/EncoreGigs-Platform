@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_config/email_verification_dialog.dart';
 import '../../providers/musician_signup_provider.dart';
 import '../../services/auth_service.dart';
 import 'step1_screen.dart';
@@ -94,9 +95,18 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       if (!mounted) return;
 
       if (error == null) {
-        debugPrint('Signup successful, navigating to home...');
+        debugPrint('Signup successful, showing email verification...');
         if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          setState(() => _isLoading = false);
+          showEmailVerificationDialog(
+            context: context,
+            email: signupProvider.email,
+            onVerified: () {
+              Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+            },
+            onSendVerification: authService.sendVerificationEmail,
+            onCheckVerification: authService.checkEmailVerification,
+          );
         }
       } else {
         setState(() => _isLoading = false);

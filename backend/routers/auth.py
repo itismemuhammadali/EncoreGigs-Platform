@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query, File, UploadFile
 from typing import Optional, List, Dict, Any
+from pydantic import BaseModel
 from firebase_admin import auth, firestore
 import urllib3
 import json as _json
@@ -307,4 +308,37 @@ async def signin(request: SignInRequest):
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         SecurityService.create_log("Failed login attempt", request.email, status="failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SendVerificationRequest(BaseModel):
+    email: str
+
+
+class CheckVerificationRequest(BaseModel):
+    uid: str
+
+
+@router.post("/send-verification-email")
+async def send_verification_email(request: SendVerificationRequest):
+    try:
+        data = _firebase_auth_request("accounts:sendOobCode", {
+            "requestType": "VERIFY_EMAIL",
+            "email": request.email,
+        })
+        if "error" in data:
+            raise HTTPException(status_code=400, detail=data["error"]["message"])
+        return {"message": "Verification email sent"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/check-email-verification")
+async def check_email_verification(request: CheckVerificationRequest):
+    try:
+        user = auth.get_user(request.uid)
+        return {"email_verified": user.email_verified}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

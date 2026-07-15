@@ -559,6 +559,40 @@ class AuthService extends ChangeNotifier {
     await _auth.signOut();
   }
 
+  Future<String?> sendVerificationEmail(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendUrl/auth/send-verification-email'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      if (response.statusCode == 200) return null;
+      final data = jsonDecode(response.body);
+      return data['detail']?.toString() ?? 'Failed to send verification email';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<bool> checkEmailVerification() async {
+    try {
+      final uid = _auth.currentUser?.uid;
+      if (uid == null) return false;
+      final response = await http.post(
+        Uri.parse('$_backendUrl/auth/check-email-verification'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'uid': uid}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['email_verified'] == true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<String?> createDispute({
     required String bookingId,
     required String category,
