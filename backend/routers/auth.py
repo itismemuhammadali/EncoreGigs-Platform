@@ -319,6 +319,7 @@ async def signin(request: SignInRequest):
 
 class SendVerificationRequest(BaseModel):
     email: str
+    id_token: str
 
 
 class CheckVerificationRequest(BaseModel):
@@ -344,7 +345,7 @@ async def send_verification_email(request: SendVerificationRequest):
     try:
         data = _firebase_auth_request("accounts:sendOobCode", {
             "requestType": "VERIFY_EMAIL",
-            "email": request.email,
+            "idToken": request.id_token,
         })
         if "error" in data:
             raise HTTPException(status_code=400, detail=data["error"]["message"])

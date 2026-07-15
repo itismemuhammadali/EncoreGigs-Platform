@@ -561,10 +561,13 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> sendVerificationEmail(String email) async {
     try {
+      final user = _auth.currentUser;
+      if (user == null) return 'No user signed in';
+      final idToken = await user.getIdToken();
       final response = await http.post(
         Uri.parse('$_backendUrl/auth/send-verification-email'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
+        body: jsonEncode({'email': email, 'id_token': idToken}),
       );
       if (response.statusCode == 200) return null;
       final data = jsonDecode(response.body);
