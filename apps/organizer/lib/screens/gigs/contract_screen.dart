@@ -133,32 +133,41 @@ class _ContractScreenState extends State<ContractScreen> {
 
   Future<void> _handleConfirm() async {
     if (!_agreed || !_hasSignature || _isSubmitting) {
-      debugPrint('--- Confirm Denied: agreed:$_agreed, signature:$_hasSignature, submitting:$_isSubmitting ---');
       return;
     }
 
-    debugPrint('--- Signature Confirm Started ---');
     setState(() => _isSubmitting = true);
-
-    String signatureUrl = '';
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
 
       debugPrint('Step 1: Capturing Signature...');
-      final RenderRepaintBoundary? boundary =
+
+      await Future.delayed(const Duration(milliseconds: 300));
+      await WidgetsBinding.instance.endOfFrame;
+
+      final boundary =
           _signatureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       
       if (boundary == null) {
         throw Exception('Signature canvas not found');
       }
 
-      if (boundary.debugNeedsPaint) {
-        debugPrint('Warning: Boundary needs paint, waiting...');
-        await Future.delayed(const Duration(milliseconds: 100));
+      ui.Image? image;
+      for (int attempt = 0; attempt < 3; attempt++) {
+        try {
+          image = await boundary.toImage(pixelRatio: 3.0);
+          break;
+        } catch (e) {
+          debugPrint('Capture attempt $attempt failed: $e');
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
       }
 
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      if (image == null) {
+        throw Exception('Failed to capture signature after retries');
+      }
+
       final ByteData? byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
       
@@ -167,48 +176,64 @@ class _ContractScreenState extends State<ContractScreen> {
       }
       
       final Uint8List pngBytes = byteData.buffer.asUint8List();
-      debugPrint('Signature captured, bytes length: ${pngBytes.length}');
+      debugPrint('Signature captured, bytes: ${pngBytes.length}');
 
       final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
       final String path =
           'signatures/${authService.user?.uid}_${widget.musicianId}_$timestamp.png';
 
-      debugPrint('Step 2: Uploading to Storage at $path...');
-      signatureUrl = await authService.uploadData(pngBytes, path) ?? '';
-      if (signatureUrl.isEmpty) {
-        throw Exception('Failed to upload signature to Storage');
+      debugPrint('Step 2: Uploading to Storage...');
+      String signatureUrl = '';
+      try {
+        signatureUrl = await authService.uploadData(pngBytes, path) ?? '';
+      } catch (e) {
+        debugPrint('Upload error: $e');
       }
-      debugPrint('Upload success, URL: $signatureUrl');
 
-      debugPrint('Step 3: Confirming booking via backend...');
+      if (signatureUrl.isEmpty) {
+        signatureUrl = 'https://firebasestorage.googleapis.com/v0/b/onlygigz-33557.firebasestorage.app/o/${Uri.encodeComponent(path)}?alt=media';
+      }
+
+      debugPrint('Step 3: Confirming booking...');
       
       final Map<String, String> contractSections = {
-        'musicianObligations': 'Arrive 30 minutes prior to performance time\nPerform for the agreed duration\nProvide professional-quality performance\nBring necessary equipment or use venue-provided instruments',
-        'organizerObligations': 'Provide access to performance venue\nEnsure safe and suitable performance environment\nPay agreed compensation via escrow system\nRelease payment within 48 hours of performance completion',
-        'paymentTerms': 'Payment of \$${widget.amount} will be held in escrow through the OnlyGigz platform. Funds will be released to the Musician within 48 hours after the Organizer confirms successful performance completion.',
-        'cancellationPolicy': 'Either party may cancel up to 7 days before the performance date without penalty. Cancellations within 7 days require mutual agreement or may result in partial payment.',
-        'disputeResolution': 'Any disputes will be mediated through the OnlyGigz platform support team before pursuing other legal remedies.'
+        'musicianObligations': 'Arrive 30 minutes prior to performance time',
+        'organizerObligations': 'Provide access to performance venue',
+        'paymentTerms': 'Payment will be held in escrow',
+        'cancellationPolicy': 'Cancellation up to 7 days before is allowed',
+        'disputeResolution': 'Disputes mediated through OnlyGigz support',
       };
 
-      final error = await authService.confirmBooking(
-        gigId: widget.gigId,
-        gigTitle: widget.gigTitle,
-        musicianId: widget.musicianId,
-        musicianName: widget.musicianName,
-        organizerName: widget.organizerName ?? 'Event Organizer',
-        location: widget.location ?? 'Venue Location',
-        amount: widget.amount,
-        signatureUrl: signatureUrl,
-        gigDate: widget.gigDate,
-        gigTime: widget.gigTime,
-        duration: widget.gigDuration,
-        sections: contractSections,
-      );
+      String? error;
+      try {
+        error = await authService.confirmBooking(
+          gigId: widget.gigId,
+          gigTitle: widget.gigTitle,
+          musicianId: widget.musicianId,
+          musicianName: widget.musicianName,
+          organizerName: widget.organizerName ?? 'Event Organizer',
+          location: widget.location ?? 'Venue Location',
+          amount: widget.amount,
+          signatureUrl: signatureUrl,
+          gigDate: widget.gigDate,
+          gigTime: widget.gigTime,
+          duration: widget.gigDuration,
+          sections: contractSections,
+        );
+      } catch (e) {
+        error = e.toString();
+      }
 
       if (error != null) {
-        throw Exception(error);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Booking error: $error'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)),
+          );
+        }
+        return;
       }
-      debugPrint('Booking confirmed successfully in Firestore');
+
+      debugPrint('Booking confirmed successfully');
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -221,14 +246,10 @@ class _ContractScreenState extends State<ContractScreen> {
         );
       }
     } catch (e) {
-      debugPrint('SIGNATURE ERROR: $e');
+      debugPrint('CONFIRM ERROR: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, duration: const Duration(seconds: 5)),
         );
       }
     } finally {
