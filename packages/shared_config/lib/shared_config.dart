@@ -77,7 +77,7 @@ Future<void> initHosts() async {
         // Only try 127.0.0.1 on Android if 10.0.2.2 was already tried or not present
       }
 
-      final response = await http.get(Uri.parse('http://$host:8000/')).timeout(const Duration(seconds: 1));
+      final response = await http.get(Uri.parse('http://$host:8000/')).timeout(const Duration(seconds: 3));
       if (response.statusCode == 200) {
         _currentHostIndex = i;
         debugPrint('Connected to backend host: $host');
@@ -88,15 +88,8 @@ Future<void> initHosts() async {
     }
   }
   
-  // If we couldn't reach any host, fallback to a sensible default for the platform
-  if (Platform.isAndroid) {
-    for (int i = 0; i < hosts.length; i++) {
-      if (hosts[i] == '10.0.2.2') {
-        _currentHostIndex = i;
-        break;
-      }
-    }
-  }
+  // If we couldn't reach any host, fallback to the primary backend
+  _currentHostIndex = 0;
   debugPrint('Warning: No backend host reachable. Defaulting to: ${BACKEND_HOST}');
 }
 

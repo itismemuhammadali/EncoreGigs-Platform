@@ -60,7 +60,7 @@ void main() async {
 
 Future<void> _initNetworking() async {
   try {
-    await initHosts().timeout(const Duration(seconds: 2));
+    await initHosts().timeout(const Duration(seconds: 10));
   } catch (e) {
     debugPrint('Networking initialization warning: $e');
   }
