@@ -3,7 +3,7 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 
-const String PRIMARY_BACKEND_HOST = '192.168.100.58';
+const String PRIMARY_BACKEND_HOST = '177.7.32.116';
 const String FALLBACK_BACKEND_HOST = '10.0.2.2'; // Standard Android Emulator loopback
 const String OLD_BACKEND_HOST = '192.168.1.76';
 
@@ -54,6 +54,7 @@ const List<String> ALL_HISTORICAL_HOSTS = [
   PRIMARY_BACKEND_HOST,
   FALLBACK_BACKEND_HOST,
   OLD_BACKEND_HOST,
+  '192.168.100.58',
   '127.0.0.1',
   'localhost',
 ];
