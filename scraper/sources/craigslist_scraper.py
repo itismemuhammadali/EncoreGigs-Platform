@@ -67,7 +67,7 @@ class CraigslistScraper(BaseScraper):
             if not link_elem: return None
             link = link_elem['href']
             if not link.startswith('http'):
-                link = f"https://{self.city.craigslist.org}{link}"
+                link = f"https://{self.city}.craigslist.org{link}"
             
             title_elem = res.select_one('.title, .result-title, .titlestring')
             title = title_elem.text.strip() if title_elem else link.split('/')[-1].replace('.html', '').replace('-', ' ')

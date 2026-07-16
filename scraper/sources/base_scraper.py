@@ -37,8 +37,11 @@ class BaseScraper(ABC):
         if not text:
             return False
         text_lower = text.lower()
-        # Relaxed matching: check if any keyword exists as a substring
         for keyword in self.music_keywords:
             if keyword.lower() in text_lower:
+                return True
+        music_patterns = ["live entertainment", "event", "party", "club", "bar", "venue", "hire", "needed", "wanted", "looking for", "seeking"]
+        for pattern in music_patterns:
+            if pattern in text_lower:
                 return True
         return False

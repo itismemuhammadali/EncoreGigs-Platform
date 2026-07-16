@@ -12,16 +12,15 @@ class MockCredential(google.auth.credentials.Credentials):
 
 class DatabaseManager:
     def __init__(self):
-        # 1. Force Emulator Environment
-        os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
-        os.environ["GCLOUD_PROJECT"] = "demo-onlygigz"
+        use_emulator = os.getenv("SCRAPER_USE_EMULATOR", "false").lower() == "true"
+        
+        if use_emulator:
+            os.environ["FIRESTORE_EMULATOR_HOST"] = "127.0.0.1:8080"
+            os.environ["GCLOUD_PROJECT"] = "demo-onlygigz"
 
-        # 2. Initialize with Mock Credentials
         if not firebase_admin._apps:
-            # Create a credential object that firebase_admin expects
-            # We use a valid RSA private key format for the emulator
-            # USING RAW STRING TO PREVENT ESCAPING ISSUES
-            private_key = r"""-----BEGIN RSA PRIVATE KEY-----
+            if use_emulator:
+                private_key = r"""-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEAoq//UsKS9Gex2oRn/aOzdEe821k8R5HFzPDQ8PtCCaARDXex
 Yv+bp4WY1+tYppEQ7HY1DN4+mHJe3SIS7U1Wjt/C139oJS34C+7S9yZuFQGHcGs7
 XqC6FQCmQtfe+Vnz5Px0re6bQ/benBvd1gpWQra/4O78x9AVMKxPIonz1xlckbRe
@@ -49,14 +48,20 @@ Pev/rtFqXbTGD/UHb3+C8riGXvLWj48Yeu3BwJv3V7lijBKI/onaIsiFeJceNNFY
 DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
 -----END RSA PRIVATE KEY-----
 """
-            mock_cred = credentials.Certificate({
-                "type": "service_account",
-                "project_id": "demo-onlygigz",
-                "client_email": "dummy@demo-onlygigz.iam.gserviceaccount.com",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "private_key": private_key
-            })
-            firebase_admin.initialize_app(mock_cred, {'projectId': 'demo-onlygigz'})
+                mock_cred = credentials.Certificate({
+                    "type": "service_account",
+                    "project_id": "demo-onlygigz",
+                    "client_email": "dummy@demo-onlygigz.iam.gserviceaccount.com",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "private_key": private_key
+                })
+                firebase_admin.initialize_app(mock_cred, {'projectId': 'demo-onlygigz'})
+            else:
+                cred = credentials.Certificate("backend/serviceAccountKey.json")
+                firebase_admin.initialize_app(cred, {
+                    'projectId': 'onlygigz-33557',
+                    'storageBucket': 'onlygigz-33557.firebasestorage.app'
+                })
         
         self.db = firestore.client()
         # --- THE CORRECT COLLECTION ---
