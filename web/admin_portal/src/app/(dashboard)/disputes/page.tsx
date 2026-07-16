@@ -238,7 +238,7 @@ export default function DisputesPage() {
                       onClick={() => dispute.evidenceLink !== "No evidence" && window.open(dispute.evidenceLink, '_blank')}
                     >
                       <Paperclip size={14} className="shrink-0" />
-                      <span className="truncate">{dispute.evidenceLink.split('/').last || dispute.evidenceLink}</span>
+                      <span className="truncate">{dispute.evidenceLink.split('/').at(-1) || dispute.evidenceLink}</span>
                     </div>
                   </div>
                 </div>

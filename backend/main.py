@@ -23,6 +23,8 @@ app.add_middleware(
         "http://192.168.100.55:8000",
         "http://177.7.32.116",
         "http://177.7.32.116:8000",
+        "http://177.7.32.116:3000",
+        "http://177.7.32.116:4000",
     ],
     allow_credentials=True,
     allow_methods=["*"],

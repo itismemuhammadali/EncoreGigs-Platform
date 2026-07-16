@@ -328,7 +328,7 @@ export default function ScraperModule() {
         </div>
       </div>
 
-      <Toast show={toast.show} message={toast.message} type={toast.type} onClose={() => setToast({ show: false, message: "" })} />
+      <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false, message: "" })} />
       
       <ConfirmationModal 
         isOpen={deleteModal.show}

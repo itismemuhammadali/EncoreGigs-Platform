@@ -341,7 +341,7 @@ export default function GigManagement() {
       <GigDetailsModal 
         isOpen={viewModal.show}
         onClose={() => setViewModal({ show: false, gig: null })}
-        gig={viewModal.gig}
+        gig={viewModal.gig ? { ...viewModal.gig, budget: String(viewModal.gig.budget) } : null}
       />
 
       {/* --- EDIT GIG MODAL --- */}
@@ -349,7 +349,7 @@ export default function GigManagement() {
         isOpen={editModal.show}
         onClose={() => setEditModal({ show: false, gig: null })}
         onSave={handleSaveEdit}
-        gig={editModal.gig}
+        gig={editModal.gig as any}
       />
 
       {/* --- CONFIRMATION MODALS --- */}
