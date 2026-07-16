@@ -194,25 +194,27 @@ export default function ScraperModule() {
             <h1 className="text-2xl sm:text-[32px] font-bold text-white mb-2 leading-tight">Scraper Module Management</h1>
             <p className="text-[#a1a1aa] text-sm sm:text-[16px]">Monitor and manage the automated gig scraping engine</p>
           </div>
-          <button 
-            onClick={() => setRunScraperModal(true)}
-            className="flex items-center justify-center gap-3 bg-[#b3ff00] text-black px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10 whitespace-nowrap"
-          >
-            <Play className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
-            Run Scraper Now
-          </button>
-          <button 
-            onClick={handlePublishAll}
-            disabled={publishingAll}
-            className="flex items-center justify-center gap-3 bg-[#1a1a2e] border border-[#b3ff00]/30 text-[#b3ff00] px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#1f1f35] transition-all whitespace-nowrap disabled:opacity-50"
-          >
-            {publishingAll ? (
-              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-            ) : (
-              <Eye className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
-            )}
-            Show All in App
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setRunScraperModal(true)}
+              className="flex items-center justify-center gap-3 bg-[#b3ff00] text-black px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10 whitespace-nowrap"
+            >
+              <Play className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
+              Run Scraper Now
+            </button>
+            <button 
+              onClick={handlePublishAll}
+              disabled={publishingAll}
+              className="flex items-center justify-center gap-3 bg-[#1a1a2e] border border-[#b3ff00]/30 text-[#b3ff00] px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#1f1f35] transition-all whitespace-nowrap disabled:opacity-50"
+            >
+              {publishingAll ? (
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+              ) : (
+                <Eye className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
+              )}
+              Show All in App
+            </button>
+          </div>
         </div>
 
         {/* --- STAT CARDS --- */}

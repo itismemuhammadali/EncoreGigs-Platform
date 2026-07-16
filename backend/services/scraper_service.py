@@ -200,11 +200,14 @@ class ScraperService:
     def publish_all_unpublished():
         """Publishes all non-duplicate, non-spam scraped gigs that haven't been published yet."""
         try:
-            docs = db.collection("scraped_gigs").where("flags", "==", "None").get()
+            docs = db.collection("scraped_gigs").get()
             count = 0
             for doc in docs:
                 data = doc.to_dict()
                 if data.get("publishedToApp"):
+                    continue
+                flags = data.get("flags", "None")
+                if flags not in ("None", "none", None, ""):
                     continue
                 result = ScraperService.publish_gig(doc.id)
                 if result:
