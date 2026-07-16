@@ -60,3 +60,23 @@ async def update_scraped_gig(gig_id: str, updates: Dict[str, Any]):
         return {"message": "Gig updated successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/gigs/{gig_id}/publish")
+async def publish_gig_to_app(gig_id: str):
+    try:
+        result = ScraperService.publish_gig(gig_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Gig not found")
+        return {"message": "Gig published to app", "gigId": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/publish-all")
+async def publish_all_to_app():
+    try:
+        count = ScraperService.publish_all_unpublished()
+        return {"message": f"Published {count} gigs to app", "publishedCount": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

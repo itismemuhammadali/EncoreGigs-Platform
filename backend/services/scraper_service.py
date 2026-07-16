@@ -1,6 +1,6 @@
 from firebase_admin import firestore
 from backend.database import db
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import subprocess
 import os
 
@@ -94,7 +94,8 @@ class ScraperService:
                     "classification": classification,
                     "confidence": f"{confidence}%",
                     "flags": flags,
-                    "importedAt": imported_at
+                    "importedAt": imported_at,
+                    "publishedToApp": bool(data.get("publishedToApp", False))
                 })
                 
                 if len(gigs) >= limit: break
@@ -145,3 +146,70 @@ class ScraperService:
         except Exception as e:
             print(f"Error updating gig: {e}")
             return False
+
+    @staticmethod
+    def publish_gig(gig_id: str):
+        """Publishes a scraped gig to the main gigs collection so musicians can see it."""
+        try:
+            doc = db.collection("scraped_gigs").document(gig_id).get()
+            if not doc.exists:
+                return None
+            data = doc.to_dict()
+
+            organizer_data = data.get("organizer", {}) if isinstance(data.get("organizer"), dict) else {}
+
+            gig_data = {
+                "title": data.get("title", ""),
+                "description": data.get("description", ""),
+                "requirements": data.get("requirements", []) if isinstance(data.get("requirements"), list) else [],
+                "genres": data.get("genres", []) if isinstance(data.get("genres"), list) else [],
+                "date": data.get("date", ""),
+                "time": data.get("time", ""),
+                "budget": data.get("budget", ""),
+                "location": data.get("location", ""),
+                "organizerId": "scraped",
+                "organizer_id": "scraped",
+                "organizerName": organizer_data.get("name", data.get("sourceType", "Scraped")),
+                "organizerImage": organizer_data.get("profile_image_url", ""),
+                "imageUrl": data.get("imageUrl", ""),
+                "duration": data.get("duration", ""),
+                "isUrgent": False,
+                "status": "open",
+                "applicantsCount": 0,
+                "isScraped": True,
+                "sourceUrl": data.get("sourceUrl", ""),
+                "sourceType": data.get("sourceType", ""),
+                "createdAt": firestore.SERVER_TIMESTAMP
+            }
+
+            gig_ref = db.collection("gigs").document()
+            gig_ref.set(gig_data)
+
+            db.collection("scraped_gigs").document(gig_id).update({
+                "publishedToApp": True,
+                "publishedGigId": gig_ref.id,
+                "publishedAt": datetime.now(timezone.utc)
+            })
+
+            return gig_ref.id
+        except Exception as e:
+            print(f"Error publishing gig: {e}")
+            return None
+
+    @staticmethod
+    def publish_all_unpublished():
+        """Publishes all non-duplicate, non-spam scraped gigs that haven't been published yet."""
+        try:
+            docs = db.collection("scraped_gigs").where("flags", "==", "None").get()
+            count = 0
+            for doc in docs:
+                data = doc.to_dict()
+                if data.get("publishedToApp"):
+                    continue
+                result = ScraperService.publish_gig(doc.id)
+                if result:
+                    count += 1
+            return count
+        except Exception as e:
+            print(f"Error publishing all gigs: {e}")
+            return 0

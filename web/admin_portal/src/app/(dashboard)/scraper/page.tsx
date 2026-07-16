@@ -7,7 +7,8 @@ import {
   CheckCircle,
   AlertTriangle,
   FileText,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -47,6 +48,7 @@ interface ImportedGig {
   confidence: string;
   flags: "None" | "Duplicate" | "Spam";
   importedAt: string;
+  publishedToApp?: boolean;
 }
 
 export default function ScraperModule() {
@@ -56,6 +58,8 @@ export default function ScraperModule() {
   const [detailsModal, setDetailsModal] = useState<{ show: boolean; run: ScraperRun | null }>({ show: false, run: null });
   const [editModal, setEditModal] = useState<{ show: boolean; gig: ImportedGig | null }>({ show: false, gig: null });
   const [runScraperModal, setRunScraperModal] = useState(false);
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [publishingAll, setPublishingAll] = useState(false);
   
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<ScraperStat[]>([]);
@@ -147,6 +151,32 @@ export default function ScraperModule() {
     }
   };
 
+  const handlePublishGig = async (gigId: string) => {
+    try {
+      setPublishing(gigId);
+      await apiRequest(`/scraper/gigs/${gigId}/publish`, { method: "POST" });
+      setImportedGigs(prev => prev.map(g => g.id === gigId ? { ...g, publishedToApp: true } : g));
+      showToast("Gig published to app");
+    } catch (error) {
+      showToast("Failed to publish gig", "error");
+    } finally {
+      setPublishing(null);
+    }
+  };
+
+  const handlePublishAll = async () => {
+    try {
+      setPublishingAll(true);
+      const result = await apiRequest("/scraper/publish-all", { method: "POST" });
+      showToast(result.message || "Gigs published to app");
+      fetchData();
+    } catch (error) {
+      showToast("Failed to publish gigs", "error");
+    } finally {
+      setPublishingAll(false);
+    }
+  };
+
   if (isLoading && stats.length === 0) {
     return (
       <div className="w-full h-[60vh] flex items-center justify-center">
@@ -170,6 +200,18 @@ export default function ScraperModule() {
           >
             <Play className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
             Run Scraper Now
+          </button>
+          <button 
+            onClick={handlePublishAll}
+            disabled={publishingAll}
+            className="flex items-center justify-center gap-3 bg-[#1a1a2e] border border-[#b3ff00]/30 text-[#b3ff00] px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#1f1f35] transition-all whitespace-nowrap disabled:opacity-50"
+          >
+            {publishingAll ? (
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+            ) : (
+              <Eye className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
+            )}
+            Show All in App
           </button>
         </div>
 
@@ -301,6 +343,26 @@ export default function ScraperModule() {
                     <td className="px-6 py-5 text-[#a1a1aa] text-[13px]">{formatDate(gig.importedAt)}</td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-4">
+                        {gig.flags === 'None' && !gig.publishedToApp && (
+                          <button 
+                            onClick={() => handlePublishGig(gig.id)}
+                            disabled={publishing === gig.id}
+                            className="text-[#b3ff00] text-[13px] font-bold hover:underline flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {publishing === gig.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Eye className="w-3 h-3" />
+                            )}
+                            Show in App
+                          </button>
+                        )}
+                        {gig.publishedToApp && (
+                          <span className="text-[#10b981] text-[12px] font-bold flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Published
+                          </span>
+                        )}
                         <button 
                           onClick={() => setEditModal({ show: true, gig })}
                           className="text-[#b3ff00] text-[13px] font-bold hover:underline"
