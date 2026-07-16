@@ -13,6 +13,7 @@ class CraigslistScraper(BaseScraper):
         self.city = city
         # Target 'muc' (musicians) community section with a search query for better variety
         self.base_url = f"https://{city}.craigslist.org/search/muc?query=music"
+        self.fallback_url = f"https://{city}.craigslist.org/search/mua?query=music"
 
     @property
     def source_name(self) -> str:
@@ -111,34 +112,38 @@ class CraigslistScraper(BaseScraper):
             return None
 
     def scrape(self) -> List[GigDetails]:
-        print(f"Scraping Craigslist ({self.city})...")
+        print(f"Scraping Craigslist ({self.city})...", flush=True)
         gigs = []
         
-        try:
-            response = requests.get(self.base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-            if response.status_code != 200:
-                return []
+        urls_to_try = [self.base_url, self.fallback_url]
+        
+        for url in urls_to_try:
+            try:
+                response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                if response.status_code != 200:
+                    print(f"  Craigslist URL returned {response.status_code}: {url}", flush=True)
+                    continue
 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            # Try multiple selectors as Craigslist updates frequently
-            results = soup.select('li.cl-static-search-result, li.result-row, .gallery-card')
-            
-            if not results:
-                # Fallback to broad search for links
-                results = soup.select('a[href*="/muc/"]')
-
-            # Limit to top 40 for speed in real-time demo
-            target_results = results[:40]
-            print(f"Found {len(results)} potential results on Craigslist. Processing top {len(target_results)} in parallel...", flush=True)
-            
-            with ThreadPoolExecutor(max_workers=10) as executor:
-                futures = [executor.submit(self.process_result, res) for res in target_results]
-                for future in futures:
-                    gig = future.result()
-                    if gig:
-                        gigs.append(gig)
+                soup = BeautifulSoup(response.text, 'html.parser')
+                results = soup.select('li.cl-static-search-result, li.result-row, .gallery-card')
                 
-        except Exception as e:
-            print(f"Error: {e}")
+                if not results:
+                    results = soup.select('a[href*="/muc/"], a[href*="/mua/"]')
+
+                target_results = results[:40]
+                print(f"Found {len(results)} results on Craigslist ({url}). Processing top {len(target_results)}...", flush=True)
+                
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = [executor.submit(self.process_result, res) for res in target_results]
+                    for future in futures:
+                        gig = future.result()
+                        if gig:
+                            gigs.append(gig)
+                
+                if gigs:
+                    break
+                    
+            except Exception as e:
+                print(f"  Error on Craigslist URL {url}: {e}", flush=True)
             
         return gigs
