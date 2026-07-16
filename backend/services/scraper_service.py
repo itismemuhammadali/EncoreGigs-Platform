@@ -202,17 +202,24 @@ class ScraperService:
         try:
             docs = db.collection("scraped_gigs").get()
             count = 0
+            already_published = 0
+            skipped = 0
+            errors = 0
             for doc in docs:
                 data = doc.to_dict()
                 if data.get("publishedToApp"):
+                    already_published += 1
                     continue
                 flags = data.get("flags", "None")
                 if flags not in ("None", "none", None, ""):
+                    skipped += 1
                     continue
                 result = ScraperService.publish_gig(doc.id)
                 if result:
                     count += 1
-            return count
+                else:
+                    errors += 1
+            return {"published": count, "alreadyPublished": already_published, "skipped": skipped, "errors": errors}
         except Exception as e:
             print(f"Error publishing all gigs: {e}")
-            return 0
+            return {"published": 0, "alreadyPublished": 0, "skipped": 0, "errors": 0}

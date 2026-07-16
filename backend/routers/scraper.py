@@ -76,7 +76,12 @@ async def publish_gig_to_app(gig_id: str):
 @router.post("/publish-all")
 async def publish_all_to_app():
     try:
-        count = ScraperService.publish_all_unpublished()
-        return {"message": f"Published {count} gigs to app", "publishedCount": count}
+        result = ScraperService.publish_all_unpublished()
+        published = result.get("published", 0)
+        already = result.get("alreadyPublished", 0)
+        if published > 0:
+            return {"message": f"Published {published} new gigs to app", "publishedCount": published, **result}
+        else:
+            return {"message": f"All {already} gigs are already published in app", "publishedCount": 0, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
