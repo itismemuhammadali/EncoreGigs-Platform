@@ -3,13 +3,16 @@ import os
 import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from dotenv import load_dotenv
 
 # --- CRITICAL PATH FIX ---
-# This ensures that no matter HOW the script is called, it can find the 'scraper' and 'backend' packages.
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(CURRENT_DIR)
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+
+# Load env vars from backend/.env (where STRIPE, SMARTPROXY keys live)
+load_dotenv(os.path.join(ROOT_DIR, "backend", ".env"))
 
 try:
     from scraper.sources.craigslist_scraper import CraigslistScraper
