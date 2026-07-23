@@ -22,7 +22,7 @@ class GigSaladScraper(BaseScraper):
             print("WARNING: SMARTPROXY_API_KEY not set. GigSalad will likely get 403.", flush=True)
             return None
         return {
-            "server": "http://gate.smartproxy.com:7777",
+            "server": "http://gate.smartproxy.com:8000",
             "username": "OG",
             "password": api_key,
         }
