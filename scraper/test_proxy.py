@@ -15,10 +15,10 @@ print(f"SmartProxy key loaded ({len(api_key)} chars)")
 
 import requests
 
-proxy_url = f"http://user:{api_key}@gate.smartproxy.com:7777"
+proxy_url = f"http://OG:{api_key}@gate.smartproxy.com:7777"
 proxies = {"http": proxy_url, "https": proxy_url}
 
-print(f"Testing proxy: gate.smartproxy.com:7777 ...")
+print(f"Testing proxy: OG@gate.smartproxy.com:7777 ...")
 try:
     r = requests.get("https://httpbin.org/ip", proxies=proxies, timeout=20)
     print(f"SUCCESS - Status: {r.status_code}")

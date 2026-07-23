@@ -23,7 +23,7 @@ class GigSaladScraper(BaseScraper):
             return None
         return {
             "server": "http://gate.smartproxy.com:7777",
-            "username": "user",
+            "username": "OG",
             "password": api_key,
         }
 
