@@ -3,43 +3,59 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend", ".env"))
 
-import requests
+from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
-import json
+import time, json
 
-url = "https://www.eventbrite.com/d/tx--austin/music--events/"
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-}
+proxy = {"server": "http://gate.decodo.com:10001"}
 
-print(f"Fetching: {url}")
-try:
-    response = requests.get(url, headers=headers, timeout=15)
-    print(f"Status: {response.status_code}")
-    print(f"Content length: {len(response.text)}")
+STEALTH_JS = """
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+window.chrome = { runtime: {}, app: { isInstalled: false } };
+"""
 
-    if "cloudflare" in response.text.lower() or "challenge" in response.text.lower():
-        print("BLOCKED by Cloudflare")
+with sync_playwright() as p:
+    browser = p.chromium.launch(
+        headless=False,
+        proxy=proxy,
+        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+    )
+    context = browser.new_context(
+        viewport={"width": 1920, "height": 1080},
+        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        locale="en-US",
+    )
+    page = context.new_page()
+    page.add_init_script(STEALTH_JS)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    url = "https://www.eventbrite.com/d/tx--austin/music--events/"
+    page.goto(url, wait_until="commit", timeout=30000)
+    time.sleep(8)
+
+    title = page.title()
+    print(f"Title: {title}")
+    print(f"URL: {page.url}")
+
+    html = page.content()
+    print(f"HTML length: {len(html)}")
+
+    soup = BeautifulSoup(html, "html.parser")
     scripts = soup.find_all("script", type="application/ld+json")
-    print(f"JSON-LD scripts found: {len(scripts)}")
+    print(f"JSON-LD scripts: {len(scripts)}")
 
     for script in scripts:
         try:
             data = json.loads(script.string)
-            print(f"\nJSON-LD type: {data.get('@type', 'unknown')}")
-            if isinstance(data, dict) and data.get("@type") == "ItemList":
+            t = data.get("@type", "unknown")
+            print(f"\nType: {t}")
+            if isinstance(data, dict) and t == "ItemList":
                 items = [li.get("item") for li in data.get("itemListElement", []) if li.get("item")]
-                print(f"Events in ItemList: {len(items)}")
+                print(f"Events: {len(items)}")
                 for item in items[:3]:
-                    print(f"  - {item.get('name', 'unknown')}")
+                    print(f"  - {item.get('name', '?')}")
             elif isinstance(data, list):
-                print(f"Events in list: {len(data)}")
-            else:
-                print(f"Single item: {data.get('name', 'unknown')}")
+                print(f"List items: {len(data)}")
         except Exception as e:
-            print(f"JSON parse error: {e}")
+            print(f"Parse error: {e}")
 
-except Exception as e:
-    print(f"Request error: {e}")
+    browser.close()
