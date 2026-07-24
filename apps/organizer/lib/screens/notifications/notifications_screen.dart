@@ -14,7 +14,7 @@ class NotificationItem {
   final String time;
   bool isUnread;
 
-  const NotificationItem({
+  NotificationItem({
     required this.id,
     this.icon,
     this.iconPath,
