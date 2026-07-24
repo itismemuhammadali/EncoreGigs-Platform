@@ -3,56 +3,42 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend", ".env"))
 
-from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
-import time, json
+import requests
 
-STEALTH_JS = """
-Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-window.chrome = { runtime: {}, app: { isInstalled: false } };
-"""
+private_token = os.getenv("EVENTBRITE_PRIVATE_TOKEN", "")
+api_key = os.getenv("EVENTBRITE_API_KEY", "")
+client_secret = os.getenv("EVENTBRITE_CLIENT_SECRET", "")
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(
-        headless=False,
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
-    )
-    context = browser.new_context(
-        viewport={"width": 1920, "height": 1080},
-        user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        locale="en-US",
-    )
-    page = context.new_page()
-    page.add_init_script(STEALTH_JS)
+print(f"private_token: {private_token}")
+print(f"api_key: {api_key}")
+print(f"client_secret: {client_secret[:10]}...")
 
-    url = "https://www.eventbrite.com/d/tx--austin/music--events/"
-    page.goto(url, wait_until="commit", timeout=30000)
-    
-    for i in range(6):
-        time.sleep(5)
-        title = page.title()
-        print(f"[{i*5}s] Title: {title}")
-        if "moment" not in title.lower() and "challenge" not in title.lower():
-            break
+# Try every possible Eventbrite endpoint
+endpoints = [
+    ("GET /v3/events/", f"https://www.eventbriteapi.com/v3/events/"),
+    ("GET /v3/events/search", "https://www.eventbriteapi.com/v3/events/search"),
+    ("GET /v3/events/search/", "https://www.eventbriteapi.com/v3/events/search/"),
+    ("POST /v3/events/search/", "https://www.eventbriteapi.com/v3/events/search/"),
+    ("GET /v3/destination/search", "https://www.eventbriteapi.com/v3/destination/search"),
+    ("GET /v3/venue/search", "https://www.eventbriteapi.com/v3/venue/search"),
+    ("GET /v3/categories/", "https://www.eventbriteapi.com/v3/categories/"),
+    ("GET /v3/organizers/", "https://www.eventbriteapi.com/v3/organizers/"),
+    ("GET /v3/saved_events/", "https://www.eventbriteapi.com/v3/saved_events/"),
+]
 
-    html = page.content()
-    print(f"\nHTML length: {len(html)}")
-
-    soup = BeautifulSoup(html, "html.parser")
-    scripts = soup.find_all("script", type="application/ld+json")
-    print(f"JSON-LD scripts: {len(scripts)}")
-
-    for script in scripts:
+for label, url in endpoints:
+    for auth_name, token in [("private", private_token), ("api_key", api_key)]:
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {"q": "music", "location.address": "austin,tx"} if "search" in url else {}
+        method = "POST" if "POST" in label else "GET"
         try:
-            data = json.loads(script.string)
-            t = data.get("@type", "unknown")
-            print(f"\nType: {t}")
-            if isinstance(data, dict) and t == "ItemList":
-                items = [li.get("item") for li in data.get("itemListElement", []) if li.get("item")]
-                print(f"Events: {len(items)}")
-                for item in items[:5]:
-                    print(f"  - {item.get('name', '?')}")
+            if method == "POST":
+                r = requests.post(url, headers=headers, json=params, timeout=10)
+            else:
+                r = requests.get(url, headers=headers, params=params, timeout=10)
+            if r.status_code != 404:
+                print(f"{r.status_code} | {auth_name:10s} | {label}")
+                if r.status_code == 200:
+                    print(f"  -> {r.text[:200]}")
         except Exception as e:
-            print(f"Parse error: {e}")
-
-    browser.close()
+            print(f"ERR | {auth_name:10s} | {label} | {str(e)[:60]}")
