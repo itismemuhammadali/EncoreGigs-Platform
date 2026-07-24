@@ -6,7 +6,7 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 from playwright.sync_api import sync_playwright
 import time, json
 
-COOKIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "facebook_cookies.json")
+COOKIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facebook_cookies.json")
 
 with open(COOKIES_FILE) as f:
     cookies = json.load(f)
