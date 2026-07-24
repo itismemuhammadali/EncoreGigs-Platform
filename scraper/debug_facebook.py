@@ -38,24 +38,26 @@ with sync_playwright() as p:
     page = context.new_page()
     page.add_init_script(STEALTH_JS)
 
-    page.goto("https://www.facebook.com/search/groups/?q=austin%20musician%20gigs", wait_until="domcontentloaded", timeout=30000)
-    time.sleep(8)
+    search_url = "https://www.facebook.com/search/groups/?q=austin%20musician%20gigs%20wanted"
+    page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+    time.sleep(10)
+
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    time.sleep(5)
 
     print(f"URL: {page.url}")
     print(f"Title: {page.title()}")
 
     if "login" in page.url.lower():
-        print("REDIRECTED TO LOGIN - cookies expired!")
+        print("REDIRECTED TO LOGIN!")
         browser.close()
         sys.exit(1)
 
-    links = page.query_selector_all("a[href*='/groups/']")
-    seen = set()
-    for link in links:
-        href = link.get_attribute("href") or ""
-        text = link.inner_text().strip()[:80]
-        if "/groups/" in href and text and href not in seen and len(text) > 3:
-            seen.add(href)
-            print(f"  GROUP: {text:50s} -> {href}")
+    # Dump all text to find group names
+    body = page.inner_text("body")
+    lines = [l.strip() for l in body.split("\n") if l.strip() and len(l.strip()) > 5]
+    print(f"\nBody text lines: {len(lines)}")
+    for line in lines[:50]:
+        print(f"  {line[:120]}")
 
     browser.close()
