@@ -117,7 +117,7 @@ class ScraperService:
             log_path = os.path.join(root_dir, "scraper_debug.log")
             
             subprocess.Popen(
-                [sys.executable, scraper_path],
+                ["xvfb-run", sys.executable, scraper_path],
                 cwd=root_dir,
                 stdout=open(log_path, "a"),
                 stderr=subprocess.STDOUT
