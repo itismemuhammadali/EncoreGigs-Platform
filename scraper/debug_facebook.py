@@ -14,7 +14,6 @@ for c in raw_cookies:
     ss = c.get("sameSite", "Lax")
     if ss not in ("Strict", "Lax", "None"):
         c["sameSite"] = "None" if ss == "no_restriction" else "Lax"
-cookies = raw_cookies
 
 proxy = {"server": "http://gate.decodo.com:10001"}
 
@@ -22,6 +21,19 @@ STEALTH_JS = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 window.chrome = { runtime: {}, app: { isInstalled: false } };
 """
+
+groups = [
+    "AustinMusicians",
+    "AustinBandmates",
+    "ATXLiveMusic",
+    "austinmusiciansnetwork",
+    "austinmusicclassifieds",
+    "austingigboard",
+    "centraltexasmusicians",
+    "austinmusicianslookingforwork",
+    "austinmusicianshoping",
+    "LiveMusicAustin",
+]
 
 with sync_playwright() as p:
     browser = p.chromium.launch(
@@ -34,30 +46,32 @@ with sync_playwright() as p:
         user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         locale="en-US",
     )
-    context.add_cookies(cookies)
+    context.add_cookies(raw_cookies)
     page = context.new_page()
     page.add_init_script(STEALTH_JS)
 
-    search_url = "https://www.facebook.com/search/groups/?q=austin%20musician%20gigs%20wanted"
-    page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
-    time.sleep(10)
+    for group in groups:
+        url = f"https://www.facebook.com/groups/{group}/"
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            time.sleep(4)
+            title = page.title()
+            current_url = page.url
 
-    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-    time.sleep(5)
+            if "login" in current_url.lower():
+                print(f"LOGIN REQUIRED: {group}")
+                break
 
-    print(f"URL: {page.url}")
-    print(f"Title: {page.title()}")
+            if "sorry" in title.lower() or "not found" in title.lower() or "page" in title.lower():
+                print(f"NOT FOUND: {group}")
+                continue
 
-    if "login" in page.url.lower():
-        print("REDIRECTED TO LOGIN!")
-        browser.close()
-        sys.exit(1)
+            body = page.inner_text("body")[:500]
+            gig_words = ["looking for", "need a", "hiring", "gig", "playing", "band", "musician wanted", "seeking"]
+            has_gigs = any(w in body.lower() for w in gig_words)
+            print(f"{'GIGS' if has_gigs else '----'}: {group:40s} | {title[:60]}")
 
-    # Dump all text to find group names
-    body = page.inner_text("body")
-    lines = [l.strip() for l in body.split("\n") if l.strip() and len(l.strip()) > 5]
-    print(f"\nBody text lines: {len(lines)}")
-    for line in lines[:50]:
-        print(f"  {line[:120]}")
+        except Exception as e:
+            print(f"ERROR: {group:40s} | {str(e)[:60]}")
 
     browser.close()
