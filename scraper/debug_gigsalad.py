@@ -28,20 +28,26 @@ with sync_playwright() as p:
     page = context.new_page()
     page.add_init_script(STEALTH_JS)
 
-    page.goto("https://www.gigsalad.com", wait_until="commit", timeout=30000)
-    time.sleep(5)
-    print(f"HOMEPAGE: {page.title()} | {page.url}")
+    urls = [
+        "https://www.gigsalad.com/book-music/austin-tx",
+        "https://www.gigsalad.com/book-music?location=austin-tx",
+        "https://www.gigsalad.com/book-music/austin-texas",
+        "https://www.gigsalad.com/opportunities",
+        "https://www.gigsalad.com/gig-board",
+        "https://www.gigsalad.com/events",
+    ]
 
-    links = page.query_selector_all("a[href]")
-    gig_links = []
-    for link in links:
-        href = link.get_attribute("href")
-        text = link.inner_text().strip()[:50]
-        if href and ("gig" in href.lower() or "browse" in href.lower() or "search" in href.lower() or "find" in href.lower()):
-            gig_links.append(f"  {text:30s} -> {href}")
-    
-    print(f"\nGig-related links found: {len(gig_links)}")
-    for gl in gig_links[:20]:
-        print(gl)
+    for url in urls:
+        try:
+            page.goto(url, wait_until="commit", timeout=15000)
+            time.sleep(3)
+            title = page.title()
+            links = page.query_selector_all("a[href]")
+            gig_links = [l.get_attribute("href") for l in links if l.get_attribute("href") and ("gig" in l.get_attribute("href").lower() or "event" in l.get_attribute("href").lower() or "opportunity" in l.get_attribute("href").lower())]
+            print(f"{title:50s} | {url}")
+            if gig_links:
+                print(f"  -> gig links: {gig_links[:5]}")
+        except Exception as e:
+            print(f"ERROR: {str(e)[:60]} | {url}")
 
     browser.close()
