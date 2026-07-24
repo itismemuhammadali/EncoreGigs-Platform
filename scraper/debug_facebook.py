@@ -41,52 +41,64 @@ with sync_playwright() as p:
     page.goto(url, wait_until="domcontentloaded", timeout=30000)
     time.sleep(8)
 
-    # Dismiss cookie consent
+    # Try to dismiss all cookie dialogs aggressively
+    for sel in [
+        "button:has-text('Decline optional cookies')",
+        "button:has-text('Decline')",
+        "button:has-text('Allow all cookies')",
+        "button:has-text('Allow')",
+        "[data-cookiebanner='accept_button']",
+        "[data-testid='cookie-policy-manage-dialog-accept-button']",
+        "button[title='Allow']",
+        "button[title='Accept']",
+    ]:
+        try:
+            btn = page.query_selector(sel)
+            if btn and btn.is_visible():
+                btn.click()
+                print(f"Clicked: {sel}")
+                time.sleep(2)
+                break
+        except:
+            continue
+
+    # Also try to close any overlays
     try:
-        decline = page.query_selector("button:has-text('Decline optional cookies')")
-        if decline:
-            decline.click()
-            print("Clicked: Decline optional cookies")
-            time.sleep(2)
+        page.keyboard.press("Escape")
+        time.sleep(1)
     except:
         pass
 
-    try:
-        accept = page.query_selector("button:has-text('Allow')")
-        if accept:
-            accept.click()
-            print("Clicked: Allow cookies")
-            time.sleep(2)
-    except:
-        pass
+    time.sleep(3)
 
-    # Scroll multiple times to load posts
-    for i in range(5):
-        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-        time.sleep(3)
-        print(f"Scroll {i+1}/5")
+    # Scroll to load content
+    for i in range(8):
+        page.evaluate("window.scrollBy(0, 800)")
+        time.sleep(2)
+        print(f"Scroll {i+1}/8")
 
     print(f"\nTitle: {page.title()}")
-    print(f"URL: {page.url}")
+
+    # Get full page HTML and dump it
+    content = page.content()
+    print(f"HTML length: {len(content)}")
+
+    # Try to find post containers with different selectors
+    selectors = [
+        "[data-ad-rendering-role='story_message']",
+        "[data-ad-preview='message']",
+        "div[dir='auto']",
+        "[role='article']",
+        "span[data-text='true']",
+    ]
+    for sel in selectors:
+        items = page.query_selector_all(sel)
+        print(f"Selector '{sel}': {len(items)} elements")
 
     body = page.inner_text("body")
     lines = [l.strip() for l in body.split("\n") if l.strip() and len(l.strip()) > 20]
-
-    gig_words = ["looking for", "need a", "need a ", "hiring", "gig", "wanted", "seeking", "available", "bassist", "guitarist", "drummer", "vocalist", "singer", "band", "wedding", "party", "event", "pay", "rate", "playing", "open mic", "audition", "rehearsal", "session", "cover band"]
-
-    print(f"\nTotal lines: {len(lines)}")
-    print(f"\n--- GIG POSTS ---")
-    found = 0
-    for line in lines:
-        if any(w in line.lower() for w in gig_words) and len(line) > 30:
-            print(f"\n  {line[:200]}")
-            found += 1
-            if found >= 15:
-                break
-
-    if found == 0:
-        print("\n--- ALL POSTS (first 20) ---")
-        for line in lines[:20]:
-            print(f"  {line[:150]}")
+    print(f"\nBody lines: {len(lines)}")
+    for line in lines[:25]:
+        print(f"  {line[:150]}")
 
     browser.close()
