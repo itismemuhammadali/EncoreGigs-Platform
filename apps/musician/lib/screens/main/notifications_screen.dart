@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../services/api_service.dart';
+import '../../services/api_service.dart';
 
 enum NotificationType { application, message, payment, booking, gig, system }
 
