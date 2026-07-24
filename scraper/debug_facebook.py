@@ -10,7 +10,6 @@ COOKIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "faceboo
 
 with open(COOKIES_FILE) as f:
     raw_cookies = json.load(f)
-
 for c in raw_cookies:
     ss = c.get("sameSite", "Lax")
     if ss not in ("Strict", "Lax", "None"):
@@ -39,39 +38,24 @@ with sync_playwright() as p:
     page = context.new_page()
     page.add_init_script(STEALTH_JS)
 
-    groups = ["AustinMusicianGigs", "AustinMusicians", "ATXLiveMusic"]
+    page.goto("https://www.facebook.com/search/groups/?q=austin%20musician%20gigs", wait_until="domcontentloaded", timeout=30000)
+    time.sleep(8)
 
-    for group in groups:
-        url = f"https://www.facebook.com/groups/{group}/"
-        print(f"\n=== {group} ===")
-        try:
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            time.sleep(5)
-            title = page.title()
-            current_url = page.url
-            print(f"Title: {title}")
-            print(f"URL: {current_url}")
+    print(f"URL: {page.url}")
+    print(f"Title: {page.title()}")
 
-            if "login" in current_url.lower():
-                print("REDIRECTED TO LOGIN - cookies expired!")
-                continue
+    if "login" in page.url.lower():
+        print("REDIRECTED TO LOGIN - cookies expired!")
+        browser.close()
+        sys.exit(1)
 
-            posts = page.query_selector_all("div[dir='auto']")
-            print(f"Post elements: {len(posts)}")
-
-            found = 0
-            for post in posts[:20]:
-                try:
-                    text = post.inner_text().strip()
-                    if len(text) > 30:
-                        print(f"  POST: {text[:120]}")
-                        found += 1
-                        if found >= 3:
-                            break
-                except:
-                    continue
-
-        except Exception as e:
-            print(f"ERROR: {str(e)[:100]}")
+    links = page.query_selector_all("a[href*='/groups/']")
+    seen = set()
+    for link in links:
+        href = link.get_attribute("href") or ""
+        text = link.inner_text().strip()[:80]
+        if "/groups/" in href and text and href not in seen and len(text) > 3:
+            seen.add(href)
+            print(f"  GROUP: {text:50s} -> {href}")
 
     browser.close()
