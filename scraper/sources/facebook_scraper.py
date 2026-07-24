@@ -7,7 +7,7 @@ from scraper.models.gig import GigDetails, OrganizerDetails
 from playwright.sync_api import sync_playwright
 import time
 
-COOKIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facebook_cookies.json")
+COOKIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "facebook_cookies.json")
 
 class FacebookScraper(BaseScraper):
     def __init__(self, target_groups: List[str] = None):
