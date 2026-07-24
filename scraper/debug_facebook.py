@@ -15,7 +15,7 @@ for c in raw_cookies:
     if ss not in ("Strict", "Lax", "None"):
         c["sameSite"] = "None" if ss == "no_restriction" else "Lax"
 
-proxy = {"server": "http://gate.decodo.com:10001"}
+proxy = {"server": "http://gate.decodo.com:10002"}
 
 STEALTH_JS = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
