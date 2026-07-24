@@ -9,7 +9,13 @@ import time, json
 COOKIES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "facebook_cookies.json")
 
 with open(COOKIES_FILE) as f:
-    cookies = json.load(f)
+    raw_cookies = json.load(f)
+
+for c in raw_cookies:
+    ss = c.get("sameSite", "Lax")
+    if ss not in ("Strict", "Lax", "None"):
+        c["sameSite"] = "None" if ss == "no_restriction" else "Lax"
+cookies = raw_cookies
 
 proxy = {"server": "http://gate.decodo.com:10001"}
 
