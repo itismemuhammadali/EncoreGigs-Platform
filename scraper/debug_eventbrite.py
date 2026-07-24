@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import time, json
 
-proxy = {"server": "http://gate.decodo.com:10001"}
+proxy = {"server": "http://gate.decodo.com:10002"}
 
 STEALTH_JS = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
