@@ -59,8 +59,12 @@ class NotificationService:
         from backend.database import db
 
         token = NotificationService._get_user_token(user_id)
+
+        # Always save notification for in-app display
+        NotificationService._save_notification(user_id, title, body, notif_type, data)
+
         if not token:
-            print(f"No FCM token found for user: {user_id}")
+            print(f"No FCM token found for user: {user_id} — notification saved for in-app only")
             return None
 
         message = messaging.Message(
@@ -71,8 +75,7 @@ class NotificationService:
 
         try:
             response = messaging.send(message)
-            NotificationService._save_notification(user_id, title, body, notif_type, data)
-            print(f"Sent notification to {user_id}: {response}")
+            print(f"Sent push notification to {user_id}: {response}")
             return response
         except messaging.UnregisteredError:
             print(f"Stale token for {user_id}, removing")
@@ -101,6 +104,9 @@ class NotificationService:
         failed = 0
 
         for info in tokens_info:
+            # Always save notification for in-app display
+            NotificationService._save_notification(info["userId"], title, body, notif_type, data)
+
             message = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
                 data=data or {},
@@ -108,7 +114,6 @@ class NotificationService:
             )
             try:
                 messaging.send(message)
-                NotificationService._save_notification(info["userId"], title, body, notif_type, data)
                 success += 1
             except messaging.UnregisteredError:
                 db.collection(f"{info['role']}s").document(info["userId"]).update({"fcmToken": None})

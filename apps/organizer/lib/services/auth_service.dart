@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -52,6 +53,15 @@ class AuthService extends ChangeNotifier {
         }
 
         await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+        // Register FCM token after login
+        try {
+          final token = await FirebaseMessaging.instance.getToken();
+          if (token != null && _auth.currentUser != null) {
+            await _apiService.registerFcmToken(_auth.currentUser!.uid, 'organizer', token);
+          }
+        } catch (_) {}
+
         return null;
       } else {
         final data = jsonDecode(response.body);

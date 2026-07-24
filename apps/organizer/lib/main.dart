@@ -80,12 +80,6 @@ Future<void> _setupFCM() async {
   final token = await messaging.getToken();
   debugPrint('FCM token: $token');
 
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null && token != null) {
-    final api = ApiService();
-    await api.registerFcmToken(user.uid, 'organizer', token);
-  }
-
   messaging.onTokenRefresh.listen((newToken) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {

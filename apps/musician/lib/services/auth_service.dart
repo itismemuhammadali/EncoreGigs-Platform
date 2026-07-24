@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,9 @@ class AuthService extends ChangeNotifier {
 
   List<String> _appliedGigIds = [];
   List<String> get appliedGigIds => _appliedGigIds;
+
+  String? _fcmToken;
+  void setFcmToken(String token) => _fcmToken = token;
 
   FirebaseStorage _resolveStorage() {
     return FirebaseStorage.instance;
@@ -85,6 +89,16 @@ class AuthService extends ChangeNotifier {
         }
 
         await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+        // Register FCM token after login
+        try {
+          final token = await FirebaseMessaging.instance.getToken();
+          if (token != null && _auth.currentUser != null) {
+            final api = ApiService();
+            await api.registerFcmToken(_auth.currentUser!.uid, 'musician', token);
+          }
+        } catch (_) {}
+
         return null;
       } else {
         String message = _handleError(response, 'Sign in failed');

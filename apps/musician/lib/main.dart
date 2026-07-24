@@ -78,15 +78,13 @@ Future<void> _setupFCM() async {
   );
   debugPrint('FCM permission: ${settings.authorizationStatus}');
 
-  // Get token
+  // Get token and store it for later registration after login
   final token = await messaging.getToken();
   debugPrint('FCM token: $token');
 
-  // Register token with backend
-  final user = FirebaseAuth.instance.currentUser;
-  if (user != null && token != null) {
-    final api = ApiService();
-    await api.registerFcmToken(user.uid, 'musician', token);
+  // Store token locally so it can be registered after login
+  if (token != null) {
+    // Token will be registered when user logs in (via auth listener)
   }
 
   // Listen for token refresh
