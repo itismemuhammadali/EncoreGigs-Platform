@@ -23,8 +23,6 @@ class GigSaladScraper(BaseScraper):
             return None
         return {
             "server": "http://gate.decodo.com:10001",
-            "username": "ONLYGIGZ",
-            "password": "v6Uyj0_zhW77iNlIvx",
         }
 
     def _test_proxy(self, browser_type, proxy):

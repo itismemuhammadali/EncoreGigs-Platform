@@ -99,7 +99,7 @@ class EventbriteScraper(BaseScraper):
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             }
-            proxies = {"http": "http://ONLYGIGZ:v6Uyj0_zhW77iNlIvx@gate.decodo.com:10001", "https": "http://ONLYGIGZ:v6Uyj0_zhW77iNlIvx@gate.decodo.com:10001"}
+            proxies = {"http": "http://gate.decodo.com:10001", "https": "http://gate.decodo.com:10001"}
             response = requests.get(url, headers=headers, proxies=proxies, timeout=15)
             if response.status_code != 200:
                 return gigs

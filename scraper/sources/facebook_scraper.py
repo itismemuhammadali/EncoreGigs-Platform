@@ -47,7 +47,7 @@ class FacebookScraper(BaseScraper):
         if not cookies:
             return gigs
 
-        proxy = {"server": "http://gate.decodo.com:10002", "username": "ONLYGIGZ", "password": "v6Uyj0_zhW77iNlIvx"}
+        proxy = {"server": "http://gate.decodo.com:10002"}
 
         STEALTH_JS = """
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
