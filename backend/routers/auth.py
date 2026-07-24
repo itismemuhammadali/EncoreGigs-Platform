@@ -215,6 +215,10 @@ async def signup_musician(request: MusicianSignUpRequest):
         }
         db.collection("musicians").document(user.uid).set(user_data)
         
+        from backend.services.admin_notification_service import AdminNotificationService
+        AdminNotificationService.user_activity("New musician registered", f"{request.fullName} ({request.email}) joined as a musician.")
+        AdminNotificationService.check_milestones()
+        
         return {"message": "Musician created successfully", "uid": user.uid}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -251,6 +255,10 @@ async def signup(request: SignUpRequest):
             "createdAt": firestore.SERVER_TIMESTAMP
         }
         db.collection("organizers").document(user.uid).set(user_data)
+        
+        from backend.services.admin_notification_service import AdminNotificationService
+        AdminNotificationService.user_activity("New organizer registered", f"{request.name} ({request.email}) joined as an organizer.")
+        AdminNotificationService.check_milestones()
         
         return {"message": "User created successfully", "uid": user.uid}
     except Exception as e:

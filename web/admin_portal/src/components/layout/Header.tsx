@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Search, Bell, ChevronDown, User, LogOut, Menu } from "lucide-react";
 import { NotificationPanel } from "./NotificationPanel";
 import { ProfileDropdown } from "./ProfileDropdown";
+import { apiRequest } from "@/lib/api";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -13,6 +14,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [adminUser, setAdminUser] = useState<{ displayName?: string; email?: string; profileImageUrl?: string } | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const loadUser = () => {
@@ -27,22 +29,31 @@ export function Header({ onMenuClick }: HeaderProps) {
     };
 
     loadUser();
+    fetchUnreadCount();
 
-    // Listen for storage changes to sync across components
+    const interval = setInterval(fetchUnreadCount, 30000);
+
     window.addEventListener("storage", loadUser);
-    
-    // Custom event for same-window updates
     window.addEventListener("admin_user_updated", loadUser);
 
     return () => {
+      clearInterval(interval);
       window.removeEventListener("storage", loadUser);
       window.removeEventListener("admin_user_updated", loadUser);
     };
   }, []);
 
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const data = await apiRequest("/admin/notifications/unread-count");
+      setUnreadCount(data.count || 0);
+    } catch (error) {
+      // silent fail
+    }
+  }, []);
+
   return (
     <header className="h-[80px] bg-[#0F0F0F] border-b border-[#1a1a1e] fixed top-0 right-0 left-0 xl:left-[280px] z-40 flex items-center justify-between px-4 sm:px-10 transition-all duration-300">
-      {/* Mobile Menu Button & Search */}
       <div className="flex items-center gap-4 flex-1">
         <button 
           onClick={onMenuClick}
@@ -51,7 +62,6 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Menu size={24} />
         </button>
 
-        {/* Search Bar - Responsive width */}
         <div className="relative w-full max-w-[280px] group hidden sm:block">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-[#52525b] group-focus-within:text-[#b3ff00] transition-colors" />
           <input
@@ -62,9 +72,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      {/* Right Side Actions */}
       <div className="flex items-center gap-4 sm:gap-8 relative">
-        {/* Notifications */}
         <button 
           onClick={() => {
             setIsNotificationsOpen(!isNotificationsOpen);
@@ -73,17 +81,19 @@ export function Header({ onMenuClick }: HeaderProps) {
           className={`relative p-2 transition-colors ${isNotificationsOpen ? "text-[#b3ff00]" : "text-[#a1a1aa] hover:text-white"}`}
         >
           <Bell className="w-[22px] h-[22px]" />
-          <span className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-[#A2F301] text-black text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#0A0A0A]">
-            2
-          </span>
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#A2F301] text-black text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-[#0A0A0A] px-1">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
         </button>
 
         <NotificationPanel 
           isOpen={isNotificationsOpen} 
-          onClose={() => setIsNotificationsOpen(false)} 
+          onClose={() => setIsNotificationsOpen(false)}
+          onUnreadCountChange={setUnreadCount}
         />
 
-        {/* User Profile */}
         <div 
           onClick={() => {
             setIsProfileOpen(!isProfileOpen);

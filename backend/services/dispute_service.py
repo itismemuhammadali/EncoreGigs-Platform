@@ -28,8 +28,12 @@ class DisputeService:
                 "status": "disputed"
             })
             
-            # Optionally trigger notification to the other party or admin
-            # (Logic for notification could be added here)
+            from backend.services.admin_notification_service import AdminNotificationService
+            AdminNotificationService.payment_alert(
+                "New dispute opened",
+                f"Dispute on booking {request.bookingId} — Category: {request.category}",
+                {"disputeId": doc_ref.id, "bookingId": request.bookingId}
+            )
             
             return doc_ref.id
         except Exception as e:

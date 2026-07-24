@@ -9,6 +9,8 @@ router = APIRouter(prefix="/gigs", tags=["gigs"])
 async def create_gig(request: GigRequest):
     try:
         gig_id = GigService.create_gig(request)
+        from backend.services.admin_notification_service import AdminNotificationService
+        AdminNotificationService.check_milestones()
         return {"message": "Gig created successfully", "gigId": gig_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
