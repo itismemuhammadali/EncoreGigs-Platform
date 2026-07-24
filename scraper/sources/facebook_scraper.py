@@ -119,8 +119,12 @@ class FacebookScraper(BaseScraper):
                                 continue
 
                             contact = self._extract_contact_info(text)
-                            lines = text.split("\n")
-                            title = lines[0][:100] if lines else "Facebook Gig Post"
+                            lines = [l.strip() for l in text.split("\n") if l.strip() and len(l.strip()) > 5]
+                            title = "Facebook Gig Post"
+                            for line in lines:
+                                if not any(skip in line.lower() for skip in ["like", "comment", "share", "view more", "all reactions", "·"]):
+                                    title = line[:100]
+                                    break
 
                             organizer = OrganizerDetails(
                                 name="Facebook Group Member",
