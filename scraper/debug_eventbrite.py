@@ -6,39 +6,54 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 import requests
 
 private_token = os.getenv("EVENTBRITE_PRIVATE_TOKEN", "")
-api_key = os.getenv("EVENTBRITE_API_KEY", "")
-client_secret = os.getenv("EVENTBRITE_CLIENT_SECRET", "")
+headers = {"Authorization": f"Bearer {private_token}"}
 
-print(f"private_token: {private_token}")
-print(f"api_key: {api_key}")
-print(f"client_secret: {client_secret[:10]}...")
+# 1. Find our organization
+print("=== Finding organization ===")
+r = requests.get("https://www.eventbriteapi.com/v3/organizers/me/", headers=headers, timeout=10)
+print(f"Status: {r.status_code}")
+if r.status_code == 200:
+    org = r.json()
+    print(f"Name: {org.get('name')}")
+    print(f"ID: {org.get('id')}")
+    org_id = org.get("id")
 
-# Try every possible Eventbrite endpoint
-endpoints = [
-    ("GET /v3/events/", f"https://www.eventbriteapi.com/v3/events/"),
-    ("GET /v3/events/search", "https://www.eventbriteapi.com/v3/events/search"),
-    ("GET /v3/events/search/", "https://www.eventbriteapi.com/v3/events/search/"),
-    ("POST /v3/events/search/", "https://www.eventbriteapi.com/v3/events/search/"),
-    ("GET /v3/destination/search", "https://www.eventbriteapi.com/v3/destination/search"),
-    ("GET /v3/venue/search", "https://www.eventbriteapi.com/v3/venue/search"),
-    ("GET /v3/categories/", "https://www.eventbriteapi.com/v3/categories/"),
-    ("GET /v3/organizers/", "https://www.eventbriteapi.com/v3/organizers/"),
-    ("GET /v3/saved_events/", "https://www.eventbriteapi.com/v3/saved_events/"),
-]
+    # 2. Get events for this org
+    print(f"\n=== Events for org {org_id} ===")
+    r2 = requests.get(f"https://www.eventbriteapi.com/v3/organizations/{org_id}/events/?expand=organizer,venue", headers=headers, timeout=10)
+    print(f"Status: {r2.status_code}")
+    if r2.status_code == 200:
+        events = r2.json().get("events", [])
+        print(f"Events: {len(events)}")
+        for e in events[:5]:
+            print(f"  - {e.get('name',{}).get('text','?')}")
+else:
+    print(f"  {r.text[:200]}")
 
-for label, url in endpoints:
-    for auth_name, token in [("private", private_token), ("api_key", api_key)]:
-        headers = {"Authorization": f"Bearer {token}"}
-        params = {"q": "music", "location.address": "austin,tx"} if "search" in url else {}
-        method = "POST" if "POST" in label else "GET"
-        try:
-            if method == "POST":
-                r = requests.post(url, headers=headers, json=params, timeout=10)
-            else:
-                r = requests.get(url, headers=headers, params=params, timeout=10)
-            if r.status_code != 404:
-                print(f"{r.status_code} | {auth_name:10s} | {label}")
-                if r.status_code == 200:
-                    print(f"  -> {r.text[:200]}")
-        except Exception as e:
-            print(f"ERR | {auth_name:10s} | {label} | {str(e)[:60]}")
+# 3. Try POST to events/search
+print("\n=== POST events/search ===")
+r3 = requests.post("https://www.eventbriteapi.com/v3/events/search/", 
+    headers=headers, 
+    json={"q": "music", "location.address": "austin,tx"},
+    timeout=10)
+print(f"Status: {r3.status_code}")
+if r3.status_code == 200:
+    events = r3.json().get("events", [])
+    print(f"Events: {len(events)}")
+else:
+    print(f"  {r3.text[:200]}")
+
+# 4. Try event series
+print("\n=== Event series ===")
+r4 = requests.get("https://www.eventbriteapi.com/v3/series/", headers=headers, timeout=10)
+print(f"Status: {r4.status_code}")
+
+# 5. Try venues
+print("\n=== Venues in Austin ===")
+r5 = requests.get("https://www.eventbriteapi.com/v3/venues/?location.address=austin,tx", headers=headers, timeout=10)
+print(f"Status: {r5.status_code}")
+if r5.status_code == 200:
+    venues = r5.json().get("venues", [])
+    print(f"Venues: {len(venues)}")
+    for v in venues[:5]:
+        print(f"  - {v.get('name', '?')}")
