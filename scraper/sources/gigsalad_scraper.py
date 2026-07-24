@@ -31,9 +31,9 @@ class GigSaladScraper(BaseScraper):
             test_browser = browser_type.launch(headless=True, proxy=proxy)
             test_page = test_browser.new_page()
             test_page.goto("https://httpbin.org/ip", timeout=15000)
-            ip = test_page.inner_text()
+            ip = test_page.content()
             test_browser.close()
-            print(f"  Proxy working. Proxy IP: {ip.strip()[:50]}", flush=True)
+            print(f"  Proxy working. Proxy IP: {ip.strip()[:80]}", flush=True)
             return True
         except Exception as e:
             print(f"  Proxy test failed: {e}", flush=True)
