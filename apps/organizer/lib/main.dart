@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -26,6 +27,10 @@ import 'utils/custom_page_route.dart';
 import 'constants.dart';
 import 'package:shared_config/shared_config.dart';
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('Background message: ${message.messageId}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -43,6 +48,10 @@ void main() async {
     }
   }
 
+  // Initialize Firebase Messaging
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await _setupFCM();
+
   runApp(
     MultiProvider(
       providers: [
@@ -56,6 +65,42 @@ void main() async {
   );
 
   _initNetworking();
+}
+
+Future<void> _setupFCM() async {
+  final messaging = FirebaseMessaging.instance;
+
+  final settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  debugPrint('FCM permission: ${settings.authorizationStatus}');
+
+  final token = await messaging.getToken();
+  debugPrint('FCM token: $token');
+
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && token != null) {
+    final api = ApiService();
+    await api.registerFcmToken(user.uid, 'organizer', token);
+  }
+
+  messaging.onTokenRefresh.listen((newToken) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final api = ApiService();
+      await api.registerFcmToken(user.uid, 'organizer', newToken);
+    }
+  });
+
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint('Foreground message: ${message.notification?.title}');
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    debugPrint('Notification tapped: ${message.data}');
+  });
 }
 
 Future<void> _initNetworking() async {

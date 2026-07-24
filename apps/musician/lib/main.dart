@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -24,6 +25,10 @@ import 'package:onlygigz_musician/screens/main/profile_screen.dart';
 import 'constants.dart';
 import 'package:shared_config/shared_config.dart';
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  debugPrint('Background message: ${message.messageId}');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -42,6 +47,10 @@ void main() async {
     }
   }
 
+  // 2. Initialize Firebase Messaging
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await _setupFCM();
+
   runApp(
     MultiProvider(
       providers: [
@@ -56,6 +65,48 @@ void main() async {
 
   // Initialize background networking AFTER the app has started
   _initNetworking();
+}
+
+Future<void> _setupFCM() async {
+  final messaging = FirebaseMessaging.instance;
+
+  // Request permission
+  final settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+  debugPrint('FCM permission: ${settings.authorizationStatus}');
+
+  // Get token
+  final token = await messaging.getToken();
+  debugPrint('FCM token: $token');
+
+  // Register token with backend
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null && token != null) {
+    final api = ApiService();
+    await api.registerFcmToken(user.uid, 'musician', token);
+  }
+
+  // Listen for token refresh
+  messaging.onTokenRefresh.listen((newToken) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final api = ApiService();
+      await api.registerFcmToken(user.uid, 'musician', newToken);
+    }
+  });
+
+  // Handle foreground messages
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint('Foreground message: ${message.notification?.title}');
+  });
+
+  // Handle notification tap when app is in background
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    debugPrint('Notification tapped: ${message.data}');
+  });
 }
 
 Future<void> _initNetworking() async {
