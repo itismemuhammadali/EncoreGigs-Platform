@@ -7,8 +7,6 @@ from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 import time, json
 
-proxy = {"server": "http://gate.decodo.com:10002"}
-
 STEALTH_JS = """
 Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 window.chrome = { runtime: {}, app: { isInstalled: false } };
@@ -17,7 +15,6 @@ window.chrome = { runtime: {}, app: { isInstalled: false } };
 with sync_playwright() as p:
     browser = p.chromium.launch(
         headless=False,
-        proxy=proxy,
         args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
     )
     context = browser.new_context(
@@ -30,14 +27,16 @@ with sync_playwright() as p:
 
     url = "https://www.eventbrite.com/d/tx--austin/music--events/"
     page.goto(url, wait_until="commit", timeout=30000)
-    time.sleep(8)
-
-    title = page.title()
-    print(f"Title: {title}")
-    print(f"URL: {page.url}")
+    
+    for i in range(6):
+        time.sleep(5)
+        title = page.title()
+        print(f"[{i*5}s] Title: {title}")
+        if "moment" not in title.lower() and "challenge" not in title.lower():
+            break
 
     html = page.content()
-    print(f"HTML length: {len(html)}")
+    print(f"\nHTML length: {len(html)}")
 
     soup = BeautifulSoup(html, "html.parser")
     scripts = soup.find_all("script", type="application/ld+json")
@@ -51,10 +50,8 @@ with sync_playwright() as p:
             if isinstance(data, dict) and t == "ItemList":
                 items = [li.get("item") for li in data.get("itemListElement", []) if li.get("item")]
                 print(f"Events: {len(items)}")
-                for item in items[:3]:
+                for item in items[:5]:
                     print(f"  - {item.get('name', '?')}")
-            elif isinstance(data, list):
-                print(f"List items: {len(data)}")
         except Exception as e:
             print(f"Parse error: {e}")
 
