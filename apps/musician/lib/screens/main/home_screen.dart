@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:onlygigz_musician/services/api_service.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
 import 'package:onlygigz_musician/models/gig_model.dart';
@@ -24,8 +25,23 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   String _searchQuery = '';
   int _selectedFilterIndex = 0;
+  int _unreadMessageCount = 0;
 
   final List<String> filters = ['All', 'Nearby', 'This Week', 'High Badge'];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final count = await _apiService.getUnreadMessageCount(user.uid);
+      if (mounted) setState(() => _unreadMessageCount = count);
+    }
+  }
 
   void _onNavTap(int index) {
     setState(() {
@@ -365,6 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: CustomBottomNavigationBar(
         currentIndex: _currentNavIndex,
         onTap: _onNavTap,
+        unreadMessageCount: _unreadMessageCount,
       ),
     );
   }

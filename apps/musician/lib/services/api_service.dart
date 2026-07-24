@@ -274,4 +274,50 @@ class ApiService {
       throw Exception('Failed to load wallet data: ${response.body}');
     }
   }
+
+  Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/notifications/user/$userId'));
+
+    if (response.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load notifications: ${response.body}');
+    }
+  }
+
+  Future<int> getUnreadNotificationCount(String userId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/notifications/user/$userId/unread-count'));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['count'] ?? 0;
+    } else {
+      return 0;
+    }
+  }
+
+  Future<void> markNotificationRead(String notificationId) async {
+    await http.patch(Uri.parse('$_baseUrl/notifications/$notificationId/read'));
+  }
+
+  Future<void> markAllNotificationsRead(String userId) async {
+    await http.post(Uri.parse('$_baseUrl/notifications/user/$userId/read-all'));
+  }
+
+  Future<void> registerFcmToken(String userId, String role, String token) async {
+    await http.post(
+      Uri.parse('$_baseUrl/notifications/register-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'role': role, 'token': token}),
+    );
+  }
+
+  Future<int> getUnreadMessageCount(String userId) async {
+    final response = await http.get(Uri.parse('$_baseUrl/chat/unread-count/$userId'));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['count'] ?? 0;
+    } else {
+      return 0;
+    }
+  }
 }

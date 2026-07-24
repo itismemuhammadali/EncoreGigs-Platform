@@ -1,124 +1,105 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Bell, 
   Users, 
   Calendar, 
-  Send, 
-  Search,
-  Plus,
-  MoreVertical,
-  ChevronRight,
-  Eye,
-  Trash2
+  Send,
+  Loader2
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { NotificationDetailsModal } from "@/components/ui/NotificationDetailsModal";
+import { apiRequest } from "@/lib/api";
 
-// --- Types & Interfaces ---
 interface NotificationHistoryItem {
   id: string;
   title: string;
-  targetAudience: string; // e.g., 'All', 'Musicians', 'Organizers'
-  sentDate: string; // ISO string or formatted date
-  recipients: string; // Formatted number
+  targetAudience: string;
+  sentDate: string;
+  recipients: string;
   status: "sent" | "scheduled" | "draft";
 }
 
-// --- Mock Data ---
-// BACKEND DEVELOPER: Fetch this from your notifications history endpoint.
-const MOCK_HISTORY: NotificationHistoryItem[] = [
-  {
-    id: "NOT-001",
-    title: "Platform Maintenance Notice",
-    targetAudience: "All Users",
-    sentDate: "2026-02-15 10:00",
-    recipients: "1,590",
-    status: "sent"
-  },
-  {
-    id: "NOT-002",
-    title: "New Feature: Featured Artist Boost",
-    targetAudience: "Musicians",
-    sentDate: "2026-02-10 14:30",
-    recipients: "1,248",
-    status: "sent"
-  },
-  {
-    id: "NOT-003",
-    title: "Payment Processing Update",
-    targetAudience: "Organizers",
-    sentDate: "2026-02-08 09:15",
-    recipients: "342",
-    status: "sent"
-  },
-  {
-    id: "NOT-004",
-    title: "Security Update Required",
-    targetAudience: "All Users",
-    sentDate: "2026-02-05 16:45",
-    recipients: "1,590",
-    status: "sent"
-  }
-];
-
 export default function NotificationsPage() {
-  // BACKEND DEVELOPER: Initialize this with data from your API.
-  const [history, setHistory] = useState<NotificationHistoryItem[]>(MOCK_HISTORY);
-  const [toast, setToast] = useState({ show: false, message: "" });
+  const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" as "success" | "error" });
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<NotificationHistoryItem | null>(null);
 
-  // Form State
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [audience, setAudience] = useState("All User");
+  const [audience, setAudience] = useState("All Users");
   const [schedule, setSchedule] = useState("");
 
-  // --- Handlers ---
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !message) {
-      setToast({ show: true, message: "Please fill in title and message." });
-      return;
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      setLoading(true);
+      const data = await apiRequest("/notifications/history");
+      const mapped: NotificationHistoryItem[] = data.map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        targetAudience: item.audience,
+        sentDate: item.createdAt ? new Date(item.createdAt).toISOString().replace("T", " ").slice(0, 16) : "N/A",
+        recipients: String(item.recipients || 0),
+        status: item.status || "sent",
+      }));
+      setHistory(mapped);
+    } catch (error) {
+      console.error("Failed to fetch notification history:", error);
+    } finally {
+      setLoading(false);
     }
-    // BACKEND DEVELOPER: Implement notification sending via API.
-    // e.g., await api.post('/notifications/broadcast', { title, message, audience, schedule });
-    setToast({ show: true, message: "Notification sent successfully!" });
-    
-    const newNotif: NotificationHistoryItem = {
-      id: `NOT-00${history.length + 1}`,
-      title,
-      targetAudience: audience,
-      sentDate: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      recipients: audience === "All User" ? "1,590" : "Varies",
-      status: "sent"
-    };
-    
-    setHistory([newNotif, ...history]);
-    setTitle("");
-    setMessage("");
   };
 
-  // --- UI Configuration Arrays ---
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !message) {
+      setToast({ show: true, message: "Please fill in title and message.", type: "error" });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const result = await apiRequest("/notifications/broadcast", {
+        method: "POST",
+        body: JSON.stringify({ title, message, audience, schedule: schedule || null }),
+      });
+      setToast({ show: true, message: `Notification sent to ${result.success} users`, type: "success" });
+      setTitle("");
+      setMessage("");
+      setSchedule("");
+      fetchHistory();
+    } catch (error) {
+      setToast({ show: true, message: "Failed to send notification", type: "error" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const totalSent = history.reduce((sum, h) => sum + parseInt(h.recipients) || 0, 0);
+
   const statCards = [
-    { label: "Notifications Sent", value: "4", icon: Bell, color: "text-[#A2F301]", bg: "bg-[#A2F301]/10", border: "border-[#A2F301]/20" },
-    { label: "Total Reach", value: "4,770", icon: Users, color: "text-[#10B981]", bg: "bg-[#10B981]/10", border: "border-[#10B981]/20" },
+    { label: "Notifications Sent", value: String(history.length), icon: Bell, color: "text-[#A2F301]", bg: "bg-[#A2F301]/10", border: "border-[#A2F301]/20" },
+    { label: "Total Reach", value: totalSent.toLocaleString(), icon: Users, color: "text-[#10B981]", bg: "bg-[#10B981]/10", border: "border-[#10B981]/20" },
     { label: "Scheduled", value: "0", icon: Calendar, color: "text-[#3B82F6]", bg: "bg-[#3B82F6]/10", border: "border-[#3B82F6]/20" },
-    { label: "Avg. Open Rate", value: "68%", icon: Send, color: "text-[#F59E0B]", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20" }
+    { label: "Avg. Open Rate", value: "—", icon: Send, color: "text-[#F59E0B]", bg: "bg-[#F59E0B]/10", border: "border-[#F59E0B]/20" }
   ];
 
   return (
     <div className="w-full pb-20">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-[32px] font-bold mb-2 leading-tight">Notifications Management</h1>
         <p className="text-[#999999] text-sm sm:text-[16px]">Send system-wide announcements and manage notification history</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
         {statCards.map((stat, idx) => (
           <div key={idx} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] p-4 sm:p-6 flex items-center gap-4 shadow-xl">
@@ -133,7 +114,6 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      {/* Send New Notification Form */}
       <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] p-6 sm:p-8 mb-8 shadow-2xl">
         <h2 className="text-[18px] sm:text-[20px] font-bold mb-6">Send New Notification</h2>
         <form onSubmit={handleSend} className="space-y-6">
@@ -167,7 +147,7 @@ export default function NotificationsPage() {
                   onChange={(e) => setAudience(e.target.value)}
                   className="w-full h-[48px] bg-[#1A1A1A] border border-white/10 rounded-[8px] px-4 text-white focus:border-[#A2F301] transition-all outline-none appearance-none"
                 >
-                  <option>All User</option>
+                  <option>All Users</option>
                   <option>Musicians</option>
                   <option>Organizers</option>
                 </select>
@@ -187,65 +167,70 @@ export default function NotificationsPage() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2">
             <button 
               type="submit"
-              className="h-[48px] px-8 bg-[#A2F301] text-black font-bold rounded-[8px] flex items-center justify-center gap-2 hover:bg-[#8ed601] transition-all w-full sm:w-auto"
+              disabled={sending}
+              className="h-[48px] px-8 bg-[#A2F301] text-black font-bold rounded-[8px] flex items-center justify-center gap-2 hover:bg-[#8ed601] transition-all w-full sm:w-auto disabled:opacity-50"
             >
-              <Send size={18} />
-              Send Now
-            </button>
-            <button 
-              type="button"
-              className="h-[48px] px-8 bg-white/5 text-white font-bold rounded-[8px] hover:bg-white/10 transition-all w-full sm:w-auto"
-            >
-              Save as Draft
+              {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send size={18} />}
+              {sending ? "Sending..." : "Send Now"}
             </button>
           </div>
         </form>
       </div>
 
-      {/* Notification History */}
       <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] overflow-hidden">
         <div className="p-6 border-b border-[#2A2A2A]">
           <h2 className="text-[20px] font-bold">Notification History</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-[#262626] text-white border-b border-[#2A2A2A]">
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Title</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Target Audience</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Sent Date</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Recipients</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Status</th>
-                <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#2A2A2A]">
-              {history.map((item) => (
-                <tr key={item.id} className="hover:bg-white/5 transition-all text-[14px]">
-                  <td className="px-6 py-4 text-white font-medium">{item.title}</td>
-                  <td className="px-6 py-4 text-[#999999]">{item.targetAudience}</td>
-                  <td className="px-6 py-4 text-[#999999]">{item.sentDate}</td>
-                  <td className="px-6 py-4 text-white font-bold">{item.recipients}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-[#10B981]/10 text-[#10B981] rounded-full text-[12px] font-bold">
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button 
-                      onClick={() => {
-                        setSelectedNotification(item);
-                        setIsDetailsModalOpen(true);
-                      }}
-                      className="text-[#A2F301] font-bold hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </td>
+          {loading ? (
+            <div className="p-10 text-center">
+              <Loader2 className="w-6 h-6 text-[#A2F301] animate-spin mx-auto" />
+            </div>
+          ) : (
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-[#262626] text-white border-b border-[#2A2A2A]">
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Title</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Target Audience</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Sent Date</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Recipients</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Status</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px]">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#2A2A2A]">
+                {history.map((item) => (
+                  <tr key={item.id} className="hover:bg-white/5 transition-all text-[14px]">
+                    <td className="px-6 py-4 text-white font-medium">{item.title}</td>
+                    <td className="px-6 py-4 text-[#999999]">{item.targetAudience}</td>
+                    <td className="px-6 py-4 text-[#999999]">{item.sentDate}</td>
+                    <td className="px-6 py-4 text-white font-bold">{item.recipients}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-[#10B981]/10 text-[#10B981] rounded-full text-[12px] font-bold">
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button 
+                        onClick={() => {
+                          setSelectedNotification(item);
+                          setIsDetailsModalOpen(true);
+                        }}
+                        className="text-[#A2F301] font-bold hover:underline"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {history.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-[#71717a]">No notifications sent yet</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

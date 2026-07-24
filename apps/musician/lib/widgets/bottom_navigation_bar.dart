@@ -4,11 +4,13 @@ import 'package:flutter_svg/flutter_svg.dart';
 class CustomBottomNavigationBar extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final int unreadMessageCount;
 
   const CustomBottomNavigationBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.unreadMessageCount = 0,
   });
 
   @override
@@ -42,36 +44,60 @@ class CustomBottomNavigationBar extends StatelessWidget {
       items: List.generate(
         5,
         (index) => BottomNavigationBarItem(
-          icon: Container(
-            width: 40,
-            height: 40,
-            decoration: index == currentIndex
-                ? BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFFA1F301).withValues(alpha: 0.1),
-                        Colors.black,
-                      ],
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: index == currentIndex
+                    ? BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFFA1F301).withValues(alpha: 0.1),
+                            Colors.black,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: SvgPicture.asset(
+                      iconPaths[index],
+                      colorFilter: ColorFilter.mode(
+                        index == currentIndex ? const Color(0xFFA1F301) : Colors.grey[600]!,
+                        BlendMode.srcIn,
+                      ),
+                      semanticsLabel: labels[index],
                     ),
-                    borderRadius: BorderRadius.circular(8),
-                  )
-                : null,
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: SvgPicture.asset(
-                  iconPaths[index],
-                  colorFilter: ColorFilter.mode(
-                    index == currentIndex ? const Color(0xFFA1F301) : Colors.grey[600]!,
-                    BlendMode.srcIn,
                   ),
-                  semanticsLabel: labels[index],
                 ),
               ),
-            ),
+              if (index == 2 && unreadMessageCount > 0)
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        unreadMessageCount > 99 ? '99+' : '$unreadMessageCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           label: labels[index],
         ),

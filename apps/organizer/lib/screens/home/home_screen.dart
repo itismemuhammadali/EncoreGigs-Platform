@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/api_service.dart';
 import 'widgets/home_header.dart';
 import 'widgets/search_bar_widget.dart';
 import 'widgets/stats_row.dart';
@@ -21,6 +23,22 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   Key _homeRefreshKey = UniqueKey();
   Key _gigsKey = UniqueKey();
+  int _unreadMessageCount = 0;
+  final _api = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final count = await _api.getUnreadMessageCount(user.uid);
+      if (mounted) setState(() => _unreadMessageCount = count);
+    }
+  }
 
   Widget _buildHomeBody() {
     return SafeArea(
@@ -94,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentNavIndex,
+        unreadMessageCount: _unreadMessageCount,
         onTap: (index) {
           setState(() {
             _currentNavIndex = index;

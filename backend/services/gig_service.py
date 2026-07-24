@@ -131,6 +131,7 @@ class GigService:
             user_id=request.organizerId,
             title="New Gig Application",
             body=f"{musician_name} has applied for '{request.gigTitle}'",
+            notif_type="application_received",
             data={"gigId": request.gigId, "type": "application"}
         )
         
@@ -176,12 +177,18 @@ class GigService:
             "accepted": "Application accepted!",
             "rejected": "Application update",
         }
+        status_types = {
+            "shortlisted": "application_accepted",
+            "accepted": "application_accepted",
+            "rejected": "application_declined",
+        }
         
         if status in status_titles:
             NotificationService.send_to_user(
                 user_id=app_data["musicianId"],
                 title=status_titles.get(status, "Application Status Updated"),
                 body=f"Your application for '{app_data['gigTitle']}' is now {status}",
+                notif_type=status_types.get(status, "system"),
                 data={"gigId": app_data["gigId"], "type": "application_update"}
             )
         return True

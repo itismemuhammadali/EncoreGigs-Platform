@@ -54,12 +54,15 @@ class ChatService:
         }
         chat_ref.collection("messages").add(message_data)
         
-        # 2. Update chat metadata
-        chat_ref.update({
+        # 2. Update chat metadata and increment unread count
+        update_data = {
             "lastMessage": text,
             "lastMessageTime": firestore.SERVER_TIMESTAMP,
-            "lastMessageSenderId": sender_id
-        })
+            "lastMessageSenderId": sender_id,
+        }
+        if recipient_id:
+            update_data[f"unreadCount.{recipient_id}"] = firestore.Increment(1)
+        chat_ref.update(update_data)
         
         # 3. Trigger Push Notification to recipient
         if recipient_id:
@@ -68,7 +71,23 @@ class ChatService:
                 user_id=recipient_id,
                 title=f"Message from {sender_name}",
                 body=text,
+                notif_type="new_message",
                 data={"chatId": chat_id, "type": "chat"}
             )
             
         return True
+
+    @staticmethod
+    def get_unread_count(user_id: str) -> int:
+        chats = db.collection("chats").where("participantIds", "array_contains", user_id).get()
+        total = 0
+        for chat in chats:
+            data = chat.to_dict()
+            unread = data.get("unreadCount", {})
+            total += unread.get(user_id, 0)
+        return total
+
+    @staticmethod
+    def mark_chat_read(chat_id: str, user_id: str):
+        chat_ref = db.collection("chats").document(chat_id)
+        chat_ref.update({f"unreadCount.{user_id}": 0})

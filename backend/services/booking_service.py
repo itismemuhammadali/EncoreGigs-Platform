@@ -123,6 +123,7 @@ class BookingService:
                 user_id=request.musicianId,
                 title="You've been hired!",
                 body=f"{organizer_name} hired you for '{request.gigTitle}'",
+                notif_type="booking_hired",
                 data={"gigId": request.gigId, "type": "hire"}
             )
                 

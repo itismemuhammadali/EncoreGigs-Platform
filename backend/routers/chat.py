@@ -30,3 +30,13 @@ async def send_message(request: SendMessageRequest):
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/unread-count/{user_id}")
+async def get_unread_count(user_id: str):
+    count = ChatService.get_unread_count(user_id)
+    return {"count": count}
+
+@router.post("/mark-read/{chat_id}/{user_id}")
+async def mark_chat_read(chat_id: str, user_id: str):
+    ChatService.mark_chat_read(chat_id, user_id)
+    return {"message": "Chat marked as read"}
