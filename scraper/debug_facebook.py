@@ -22,19 +22,6 @@ Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
 window.chrome = { runtime: {}, app: { isInstalled: false } };
 """
 
-groups = [
-    "AustinMusicians",
-    "AustinBandmates",
-    "ATXLiveMusic",
-    "austinmusiciansnetwork",
-    "austinmusicclassifieds",
-    "austingigboard",
-    "centraltexasmusicians",
-    "austinmusicianslookingforwork",
-    "austinmusicianshoping",
-    "LiveMusicAustin",
-]
-
 with sync_playwright() as p:
     browser = p.chromium.launch(
         headless=False,
@@ -50,28 +37,32 @@ with sync_playwright() as p:
     page = context.new_page()
     page.add_init_script(STEALTH_JS)
 
-    for group in groups:
-        url = f"https://www.facebook.com/groups/{group}/"
-        try:
-            page.goto(url, wait_until="domcontentloaded", timeout=20000)
-            time.sleep(4)
-            title = page.title()
-            current_url = page.url
+    url = "https://www.facebook.com/groups/AustinMusicians/"
+    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+    time.sleep(8)
 
-            if "login" in current_url.lower():
-                print(f"LOGIN REQUIRED: {group}")
+    page.evaluate("window.scrollTo(0, 1500)")
+    time.sleep(3)
+
+    print(f"Title: {page.title()}")
+
+    body = page.inner_text("body")
+    lines = [l.strip() for l in body.split("\n") if l.strip() and len(l.strip()) > 20]
+
+    gig_words = ["looking for", "need a", "need a ", "hiring", "gig", "wanted", "seeking", "available", "bassist", "guitarist", "drummer", "vocalist", "singer", "band", "wedding", "party", "event", "pay", "rate", "playing"]
+
+    print(f"\nTotal text lines: {len(lines)}")
+    print(f"\n--- GIG-RELATED POSTS ---")
+    found = 0
+    for line in lines:
+        if any(w in line.lower() for w in gig_words):
+            print(f"\n  POST: {line[:200]}")
+            found += 1
+            if found >= 10:
                 break
 
-            if "sorry" in title.lower() or "not found" in title.lower() or "page" in title.lower():
-                print(f"NOT FOUND: {group}")
-                continue
-
-            body = page.inner_text("body")[:500]
-            gig_words = ["looking for", "need a", "hiring", "gig", "playing", "band", "musician wanted", "seeking"]
-            has_gigs = any(w in body.lower() for w in gig_words)
-            print(f"{'GIGS' if has_gigs else '----'}: {group:40s} | {title[:60]}")
-
-        except Exception as e:
-            print(f"ERROR: {group:40s} | {str(e)[:60]}")
+    print(f"\n--- ALL VISIBLE TEXT (first 30 lines) ---")
+    for line in lines[:30]:
+        print(f"  {line[:150]}")
 
     browser.close()
