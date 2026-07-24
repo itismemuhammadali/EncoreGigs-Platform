@@ -41,16 +41,11 @@ with sync_playwright() as p:
     page.goto(url, wait_until="domcontentloaded", timeout=30000)
     time.sleep(8)
 
-    # Try to dismiss all cookie dialogs aggressively
+    # Dismiss cookie dialogs
     for sel in [
         "button:has-text('Decline optional cookies')",
-        "button:has-text('Decline')",
         "button:has-text('Allow all cookies')",
-        "button:has-text('Allow')",
         "[data-cookiebanner='accept_button']",
-        "[data-testid='cookie-policy-manage-dialog-accept-button']",
-        "button[title='Allow']",
-        "button[title='Accept']",
     ]:
         try:
             btn = page.query_selector(sel)
@@ -62,43 +57,40 @@ with sync_playwright() as p:
         except:
             continue
 
-    # Also try to close any overlays
     try:
         page.keyboard.press("Escape")
         time.sleep(1)
     except:
         pass
 
-    time.sleep(3)
+    # Scroll to load posts
+    for i in range(6):
+        page.evaluate("window.scrollBy(0, 1000)")
+        time.sleep(3)
 
-    # Scroll to load content
-    for i in range(8):
-        page.evaluate("window.scrollBy(0, 800)")
-        time.sleep(2)
-        print(f"Scroll {i+1}/8")
+    # Extract from role='article' elements
+    articles = page.query_selector_all("[role='article']")
+    print(f"\nFound {len(articles)} article elements")
 
-    print(f"\nTitle: {page.title()}")
+    for i, article in enumerate(articles[:10]):
+        try:
+            text = article.inner_text()
+            if len(text) > 30:
+                print(f"\n=== POST {i+1} ===")
+                print(text[:300])
+        except:
+            continue
 
-    # Get full page HTML and dump it
-    content = page.content()
-    print(f"HTML length: {len(content)}")
-
-    # Try to find post containers with different selectors
-    selectors = [
-        "[data-ad-rendering-role='story_message']",
-        "[data-ad-preview='message']",
-        "div[dir='auto']",
-        "[role='article']",
-        "span[data-text='true']",
-    ]
-    for sel in selectors:
-        items = page.query_selector_all(sel)
-        print(f"Selector '{sel}': {len(items)} elements")
-
-    body = page.inner_text("body")
-    lines = [l.strip() for l in body.split("\n") if l.strip() and len(l.strip()) > 20]
-    print(f"\nBody lines: {len(lines)}")
-    for line in lines[:25]:
-        print(f"  {line[:150]}")
+    # Also try data-ad-rendering-role
+    story_msgs = page.query_selector_all("[data-ad-rendering-role='story_message']")
+    print(f"\nFound {len(story_msgs)} story_message elements")
+    for i, sm in enumerate(story_msgs[:5]):
+        try:
+            text = sm.inner_text()
+            if len(text) > 30:
+                print(f"\n=== STORY {i+1} ===")
+                print(text[:300])
+        except:
+            continue
 
     browser.close()
