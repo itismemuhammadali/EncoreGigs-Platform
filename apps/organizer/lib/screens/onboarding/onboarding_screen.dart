@@ -188,61 +188,60 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Colors.black.withValues(alpha: 0.1),
                 Colors.black.withValues(alpha: 0.4),
                 Colors.black.withValues(alpha: 0.7),
-                Colors.black.withValues(alpha: 0.9),
+                Colors.black.withValues(alpha: 0.95),
               ],
               stops: const [0.0, 0.3, 0.6, 1.0],
             ),
           ),
         ),
-        // Original layout with original spacers
-        SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(
-                height: 360, // Original height
-                child: Container(),
+        // Content - Positioned cleanly right above the bottom controls (40px above page indicators)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 155,
+          top: MediaQuery.of(context).padding.top + 40,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: 120,
+                    width: 120,
+                    child: Image.asset(
+                      page.logoPath,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.error, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    page.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    page.description,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFFCCCCCC),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      height: 200,
-                      width: 200,
-                      child: Image.asset(
-                        page.logoPath,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.error, color: Colors.white),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      page.title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      page.description,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF999999),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ],

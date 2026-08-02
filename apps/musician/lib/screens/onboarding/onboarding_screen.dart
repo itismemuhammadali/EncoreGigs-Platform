@@ -203,27 +203,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Colors.black.withValues(alpha: 0.1),
                 Colors.black.withValues(alpha: 0.4),
                 Colors.black.withValues(alpha: 0.7),
-                Colors.black.withValues(alpha: 0.9),
+                Colors.black.withValues(alpha: 0.95),
               ],
               stops: const [0.0, 0.3, 0.6, 1.0],
             ),
           ),
         ),
-        // Content - positioned lower
-        Column(
-          children: [
-            SizedBox(
-              height: 360,
-              child: Container(),
-            ),
-            Padding(
+        // Content - Positioned cleanly right above the bottom controls (40px above page indicators)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 155,
+          top: MediaQuery.of(context).padding.top + 40,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(
-                    height: 200,
-                    width: 200,
+                    height: 120,
+                    width: 120,
                     child: Image.asset(
                       page.logoPath,
                       fit: BoxFit.contain,
@@ -237,33 +239,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
                     page.title,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: 28,
                       fontWeight: FontWeight.w700,
                       height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
                     page.description,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Color(0xFF999999),
+                      color: Color(0xFFCCCCCC),
                       fontSize: 15,
                       fontWeight: FontWeight.w400,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ],
     );
