@@ -154,20 +154,30 @@ class BookingService:
         return doc.to_dict() | {"id": doc.id}
 
     @staticmethod
-    def _get_image_from_url(url, width=100, height=50):
-        if not url:
+    def _get_image_from_url(url, width=120, height=45):
+        if not url or not isinstance(url, str):
             return None
         try:
-            import requests
             from io import BytesIO
             from reportlab.platypus import Image
-            # Handle potential emulator URLs or local paths
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                img_data = BytesIO(response.content)
+            import base64
+
+            # Case 1: Base64 Data URI
+            if url.startswith("data:image"):
+                base64_data = url.split(",")[1] if "," in url else url
+                img_data = BytesIO(base64.b64decode(base64_data))
                 return Image(img_data, width=width, height=height)
+
+            # Case 2: HTTP / HTTPS URL
+            if url.startswith("http://") or url.startswith("https://"):
+                import requests
+                headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+                response = requests.get(url, headers=headers, timeout=5)
+                if response.status_code == 200:
+                    img_data = BytesIO(response.content)
+                    return Image(img_data, width=width, height=height)
         except Exception as e:
-            print(f"Error fetching image from {url}: {e}")
+            print(f"Error fetching signature image from {url}: {e}")
         return None
 
     @staticmethod
@@ -176,122 +186,84 @@ class BookingService:
         if not booking:
             return None
 
-        from io import BytesIO
-        from reportlab.lib.pagesizes import LETTER
-        from reportlab.pdfgen import canvas
-        from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+        from backend.services.contract_service import generate_gig_contract_pdf
 
-        buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=LETTER)
-        styles = getSampleStyleSheet()
-        elements = []
+        # Fetch extra organizer/musician details if available in DB
+        org_doc = db.collection("organizers").document(booking.get("organizerId", "")).get() if booking.get("organizerId") else None
+        mus_doc = db.collection("musicians").document(booking.get("musicianId", "")).get() if booking.get("musicianId") else None
+        
+        org_data = org_doc.to_dict() if org_doc and org_doc.exists else {}
+        mus_data = mus_doc.to_dict() if mus_doc and mus_doc.exists else {}
 
-        # Title
-        elements.append(Paragraph(f"PERFORMANCE AGREEMENT", styles['Title']))
-        elements.append(Spacer(1, 12))
+        amount = float(booking.get("amount", 0) or 0)
+        deposit = round(amount * 0.5, 2)
+        balance = round(amount - deposit, 2)
 
-        # Contract Info
         created_at = booking.get('createdAt')
-        date_str = created_at.strftime('%Y-%m-%d %H:%M:%S') if hasattr(created_at, 'strftime') else str(created_at)
-        
-        elements.append(Paragraph(f"<b>Contract ID:</b> {booking_id}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Date Generated:</b> {date_str}", styles['Normal']))
-        elements.append(Spacer(1, 12))
+        date_str = created_at.strftime('%Y-%m-%d %H:%M:%S UTC') if hasattr(created_at, 'strftime') else str(created_at or "Signed")
 
-        # Parties
-        data = [
-            ["Organizer (Employer)", "Musician (Employee)"],
-            [booking.get('organizerName', 'N/A'), booking.get('musicianName', 'N/A')],
-        ]
-        t = Table(data, colWidths=[250, 250])
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
-        ]))
-        elements.append(t)
-        elements.append(Spacer(1, 24))
+        mus_signed_at = booking.get('musicianSignedAt')
+        mus_date_str = mus_signed_at.strftime('%Y-%m-%d %H:%M:%S UTC') if hasattr(mus_signed_at, 'strftime') else (str(mus_signed_at) if mus_signed_at else date_str)
 
-        # Gig Details
-        elements.append(Paragraph("<b>EVENT DETAILS</b>", styles['Heading2']))
-        elements.append(Paragraph(f"<b>Gig Title:</b> {booking.get('gigTitle', 'N/A')}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Date:</b> {booking.get('gigDate') or booking.get('gigdate', 'N/A')}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Location:</b> {booking.get('location', 'N/A')}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Time:</b> {booking.get('gigTime', 'N/A')}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Duration:</b> {booking.get('duration', 'N/A')}", styles['Normal']))
-        elements.append(Paragraph(f"<b>Budget/Fee:</b> ${booking.get('amount', 'N/A')}", styles['Normal']))
-        elements.append(Spacer(1, 24))
+        # Retrieve drawn signature images
+        org_sig_url = booking.get("organizerSignatureUrl") or booking.get("signatureUrl")
+        mus_sig_url = booking.get("musicianSignatureUrl")
 
-        # Terms
-        elements.append(Paragraph("<b>TERMS & CONDITIONS</b>", styles['Heading2']))
-        
-        sections = booking.get('sections', {})
-        if sections:
-            section_keys = [
-                'musicianObligations', 
-                'organizerObligations', 
-                'paymentTerms', 
-                'cancellationPolicy', 
-                'disputeResolution'
-            ]
-            for key in section_keys:
-                if key in sections:
-                    title = key.replace('Obligations', ' Obligations').replace('Terms', ' Terms').replace('Policy', ' Policy').replace('Resolution', ' Resolution')
-                    title = title.title()
-                    elements.append(Paragraph(f"<b>{title}</b>", styles['Heading3']))
-                    elements.append(Paragraph(sections[key], styles['Normal']))
-                    elements.append(Spacer(1, 10))
-        else:
-            terms = [
-                "1. The Musician agrees to perform at the specified event for the duration mentioned.",
-                "2. The Organizer agrees to pay the specified amount upon completion of the performance.",
-                "3. Any cancellation must be communicated at least 48 hours in advance.",
-                "4. This contract is legally binding once signed by both parties."
-            ]
-            for term in terms:
-                elements.append(Paragraph(term, styles['Normal']))
-                elements.append(Spacer(1, 6))
-        
-        elements.append(Spacer(1, 24))
+        org_sig_img = BookingService._get_image_from_url(org_sig_url, width=120, height=45) if org_sig_url else None
+        mus_sig_img = BookingService._get_image_from_url(mus_sig_url, width=120, height=45) if mus_sig_url else None
 
-        # Signatures
-        elements.append(Paragraph("<b>SIGNATURES</b>", styles['Heading2']))
-        
-        organizer_sig_url = booking.get('signatureUrl')
-        musician_sig_url = booking.get('musicianSignatureUrl')
+        formatted_booking = {
+            "booking_id": booking_id,
+            "title": booking.get("gigTitle", "Gig Performance"),
+            "price": amount,
+            "organizer": {
+                "name": booking.get("organizerName") or org_data.get("name", "Organizer"),
+                "company": org_data.get("companyName") or org_data.get("businessName", "Individual"),
+                "email": org_data.get("email") or booking.get("organizerEmail", "N/A"),
+                "phone": org_data.get("phone") or booking.get("organizerPhone", "N/A"),
+            },
+            "musician": {
+                "name": booking.get("musicianName") or mus_data.get("name", "Musician"),
+                "stage_name": mus_data.get("stageName") or mus_data.get("artistName") or booking.get("musicianName", "Musician"),
+                "email": mus_data.get("email") or booking.get("musicianEmail", "N/A"),
+                "phone": mus_data.get("phone") or booking.get("musicianPhone", "N/A"),
+            },
+            "event": {
+                "event_name": booking.get("gigTitle", "Gig Performance"),
+                "venue_name": booking.get("venueName") or booking.get("location", "Venue"),
+                "venue_address": booking.get("location", "N/A"),
+                "date": str(booking.get("gigDate") or booking.get("gigdate", "N/A")),
+                "load_in_time": booking.get("loadInTime", "1 hour prior to set"),
+                "sound_check_time": booking.get("soundCheckTime", "45 mins prior to set"),
+                "performance_start": booking.get("gigTime", "As scheduled"),
+                "performance_end": booking.get("endTime", "As scheduled"),
+                "indoor_outdoor": booking.get("indoorOutdoor", "Indoor"),
+                "age_requirement": booking.get("ageRequirement", "All Ages"),
+                "dress_code": booking.get("dressCode", "Smart Casual"),
+            },
+            "performance": {
+                "type": booking.get("performanceType", "Live Music Performance"),
+                "duration_hours": booking.get("duration", "2"),
+                "break_duration_mins": booking.get("breakDuration", "15"),
+                "special_requests": booking.get("specialRequests", "Standard agreed performance repertoire"),
+            },
+            "payment": {
+                "performance_fee": amount,
+                "deposit_amount": deposit,
+                "balance_due": balance,
+                "escrow_status": str(booking.get("escrow_status", "FUNDS_HELD_IN_ESCROW")).upper(),
+            },
+            "signatures": {
+                "organizer_signature": booking.get("organizerName", "Organizer Signature"),
+                "organizer_signed_at": date_str,
+                "organizer_signature_img": org_sig_img,
+                "musician_signature": booking.get("musicianName", "Musician Signature"),
+                "musician_signed_at": mus_date_str,
+                "musician_signature_img": mus_sig_img,
+            }
+        }
 
-        org_sig_img = BookingService._get_image_from_url(organizer_sig_url)
-        mus_sig_img = BookingService._get_image_from_url(musician_sig_url)
-
-        sig_data = [
-            ["Organizer Signature", "Musician Signature"],
-            [org_sig_img or "AWAITING SIGNATURE", mus_sig_img or "AWAITING SIGNATURE"],
-            [booking.get('organizerName'), booking.get('musicianName')]
-        ]
-        
-        sig_table = Table(sig_data, colWidths=[250, 250])
-        sig_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ]))
-        elements.append(sig_table)
-
-        doc.build(elements)
-        pdf_content = buffer.getvalue()
-        buffer.close()
-        
-        # Process through DocuSign
+        pdf_content = generate_gig_contract_pdf(formatted_booking)
         pdf_content = BookingService._docusign_seal_document(pdf_content, booking_id)
-        
         return pdf_content
 

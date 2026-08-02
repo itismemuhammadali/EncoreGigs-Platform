@@ -68,38 +68,37 @@ void main() async {
 }
 
 Future<void> _setupFCM() async {
-  final messaging = FirebaseMessaging.instance;
+  try {
+    final messaging = FirebaseMessaging.instance;
 
-  // Request permission
-  final settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-  debugPrint('FCM permission: ${settings.authorizationStatus}');
+    // Request permission
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    debugPrint('FCM permission: ${settings.authorizationStatus}');
 
-  // Get token and store it for later registration after login
-  final token = await messaging.getToken();
-  debugPrint('FCM token: $token');
+    // Get token and store it for later registration after login
+    final token = await messaging.getToken();
+    debugPrint('FCM token: $token');
 
-  // Store token locally so it can be registered after login
-  if (token != null) {
-    // Token will be registered when user logs in (via auth listener)
+    // Listen for token refresh
+    messaging.onTokenRefresh.listen((newToken) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final api = ApiService();
+        await api.registerFcmToken(user.uid, 'musician', newToken);
+      }
+    });
+
+    // Handle foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('Received foreground message: ${message.notification?.title}');
+    });
+  } catch (e) {
+    debugPrint('FCM setup non-fatal error: $e');
   }
-
-  // Listen for token refresh
-  messaging.onTokenRefresh.listen((newToken) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final api = ApiService();
-      await api.registerFcmToken(user.uid, 'musician', newToken);
-    }
-  });
-
-  // Handle foreground messages
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('Foreground message: ${message.notification?.title}');
-  });
 
   // Handle notification tap when app is in background
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {

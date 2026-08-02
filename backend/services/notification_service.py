@@ -98,32 +98,42 @@ class NotificationService:
             "Organizers": "organizers",
         }
         role = role_map.get(audience)
-        tokens_info = NotificationService._get_all_tokens(role)
+        collections = ["musicians", "organizers"] if role is None else [role]
 
         success = 0
         failed = 0
+        total = 0
 
-        for info in tokens_info:
-            # Always save notification for in-app display
-            NotificationService._save_notification(info["userId"], title, body, notif_type, data)
+        for col in collections:
+            docs = db.collection(col).get()
+            for doc in docs:
+                total += 1
+                user_id = doc.id
+                user_data = doc.to_dict()
+                token = user_data.get("fcmToken")
 
-            message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body),
-                data=data or {},
-                token=info["token"],
-            )
-            try:
-                messaging.send(message)
-                success += 1
-            except messaging.UnregisteredError:
-                db.collection(f"{info['role']}s").document(info["userId"]).update({"fcmToken": None})
-                failed += 1
-            except Exception:
-                failed += 1
+                # Always save notification for in-app display
+                NotificationService._save_notification(user_id, title, body, notif_type, data)
+
+                if token:
+                    message = messaging.Message(
+                        notification=messaging.Notification(title=title, body=body),
+                        data=data or {},
+                        token=token,
+                    )
+                    try:
+                        messaging.send(message)
+                        success += 1
+                    except messaging.UnregisteredError:
+                        db.collection(col).document(user_id).update({"fcmToken": None})
+                        failed += 1
+                    except Exception as e:
+                        print(f"Broadcast FCM error for {user_id}: {e}")
+                        failed += 1
 
         NotificationService._save_broadcast_record(title, body, audience, success, failed)
 
-        return {"success": success, "failed": failed, "total": len(tokens_info)}
+        return {"success": success, "failed": failed, "total": total}
 
     @staticmethod
     def _save_notification(user_id: str, title: str, body: str, notif_type: str, data: Optional[Dict] = None):
@@ -137,7 +147,7 @@ class NotificationService:
                 "category": NotificationService.NOTIFICATION_TYPES.get(notif_type, "system"),
                 "data": data or {},
                 "isRead": False,
-                "createdAt": datetime.now(timezone.utc),
+                "createdAt": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as e:
             print(f"Error saving notification: {e}")
@@ -153,7 +163,7 @@ class NotificationService:
                 "recipients": success,
                 "failed": failed,
                 "status": "sent",
-                "createdAt": datetime.now(timezone.utc),
+                "createdAt": datetime.now(timezone.utc).isoformat(),
             })
         except Exception as e:
             print(f"Error saving broadcast record: {e}")
@@ -162,14 +172,23 @@ class NotificationService:
     def get_user_notifications(user_id: str, limit: int = 50) -> List[Dict]:
         from backend.database import db
         try:
-            docs = (db.collection("notifications")
-                    .where("userId", "==", user_id)
-                    .order_by("createdAt", direction="DESCENDING")
-                    .limit(limit)
-                    .get())
-            return [{"id": doc.id, **doc.to_dict()} for doc in docs]
+            docs = db.collection("notifications").where("userId", "==", user_id).get()
+            results = []
+            for doc in docs:
+                data = doc.to_dict()
+                ts = data.get("createdAt")
+                if hasattr(ts, "isoformat"):
+                    data["createdAt"] = ts.isoformat()
+                elif hasattr(ts, "timestamp"):
+                    data["createdAt"] = str(ts)
+                elif ts is None:
+                    data["createdAt"] = ""
+                results.append({"id": doc.id, **data})
+            
+            results.sort(key=lambda x: str(x.get("createdAt", "")), reverse=True)
+            return results[:limit]
         except Exception as e:
-            print(f"Error fetching notifications: {e}")
+            print(f"Error fetching notifications for {user_id}: {e}")
             return []
 
     @staticmethod

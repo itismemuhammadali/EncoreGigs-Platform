@@ -97,7 +97,8 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
               ),
             ),
             // Filter tabs
-            Padding(
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: ['All', 'Active', 'Completed', 'Pending'].map((tab) {

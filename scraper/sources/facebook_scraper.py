@@ -39,15 +39,20 @@ class FacebookScraper(BaseScraper):
         phones = re.findall(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
         return {"email": emails[0] if emails else None, "phone": phones[0] if phones else None}
 
+    def _normalize_group_url(self, group: str) -> str:
+        group_str = group.strip()
+        if group_str.startswith("http://") or group_str.startswith("https://"):
+            slug = group_str.rstrip("/").split("/groups/")[-1]
+            return f"https://www.facebook.com/groups/{slug}/"
+        return f"https://www.facebook.com/groups/{group_str.rstrip('/')}/"
+
     def scrape(self) -> List[GigDetails]:
-        print(f"Scraping Facebook Groups: {self.target_groups}...", flush=True)
+        print(f"Scraping Facebook Groups ({len(self.target_groups)} groups queued)...", flush=True)
         gigs = []
 
         cookies = self._load_cookies()
         if not cookies:
             return gigs
-
-        proxy = {"server": "http://gate.decodo.com:10002", "username": "ONLYGIGZ", "password": "v6Uyj0_zhW77iNlIvx"}
 
         STEALTH_JS = """
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
@@ -57,7 +62,6 @@ class FacebookScraper(BaseScraper):
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=False,
-                proxy=proxy,
                 args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
             )
             context = browser.new_context(
@@ -70,10 +74,11 @@ class FacebookScraper(BaseScraper):
             page.add_init_script(STEALTH_JS)
 
             for group in self.target_groups:
-                url = f"https://www.facebook.com/groups/{group}/"
-                print(f"  Loading group: {group}...", flush=True)
+                url = self._normalize_group_url(group)
+                print(f"  Loading group: {url}...", flush=True)
                 try:
                     page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
                     time.sleep(8)
 
                     if "login" in page.url.lower():
@@ -104,14 +109,16 @@ class FacebookScraper(BaseScraper):
                         page.evaluate("window.scrollBy(0, 1000)")
                         time.sleep(2)
 
-                    articles = page.query_selector_all("[role='article']")
-                    print(f"  Found {len(articles)} posts in {group}", flush=True)
+                    post_elements = page.query_selector_all("[role='article'], [data-ad-rendering-role='story_message'], div[data-ad-preview='message']")
+                    print(f"  Found {len(post_elements)} posts/stories in {group}", flush=True)
 
-                    for article in articles:
+                    seen_texts = set()
+                    for elem in post_elements:
                         try:
-                            text = article.inner_text().strip()
-                            if len(text) < 30:
+                            text = elem.inner_text().strip()
+                            if len(text) < 30 or text in seen_texts:
                                 continue
+                            seen_texts.add(text)
                             if not self.is_music_related(text):
                                 continue
 

@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   int _selectedFilterIndex = 0;
   int _unreadMessageCount = 0;
+  int _unreadNotificationCount = 0;
 
   final List<String> filters = ['All', 'Nearby', 'This Week', 'High Badge'];
 
@@ -38,8 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchUnreadCount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final count = await _apiService.getUnreadMessageCount(user.uid);
-      if (mounted) setState(() => _unreadMessageCount = count);
+      final msgCount = await _apiService.getUnreadMessageCount(user.uid);
+      final notifCount = await _apiService.getUnreadNotificationCount(user.uid);
+      if (mounted) {
+        setState(() {
+          _unreadMessageCount = msgCount;
+          _unreadNotificationCount = notifCount;
+        });
+      }
     }
   }
 
@@ -116,9 +123,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         GestureDetector(
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                          ),
+                          onTap: () async {
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                            );
+                            _fetchUnreadCount();
+                          },
                           child: Stack(
                             children: [
                               Container(
@@ -139,18 +149,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ),
                                 ),
                               ),
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
+                              if (_unreadNotificationCount > 0)
+                                Positioned(
+                                  top: 2,
+                                  right: 2,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),

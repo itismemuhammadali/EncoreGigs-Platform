@@ -1,19 +1,19 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import '../constants.dart';
+import 'package:shared_config/shared_config.dart';
 
 class ApiService {
-  String get _baseUrl => getBackendUrl();
-
   Future<List<Map<String, dynamic>>> getGigs({String? status, String? organizerId, String? searchQuery}) async {
     final queryParams = <String, String>{};
     if (status != null) queryParams['status'] = status;
     if (organizerId != null) queryParams['organizer_id'] = organizerId;
     if (searchQuery != null) queryParams['search_query'] = searchQuery;
 
-    final uri = Uri.parse('$_baseUrl/gigs/list').replace(queryParameters: queryParams);
-    final response = await http.get(uri);
+    final response = await httpWithFallback((baseUrl) {
+      final uri = Uri.parse('$baseUrl/gigs/list').replace(queryParameters: queryParams);
+      return http.get(uri);
+    });
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -23,7 +23,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getGig(String gigId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/gigs/$gigId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/gigs/$gigId')));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -33,11 +33,11 @@ class ApiService {
   }
 
   Future<void> applyToGig(Map<String, dynamic> applicationData) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/gigs/apply'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/gigs/apply'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(applicationData),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to apply to gig: ${response.body}');
@@ -49,8 +49,10 @@ class ApiService {
     if (gigId != null) queryParams['gig_id'] = gigId;
     if (musicianId != null) queryParams['musician_id'] = musicianId;
 
-    final uri = Uri.parse('$_baseUrl/gigs/applications/list').replace(queryParameters: queryParams);
-    final response = await http.get(uri);
+    final response = await httpWithFallback((baseUrl) {
+      final uri = Uri.parse('$baseUrl/gigs/applications/list').replace(queryParameters: queryParams);
+      return http.get(uri);
+    });
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -64,8 +66,10 @@ class ApiService {
     if (musicianId != null) queryParams['musician_id'] = musicianId;
     if (organizerId != null) queryParams['organizer_id'] = organizerId;
 
-    final uri = Uri.parse('$_baseUrl/bookings/list').replace(queryParameters: queryParams);
-    final response = await http.get(uri);
+    final response = await httpWithFallback((baseUrl) {
+      final uri = Uri.parse('$baseUrl/bookings/list').replace(queryParameters: queryParams);
+      return http.get(uri);
+    });
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -75,7 +79,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getProfile(String uid) async {
-    final response = await http.get(Uri.parse('$_baseUrl/auth/profile/$uid'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/auth/profile/$uid')));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -85,11 +89,11 @@ class ApiService {
   }
 
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/auth/profile/update'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/auth/profile/update'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(profileData),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to update profile: ${response.body}');
@@ -97,11 +101,11 @@ class ApiService {
   }
 
   Future<String> getOrCreateChat(Map<String, dynamic> chatData) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/chat/get-or-create'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/chat/get-or-create'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(chatData),
-    );
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['chatId'];
@@ -111,11 +115,11 @@ class ApiService {
   }
 
   Future<void> sendMessage(Map<String, dynamic> messageData) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/chat/send-message'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/chat/send-message'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(messageData),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to send message: ${response.body}');
@@ -123,7 +127,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getRecentActivity(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/gigs/dashboard/activity/$userId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/gigs/dashboard/activity/$userId')));
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -133,7 +137,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getReviews(String musicianId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/gigs/reviews/$musicianId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/gigs/reviews/$musicianId')));
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -143,11 +147,11 @@ class ApiService {
   }
 
   Future<void> createDispute(Map<String, dynamic> disputeData) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/disputes/create'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/disputes/create'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(disputeData),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to create dispute: ${response.body}');
@@ -155,7 +159,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getDisputes(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/disputes/list?user_id=$userId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/disputes/list?user_id=$userId')));
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -165,7 +169,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getDispute(String disputeId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/disputes/$disputeId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/disputes/$disputeId')));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -175,15 +179,15 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> onboardMusician(String musicianId, String refreshUrl, String returnUrl) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payments/musician/onboard'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/payments/musician/onboard'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'musicianId': musicianId,
         'refreshUrl': refreshUrl,
         'returnUrl': returnUrl,
       }),
-    );
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -193,10 +197,10 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> releasePayment(String bookingId) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payments/booking/$bookingId/release'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/payments/booking/$bookingId/release'),
       headers: {'Content-Type': 'application/json'},
-    );
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -206,11 +210,11 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> createSetupIntent(String musicianId) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payments/organizer/setup-intent'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/payments/organizer/setup-intent'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'organizerId': musicianId}),
-    );
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -220,14 +224,14 @@ class ApiService {
   }
 
   Future<void> savePaymentMethod(String userId, String paymentMethodId) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payments/organizer/save-payment-method'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/payments/organizer/save-payment-method'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'organizerId': userId,
         'paymentMethodId': paymentMethodId,
       }),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to save payment method: ${response.body}');
@@ -235,38 +239,38 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> musicianPayout(String musicianId, double amount) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/payments/musician/payout'),
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/payments/musician/payout'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'musicianId': musicianId,
         'amount': amount,
       }),
-    );
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to process payout: \${response.body}');
+      throw Exception('Failed to process payout: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> getConnectedAccount(String musicianId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/payments/musician/$musicianId/connected-account'),
-    );
+    final response = await httpWithFallback((baseUrl) => http.get(
+      Uri.parse('$baseUrl/payments/musician/$musicianId/connected-account'),
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Failed to load connected account: \${response.body}');
+      throw Exception('Failed to load connected account: ${response.body}');
     }
   }
 
   Future<Map<String, dynamic>> getWalletData(String userId) async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/payments/organizer/$userId/wallet'),
-    );
+    final response = await httpWithFallback((baseUrl) => http.get(
+      Uri.parse('$baseUrl/payments/organizer/$userId/wallet'),
+    ));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -276,7 +280,7 @@ class ApiService {
   }
 
   Future<List<Map<String, dynamic>>> getNotifications(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/notifications/user/$userId'));
+    final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/notifications/user/$userId')));
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -286,38 +290,92 @@ class ApiService {
   }
 
   Future<int> getUnreadNotificationCount(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/notifications/user/$userId/unread-count'));
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body)['count'] ?? 0;
-    } else {
-      return 0;
-    }
+    try {
+      final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/notifications/user/$userId/unread-count')));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['count'] ?? 0;
+      }
+    } catch (_) {}
+    return 0;
   }
 
   Future<void> markNotificationRead(String notificationId) async {
-    await http.patch(Uri.parse('$_baseUrl/notifications/$notificationId/read'));
+    try {
+      await httpWithFallback((baseUrl) => http.patch(Uri.parse('$baseUrl/notifications/$notificationId/read')));
+    } catch (_) {}
   }
 
   Future<void> markAllNotificationsRead(String userId) async {
-    await http.post(Uri.parse('$_baseUrl/notifications/user/$userId/read-all'));
+    try {
+      await httpWithFallback((baseUrl) => http.post(Uri.parse('$baseUrl/notifications/user/$userId/read-all')));
+    } catch (_) {}
   }
 
   Future<void> registerFcmToken(String userId, String role, String token) async {
-    await http.post(
-      Uri.parse('$_baseUrl/notifications/register-token'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'userId': userId, 'role': role, 'token': token}),
-    );
+    try {
+      await httpWithFallback((baseUrl) => http.post(
+        Uri.parse('$baseUrl/notifications/register-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'userId': userId, 'role': role, 'token': token}),
+      ));
+    } catch (_) {}
   }
 
   Future<int> getUnreadMessageCount(String userId) async {
-    final response = await http.get(Uri.parse('$_baseUrl/chat/unread-count/$userId'));
+    try {
+      final response = await httpWithFallback((baseUrl) => http.get(Uri.parse('$baseUrl/chat/unread-count/$userId')));
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body)['count'] ?? 0;
+      }
+    } catch (_) {}
+    return 0;
+  }
+
+  Future<Map<String, dynamic>> purchaseFeaturedStatus({
+    required String musicianId,
+    required String plan,
+    required double amount,
+    String? paymentToken,
+  }) async {
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/featured/purchase'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'musicianId': musicianId,
+        'plan': plan,
+        'amount': amount,
+        'paymentToken': paymentToken,
+      }),
+    ));
 
     if (response.statusCode == 200) {
-      return jsonDecode(response.body)['count'] ?? 0;
+      return jsonDecode(response.body);
     } else {
-      return 0;
+      throw Exception('Failed to purchase featured status: ${response.body}');
+    }
+  }
+
+  Future<void> sendNotification({
+    required String userId,
+    required String title,
+    required String body,
+    String type = 'system',
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      await httpWithFallback((baseUrl) => http.post(
+        Uri.parse('$baseUrl/notifications/send'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userId': userId,
+          'title': title,
+          'body': body,
+          'type': type,
+          'data': data ?? {},
+        }),
+      ));
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
     }
   }
 }

@@ -41,7 +41,9 @@ class AuthService:
     @staticmethod
     def list_musicians():
         docs = db.collection("musicians").get()
-        return [doc.to_dict() | {"id": doc.id, "role": "musician"} for doc in docs]
+        musicians = [doc.to_dict() | {"id": doc.id, "role": "musician"} for doc in docs]
+        musicians.sort(key=lambda m: m.get("isFeatured") == True, reverse=True)
+        return musicians
 
     @staticmethod
     def list_organizers():

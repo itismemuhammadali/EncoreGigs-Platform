@@ -68,33 +68,37 @@ void main() async {
 }
 
 Future<void> _setupFCM() async {
-  final messaging = FirebaseMessaging.instance;
+  try {
+    final messaging = FirebaseMessaging.instance;
 
-  final settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-  debugPrint('FCM permission: ${settings.authorizationStatus}');
+    final settings = await messaging.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    debugPrint('FCM permission: ${settings.authorizationStatus}');
 
-  final token = await messaging.getToken();
-  debugPrint('FCM token: $token');
+    final token = await messaging.getToken();
+    debugPrint('FCM token: $token');
 
-  messaging.onTokenRefresh.listen((newToken) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final api = ApiService();
-      await api.registerFcmToken(user.uid, 'organizer', newToken);
-    }
-  });
+    messaging.onTokenRefresh.listen((newToken) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final api = ApiService();
+        await api.registerFcmToken(user.uid, 'organizer', newToken);
+      }
+    });
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint('Foreground message: ${message.notification?.title}');
-  });
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint('Foreground message: ${message.notification?.title}');
+    });
 
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    debugPrint('Notification tapped: ${message.data}');
-  });
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('Notification tapped: ${message.data}');
+    });
+  } catch (e) {
+    debugPrint('FCM setup non-fatal error: $e');
+  }
 }
 
 Future<void> _initNetworking() async {

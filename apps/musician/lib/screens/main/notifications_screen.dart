@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/api_service.dart';
+import '../../models/gig_model.dart';
+import 'gig_detail_screen.dart';
 
 enum NotificationType { application, message, payment, booking, gig, system }
 
@@ -10,6 +12,7 @@ class AppNotification {
   final String body;
   final String timeAgo;
   final NotificationType type;
+  final Map<String, dynamic> data;
   bool isRead;
   bool isUnread;
 
@@ -19,12 +22,14 @@ class AppNotification {
     required this.body,
     required this.timeAgo,
     required this.type,
+    required this.data,
     this.isRead = false,
     this.isUnread = false,
   });
 
   factory AppNotification.fromMap(Map<String, dynamic> map) {
     final category = map['category'] ?? 'system';
+    final notifData = Map<String, dynamic>.from(map['data'] ?? {});
     final typeMap = {
       'application': NotificationType.application,
       'message': NotificationType.message,
@@ -52,6 +57,7 @@ class AppNotification {
       body: map['body'] ?? '',
       timeAgo: timeAgo,
       type: typeMap[category] ?? NotificationType.system,
+      data: notifData,
       isRead: map['isRead'] ?? false,
       isUnread: !(map['isRead'] ?? false),
     );
@@ -89,6 +95,51 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _handleNotificationTap(AppNotification notification) async {
+    if (notification.isUnread) {
+      await _api.markNotificationRead(notification.id);
+      if (mounted) {
+        setState(() {
+          notification.isUnread = false;
+          notification.isRead = true;
+        });
+      }
+    }
+
+    final gigId = notification.data['gigId'] ?? notification.data['gig_id'];
+    if (!mounted) return;
+
+    if (gigId != null && gigId.toString().isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFA1F301)),
+        ),
+      );
+
+      try {
+        final gigMap = await _api.getGig(gigId.toString());
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          final gig = Gig.fromFirestore(gigMap, gigId.toString());
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GigDetailScreen(gig: gig),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not load gig details: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -269,15 +320,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             ..._filtered.map((notification) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: GestureDetector(
-                                onTap: () async {
-                                  if (notification.isUnread) {
-                                    await _api.markNotificationRead(notification.id);
-                                    setState(() {
-                                      notification.isUnread = false;
-                                      notification.isRead = true;
-                                    });
-                                  }
-                                },
+                                onTap: () => _handleNotificationTap(notification),
                                 child: Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(

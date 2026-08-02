@@ -25,16 +25,13 @@ class ScraperManager:
     def __init__(self):
         try:
             self.db_manager = DatabaseManager()
+            fb_groups = self.db_manager.get_facebook_sources()
             self.scrapers = [
                 CraigslistScraper(city="austin"),
                 EventbriteScraper(location="austin"),
-                FacebookScraper(target_groups=[
-                    "AustinMusicians",
-                    "AustinBandmates",
-                    "ATXLiveMusic",
-                ]),
+                FacebookScraper(target_groups=fb_groups),
             ]
-            print(f"ScraperManager initialized with {len(self.scrapers)} scrapers.", flush=True)
+            print(f"ScraperManager initialized with {len(self.scrapers)} scrapers (Facebook target groups: {len(fb_groups)}).", flush=True)
         except Exception as e:
             print(f"Error initializing ScraperManager: {e}", flush=True)
             raise

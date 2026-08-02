@@ -1,0 +1,60 @@
+{
+  "identifier": "STOREKIT_CONFIG",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "19.99",
+      "familyShareable": false,
+      "internalID": "10000001",
+      "localizations": [
+        {
+          "description": "Boost profile visibility for 24 Hours",
+          "displayName": "24 Hours Featured",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "featured_24h",
+      "referenceName": "Featured 24h",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "49.99",
+      "familyShareable": false,
+      "internalID": "10000002",
+      "localizations": [
+        {
+          "description": "Boost profile visibility for 7 Days",
+          "displayName": "7 Days Featured",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "featured_7d",
+      "referenceName": "Featured 7d",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "149.99",
+      "familyShareable": false,
+      "internalID": "10000003",
+      "localizations": [
+        {
+          "description": "Boost profile visibility for 30 Days",
+          "displayName": "30 Days Featured",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "featured_30d",
+      "referenceName": "Featured 30d",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 2,
+    "minor": 0
+  }
+}

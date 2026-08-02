@@ -35,22 +35,24 @@ List<String> get BACKEND_HOSTS {
   if (kIsWeb) return ['localhost', '127.0.0.1'];
   if (Platform.isAndroid) {
     return [
-      PRIMARY_BACKEND_HOST,
-      '10.0.2.2', // Android emulator loopback to host
-      '127.0.0.1',
+      '127.0.0.1',       // Physical phone via adb reverse
+      '192.168.100.55',  // Physical phone via Wi-Fi
+      '10.0.2.2',        // Android emulator
+      'localhost',
     ];
   }
   // iOS and others
   return [
     '127.0.0.1',
+    '192.168.100.55',
     'localhost',
-    PRIMARY_BACKEND_HOST,
     '10.0.2.2',
   ];
 }
 
 // All historical IPs that might be in the database
 const List<String> ALL_HISTORICAL_HOSTS = [
+  '192.168.100.55',
   PRIMARY_BACKEND_HOST,
   FALLBACK_BACKEND_HOST,
   OLD_BACKEND_HOST,
@@ -71,13 +73,7 @@ Future<void> initHosts() async {
   for (int i = 0; i < hosts.length; i++) {
     try {
       final host = hosts[i];
-      // Defensive check: 127.0.0.1 on Android usually refers to the device itself
-      // We want to avoid it if 10.0.2.2 is available and we are on an emulator
-      if (Platform.isAndroid && host == '127.0.0.1' && hosts.contains('10.0.2.2')) {
-        // Only try 127.0.0.1 on Android if 10.0.2.2 was already tried or not present
-      }
-
-      final response = await http.get(Uri.parse('http://$host:8000/')).timeout(const Duration(seconds: 3));
+      final response = await http.get(Uri.parse('http://$host:8000/')).timeout(const Duration(seconds: 2));
       if (response.statusCode == 200) {
         _currentHostIndex = i;
         debugPrint('Connected to backend host: $host');
@@ -88,7 +84,7 @@ Future<void> initHosts() async {
     }
   }
   
-  // If we couldn't reach any host, fallback to the primary backend
+  // If we couldn't reach any host, default to index 0 (10.0.2.2 on Android, 127.0.0.1 on iOS)
   _currentHostIndex = 0;
   debugPrint('Warning: No backend host reachable. Defaulting to: ${BACKEND_HOST}');
 }
@@ -133,4 +129,18 @@ String getEmulatorHost() {
     return 'localhost';
   }
   return BACKEND_HOST;
+}
+
+/// Executes an HTTP request with automatic host failover if a connection error occurs.
+Future<http.Response> httpWithFallback(Future<http.Response> Function(String baseUrl) requestFn) async {
+  try {
+    return await requestFn(getBackendUrl());
+  } catch (e) {
+    if (!kIsWeb && (e.toString().contains('SocketException') || e.toString().contains('ClientException') || e.toString().contains('Connection refused'))) {
+      final nextHost = switchToNextHost();
+      debugPrint('Connection failed to backend. Switching to host: $nextHost');
+      return await requestFn(getBackendUrl());
+    }
+    rethrow;
+  }
 }

@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Featured Artist Card
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: FeaturedArtistCard(),
+                          child: FeaturedArtistCard(profile: profileData),
                         ),
                         const SizedBox(height: 24),
 

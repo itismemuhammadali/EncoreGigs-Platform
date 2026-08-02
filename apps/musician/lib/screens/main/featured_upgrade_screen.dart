@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/iap_service.dart';
 import 'featured_success_screen.dart';
 
 class FeaturedUpgradeScreen extends StatefulWidget {
@@ -11,12 +13,78 @@ class FeaturedUpgradeScreen extends StatefulWidget {
 
 class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
   int _selectedPlan = 1; // 0 = 24h, 1 = 7 days, 2 = 30 days
+  bool _isLoading = false;
 
   final List<Map<String, dynamic>> _plans = [
-    {'duration': '24 Hours', 'price': '\$19.99', 'badge': null},
-    {'duration': '7 Days', 'price': '\$49.99', 'badge': 'Most Popular', 'save': 'Save 30%'},
-    {'duration': '30 Days', 'price': '\$149.99', 'badge': null, 'save': 'Save 50%'},
+    {'duration': '24 Hours', 'price': '\$19.99', 'amount': 19.99, 'badge': null},
+    {'duration': '7 Days', 'price': '\$49.99', 'amount': 49.99, 'badge': 'Most Popular', 'save': 'Save 30%'},
+    {'duration': '30 Days', 'price': '\$149.99', 'amount': 149.99, 'badge': null, 'save': 'Save 50%'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    IAPService().initialize(onPurchaseCompleted: (success, message) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        if (success) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => FeaturedSuccessScreen(
+                duration: _plans[_selectedPlan]['duration'],
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message), backgroundColor: Colors.red),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _handleUpgrade() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in to upgrade profile.')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final selectedPlan = _plans[_selectedPlan];
+      final planDuration = selectedPlan['duration'] as String;
+      final amount = (selectedPlan['amount'] as num).toDouble();
+
+      final success = await IAPService().buyFeaturedPlan(
+        musicianId: uid,
+        planLabel: planDuration,
+        amount: amount,
+      );
+
+      if (success && mounted) {
+        setState(() => _isLoading = false);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => FeaturedSuccessScreen(
+              duration: planDuration,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Purchase error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -280,35 +348,35 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
               child: Column(
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => FeaturedSuccessScreen(
-                            duration: _plans[_selectedPlan]['duration'],
-                          ),
-                        ),
-                      );
-                    },
+                    onTap: _isLoading ? null : _handleUpgrade,
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFA1F301),
+                        color: _isLoading ? const Color(0xFFA1F301).withValues(alpha: 0.5) : const Color(0xFFA1F301),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20, height: 20,
-                            child: SvgPicture.asset('assets/crown_icon.svg', fit: BoxFit.contain,
-                                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text('Upgrade Now',
-                              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
+                      child: _isLoading
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20, height: 20,
+                                  child: SvgPicture.asset('assets/crown_icon.svg', fit: BoxFit.contain,
+                                      colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn)),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text('Upgrade Now',
+                                    style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                     ),
                   ),
                   const SizedBox(height: 8),

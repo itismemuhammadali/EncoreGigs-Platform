@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'widgets/bookings_filter_tabs.dart';
 import 'widgets/booking_card.dart';
 import '../notifications/notifications_screen.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../constants.dart';
 
 class BookingsScreen extends StatefulWidget {
@@ -17,6 +19,22 @@ class BookingsScreen extends StatefulWidget {
 class _BookingsScreenState extends State<BookingsScreen> {
   String _selectedFilter = 'All';
   Key _refreshKey = UniqueKey();
+  int _unreadCount = 0;
+  final _api = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUnreadCount();
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final count = await _api.getUnreadNotificationCount(user.uid);
+      if (mounted) setState(() => _unreadCount = count);
+    }
+  }
 
   void _refreshData() {
     setState(() => _refreshKey = UniqueKey());
@@ -56,37 +74,41 @@ class _BookingsScreenState extends State<BookingsScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                        ),
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                          );
+                          _fetchUnreadCount();
+                        },
                         child: Stack(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A1A1F),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: const Color(0x4DA2F301), width: 1.5),
-                            ),
-                            child: const Icon(Icons.notifications_outlined,
-                                color: Colors.white, size: 22),
-                          ),
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A1A1F),
                                 shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: const Color(0x4DA2F301), width: 1.5),
                               ),
+                              child: const Icon(Icons.notifications_outlined,
+                                  color: Colors.white, size: 22),
                             ),
-                          ),
-                        ],
-                      ),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -162,6 +184,7 @@ final bookingModel = BookingModel(
   status: status,
   musicianId: musicianId,
   amount: '\$${bookingData['amount'] ?? 0}',
+  isFeatured: musData['isFeatured'] == true,
   paymentStatus: (status == 'payment released' || status == 'completed') 
       ? 'Payment Released' 
       : (status == 'Waiting for musician signature' 

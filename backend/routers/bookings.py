@@ -6,6 +6,7 @@ from typing import Optional
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 @router.get("/{booking_id}/download-contract")
+@router.get("/{booking_id}/contract/pdf")
 async def download_contract(booking_id: str):
     try:
         pdf_content = BookingService.generate_contract_pdf(booking_id)
@@ -16,7 +17,7 @@ async def download_contract(booking_id: str):
             content=pdf_content,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=contract_{booking_id}.pdf"
+                "Content-Disposition": f"attachment; filename=OnlyGigz_Contract_{booking_id}.pdf"
             }
         )
     except Exception as e:

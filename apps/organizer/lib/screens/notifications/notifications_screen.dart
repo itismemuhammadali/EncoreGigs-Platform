@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/api_service.dart';
+import '../../models/gig.dart';
+import '../gigs/gig_details_screen.dart';
+import '../gigs/applicants_screen.dart';
+import '../bookings/bookings_screen.dart';
+import '../messages/messages_screen.dart';
 
 class NotificationItem {
   final String id;
@@ -12,6 +17,9 @@ class NotificationItem {
   final String title;
   final String subtitle;
   final String time;
+  final String type;
+  final String category;
+  final Map<String, dynamic> data;
   bool isUnread;
 
   NotificationItem({
@@ -23,11 +31,16 @@ class NotificationItem {
     required this.title,
     required this.subtitle,
     required this.time,
+    required this.type,
+    required this.category,
+    required this.data,
     this.isUnread = false,
   });
 
   factory NotificationItem.fromMap(Map<String, dynamic> map) {
     final category = map['category'] ?? 'system';
+    final type = map['type'] ?? 'system';
+    final notifData = Map<String, dynamic>.from(map['data'] ?? {});
     final colorMap = {
       'application': const Color(0xFFA2F301),
       'message': const Color(0xFF4A9EFF),
@@ -64,6 +77,9 @@ class NotificationItem {
       title: map['title'] ?? '',
       subtitle: map['body'] ?? '',
       time: time,
+      type: type,
+      category: category,
+      data: notifData,
       isUnread: !(map['isRead'] ?? false),
     );
   }
@@ -98,6 +114,75 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _handleNotificationTap(NotificationItem item) async {
+    if (item.isUnread) {
+      await _api.markNotificationRead(item.id);
+      if (mounted) {
+        setState(() {
+          item.isUnread = false;
+        });
+      }
+    }
+
+    final gigId = item.data['gigId'] ?? item.data['gig_id'];
+
+    if (!mounted) return;
+
+    if (gigId != null && gigId.toString().isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFA2F301)),
+        ),
+      );
+
+      try {
+        final gigMap = await _api.getGig(gigId.toString());
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          final gigModel = GigModel.fromFirestore(gigMap, gigId.toString());
+          if (item.category == 'application' || item.type == 'application_received') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ApplicantsScreen(
+                  gigId: gigModel.gigId,
+                  gigTitle: gigModel.title,
+                  gigBudget: gigModel.budget,
+                  gigDate: gigModel.date,
+                  gigTime: gigModel.time,
+                  gigDuration: gigModel.duration,
+                  location: gigModel.location,
+                ),
+              ),
+            );
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => GigDetailsScreen(gig: gigModel),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not load gig: $e')),
+          );
+        }
+      }
+    } else if (item.category == 'booking' || item.category == 'payment') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const BookingsScreen()),
+      );
+    } else if (item.category == 'message') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const MessagesScreen()),
+      );
     }
   }
 
@@ -182,6 +267,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                                     title: n.title,
                                                     subtitle: n.subtitle,
                                                     time: n.time,
+                                                    type: n.type,
+                                                    category: n.category,
+                                                    data: n.data,
                                                     isUnread: false,
                                                   ))
                                               .toList();
@@ -204,14 +292,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 }
                                 return _NotificationCard(
                                   item: _notifications[index],
-                                  onTap: () async {
-                                    if (_notifications[index].isUnread) {
-                                      await _api.markNotificationRead(_notifications[index].id);
-                                      setState(() {
-                                        _notifications[index].isUnread = false;
-                                      });
-                                    }
-                                  },
+                                  onTap: () => _handleNotificationTap(_notifications[index]),
                                 );
                               },
                             ),

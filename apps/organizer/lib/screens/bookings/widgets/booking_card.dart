@@ -14,6 +14,7 @@ class BookingModel {
   final bool isPaymentPending;
   final String musicianId;
   final String amount;
+  final bool isFeatured;
 
   const BookingModel({
     required this.id,
@@ -27,6 +28,7 @@ class BookingModel {
     required this.amount,
     this.paymentStatus,
     this.isPaymentPending = false,
+    this.isFeatured = false,
   });
 }
 
@@ -122,11 +124,39 @@ class BookingCard extends StatelessWidget {
                         const Icon(Icons.person_outline,
                             color: Color(0xFF888888), size: 14),
                         const SizedBox(width: 4),
-                        Text(
-                          booking.musician,
-                          style: const TextStyle(
-                              color: Color(0xFF888888), fontSize: 13),
+                        Flexible(
+                          child: Text(
+                            booking.musician,
+                            style: const TextStyle(
+                                color: Color(0xFF888888), fontSize: 13),
+                          ),
                         ),
+                        if (booking.isFeatured) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFA2F301).withValues(alpha: 0.15),
+                              border: Border.all(color: const Color(0xFFA2F301), width: 1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.star, color: Color(0xFFA2F301), size: 9),
+                                SizedBox(width: 2),
+                                Text(
+                                  'FEATURED',
+                                  style: TextStyle(
+                                    color: Color(0xFFA2F301),
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

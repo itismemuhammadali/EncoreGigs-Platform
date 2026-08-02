@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Star, 
   DollarSign, 
@@ -12,10 +12,12 @@ import {
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { RevokePlacementModal } from "@/components/ui/RevokePlacementModal";
+import { apiRequest } from "@/lib/api";
 
 // --- Types & Interfaces ---
 interface FeaturedArtist {
   id: string;
+  musicianId?: string;
   name: string;
   genre: string;
   boostDuration: string;
@@ -26,74 +28,48 @@ interface FeaturedArtist {
   status: "active" | "expired";
 }
 
-// --- Mock Data ---
-// BACKEND DEVELOPER: Replace this mock array with a fetch call to your featured artists endpoint.
-// Expected shape is defined in the FeaturedArtist interface above.
-const MOCK_FEATURED: FeaturedArtist[] = [
-  {
-    id: "FEAT-001",
-    name: "Sarah Johnson",
-    genre: "Jazz",
-    boostDuration: "30 days",
-    startDate: "2026-02-01",
-    expiryDate: "2026-03-03",
-    amountPaid: "$299",
-    views: "2,847",
-    status: "active"
-  },
-  {
-    id: "FEAT-002",
-    name: "Michael Smith",
-    genre: "Rock",
-    boostDuration: "45 days",
-    startDate: "2026-01-15",
-    expiryDate: "2026-02-28",
-    amountPaid: "$450",
-    views: "3,122",
-    status: "active"
-  },
-  {
-    id: "FEAT-003",
-    name: "Emily Davis",
-    genre: "Classical",
-    boostDuration: "60 days",
-    startDate: "2026-03-10",
-    expiryDate: "2026-05-09",
-    amountPaid: "$500",
-    views: "4,010",
-    status: "active"
-  },
-  {
-    id: "FEAT-004",
-    name: "James Wilson",
-    genre: "Pop",
-    boostDuration: "20 days",
-    startDate: "2026-02-05",
-    expiryDate: "2026-02-25",
-    amountPaid: "$150",
-    views: "1,234",
-    status: "expired"
-  }
-];
-
 export default function FeaturedArtistsPage() {
-  // BACKEND DEVELOPER: Initialize this with data from your API.
-  const [featured, setFeatured] = useState<FeaturedArtist[]>(MOCK_FEATURED);
+  const [featured, setFeatured] = useState<FeaturedArtist[]>([]);
+  const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: "" });
   const [isRevokeModalOpen, setIsRevokeModalOpen] = useState(false);
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
 
+  const fetchFeaturedArtists = async () => {
+    try {
+      setLoading(true);
+      const data = await apiRequest("/featured/artists");
+      if (Array.isArray(data)) {
+        setFeatured(data);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch featured artists:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFeaturedArtists();
+  }, []);
+
   // --- Handlers ---
-  const confirmRevoke = () => {
+  const confirmRevoke = async () => {
     if (selectedArtistId) {
-      // BACKEND DEVELOPER: Implement revoke logic via API.
-      // e.g., await api.post(`/featured/${selectedArtistId}/revoke`);
-      setFeatured(prev => prev.map(item => 
-        item.id === selectedArtistId ? { ...item, status: "expired" } : item
-      ));
-      setToast({ show: true, message: `Featured placement for ${selectedArtistId} revoked.` });
-      setIsRevokeModalOpen(false);
-      setSelectedArtistId(null);
+      try {
+        await apiRequest(`/featured/${selectedArtistId}/revoke`, { method: "POST" });
+        setFeatured(prev => prev.map(item => 
+          item.id === selectedArtistId || item.musicianId === selectedArtistId 
+            ? { ...item, status: "expired" } 
+            : item
+        ));
+        setToast({ show: true, message: `Featured placement for ${selectedArtistId} revoked.` });
+      } catch (err: any) {
+        setToast({ show: true, message: err.message || "Failed to revoke placement." });
+      } finally {
+        setIsRevokeModalOpen(false);
+        setSelectedArtistId(null);
+      }
     }
   };
 
@@ -105,10 +81,16 @@ export default function FeaturedArtistsPage() {
   // --- UI Configuration Arrays ---
   // BACKEND DEVELOPER: These summary stats should ideally be returned by the backend 
   // in a single dashboard stats call.
+  const activeCount = featured.filter(f => f.status === "active").length;
+  const totalRev = featured.reduce((sum, f) => {
+    const num = parseFloat((f.amountPaid || "").replace(/[^0-9.]/g, "")) || 0;
+    return sum + num;
+  }, 0);
+
   const stats = [
     { 
       label: "Active Featured", 
-      value: "3", 
+      value: String(activeCount), 
       icon: Star, 
       bg: "bg-[#A2F301]/10", 
       iconColor: "text-[#A2F301]",
@@ -116,23 +98,23 @@ export default function FeaturedArtistsPage() {
     },
     { 
       label: "Revenue This Month", 
-      value: "$407", 
+      value: `$${totalRev.toFixed(0)}`, 
       icon: DollarSign, 
       bg: "bg-[#10B981]/10", 
       iconColor: "text-[#10B981]",
       border: "border-[#10B981]/20"
     },
     { 
-      label: "Total Views", 
-      value: "7,958", 
+      label: "Total Featured Artists", 
+      value: String(featured.length), 
       icon: Eye, 
       bg: "bg-blue-500/10", 
       iconColor: "text-blue-500",
       border: "border-blue-500/20"
     },
     { 
-      label: "Avg. Views per Artist", 
-      value: "1,990", 
+      label: "Avg. Revenue / Artist", 
+      value: `$${featured.length ? (totalRev / featured.length).toFixed(0) : "0"}`, 
       icon: TrendingUp, 
       bg: "bg-amber-500/10", 
       iconColor: "text-amber-500",

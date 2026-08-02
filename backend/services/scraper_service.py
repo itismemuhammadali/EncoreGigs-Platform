@@ -111,13 +111,18 @@ class ScraperService:
         try:
             import sys
             import os
+            import shutil
             current_file = os.path.abspath(__file__)
             root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
             scraper_path = os.path.join(root_dir, "scraper", "main.py")
             log_path = os.path.join(root_dir, "scraper_debug.log")
             
+            cmd = [sys.executable, scraper_path]
+            if shutil.which("xvfb-run"):
+                cmd = ["xvfb-run"] + cmd
+
             subprocess.Popen(
-                ["xvfb-run", sys.executable, scraper_path],
+                cmd,
                 cwd=root_dir,
                 stdout=open(log_path, "a"),
                 stderr=subprocess.STDOUT
@@ -223,3 +228,70 @@ class ScraperService:
         except Exception as e:
             print(f"Error publishing all gigs: {e}")
             return {"published": 0, "alreadyPublished": 0, "skipped": 0, "errors": 0}
+
+    @staticmethod
+    def get_sources():
+        """Fetch all scraper sources from Firestore scraper_sources collection."""
+        try:
+            docs = db.collection("scraper_sources").get()
+            sources = []
+            for doc in docs:
+                data = doc.to_dict()
+                sources.append({
+                    "id": doc.id,
+                    "url": data.get("url", ""),
+                    "name": data.get("name", "Facebook Group"),
+                    "type": data.get("type", "facebook_group"),
+                    "enabled": data.get("enabled", True),
+                    "addedAt": data.get("addedAt", "").isoformat() if hasattr(data.get("addedAt"), "isoformat") else str(data.get("addedAt", ""))
+                })
+            return sources
+        except Exception as e:
+            print(f"Error getting scraper sources: {e}")
+            return []
+
+    @staticmethod
+    def add_source(url: str, name: str = "Facebook Group", source_type: str = "facebook_group"):
+        """Add a new scraper source (Facebook Group) to Firestore."""
+        try:
+            source_ref = db.collection("scraper_sources").document()
+            source_ref.set({
+                "url": url,
+                "name": name,
+                "type": source_type,
+                "enabled": True,
+                "addedAt": firestore.SERVER_TIMESTAMP
+            })
+            return {"id": source_ref.id, "url": url, "name": name, "type": source_type}
+        except Exception as e:
+            print(f"Error adding scraper source: {e}")
+            return None
+
+    @staticmethod
+    def delete_source(source_id: str):
+        """Delete a scraper source by ID."""
+        try:
+            db.collection("scraper_sources").document(source_id).delete()
+            return True
+        except Exception as e:
+            print(f"Error deleting scraper source: {e}")
+            return False
+
+    @staticmethod
+    def update_cookies(cookies_content: str):
+        """Save updated Facebook cookies JSON to scraper/facebook_cookies.json."""
+        try:
+            import json
+            current_file = os.path.abspath(__file__)
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
+            cookies_path = os.path.join(root_dir, "scraper", "facebook_cookies.json")
+            
+            # Validate JSON format before writing
+            parsed = json.loads(cookies_content)
+            with open(cookies_path, "w", encoding="utf-8") as f:
+                json.dump(parsed, f, indent=2)
+            return True
+        except Exception as e:
+            print(f"Error updating cookies file: {e}")
+            return False
+

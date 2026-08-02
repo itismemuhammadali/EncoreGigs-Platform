@@ -3,22 +3,35 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../screens/main/featured_upgrade_screen.dart';
 
 class FeaturedArtistCard extends StatelessWidget {
-  const FeaturedArtistCard({super.key});
+  final Map<String, dynamic>? profile;
+
+  const FeaturedArtistCard({super.key, this.profile});
 
   @override
   Widget build(BuildContext context) {
+    final isFeatured = profile?['isFeatured'] == true;
+    final plan = profile?['featuredPlan'] ?? 'Active Boost';
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF2EF202).withValues(alpha: 0.2),
-            const Color(0xFF03342C),
-          ],
+          colors: isFeatured
+              ? [
+                  const Color(0xFFA1F301).withValues(alpha: 0.25),
+                  const Color(0xFF1E3A00),
+                ]
+              : [
+                  const Color(0xFF2EF202).withValues(alpha: 0.2),
+                  const Color(0xFF03342C),
+                ],
         ),
         borderRadius: BorderRadius.circular(24),
+        border: isFeatured
+            ? Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.6), width: 1.5)
+            : null,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,7 +66,7 @@ class FeaturedArtistCard extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        'Become a Featured Artist',
+                        isFeatured ? 'You\'re Featured! 🎉' : 'Become a Featured Artist',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -77,9 +90,11 @@ class FeaturedArtistCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Get 3x more visibility and appear at the top of search results',
-                  style: TextStyle(
+                Text(
+                  isFeatured
+                      ? 'Your profile is currently featured ($plan) with priority visibility for organizers.'
+                      : 'Get 3x more visibility and appear at the top of search results',
+                  style: const TextStyle(
                     color: Color(0xFFB0B0B0),
                     fontSize: 14,
                     height: 1.5,
@@ -101,9 +116,9 @@ class FeaturedArtistCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text(
-                    'Upgrade Now',
-                    style: TextStyle(
+                  child: Text(
+                    isFeatured ? 'Extend Boost' : 'Upgrade Now',
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 15,
                       fontWeight: FontWeight.bold,

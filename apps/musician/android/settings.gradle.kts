@@ -1,3 +1,5 @@
+rootProject.name = "musician_android"
+
 pluginManagement {
     val flutterSdkPath =
         run {

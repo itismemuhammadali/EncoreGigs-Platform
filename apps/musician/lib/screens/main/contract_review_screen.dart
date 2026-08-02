@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../models/booking_model.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import 'contract_success_screen.dart';
 
 class SignaturePainter extends CustomPainter {
@@ -173,6 +174,28 @@ class _ContractReviewScreenState extends State<ContractReviewScreen> {
         'musicianSignedAt': FieldValue.serverTimestamp(),
         'musicianSignatureUrl': signatureUrl,
       });
+
+      // Send Notification to Organizer
+      final organizerId = widget.booking.organizerId;
+      if (organizerId != null && organizerId.isNotEmpty) {
+        final musicianName = authService.user?.displayName ?? 'The musician';
+        final gigTitle = widget.booking.gigTitle;
+        try {
+          await ApiService().sendNotification(
+            userId: organizerId,
+            title: 'Contract Signed!',
+            body: '$musicianName has signed the agreement for "$gigTitle".',
+            type: 'agreement_signed',
+            data: {
+              'bookingId': widget.booking.id,
+              'gigId': widget.booking.gigId ?? '',
+              'type': 'booking',
+            },
+          );
+        } catch (e) {
+          debugPrint('Error triggering contract signed notification: $e');
+        }
+      }
 
       if (mounted) {
         Navigator.of(context).pushReplacement(

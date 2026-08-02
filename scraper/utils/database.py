@@ -1,3 +1,4 @@
+from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
@@ -138,3 +139,127 @@ DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
         except Exception as e:
             print(f"Error logging run to Firestore: {e}", flush=True)
             return None
+
+    def get_facebook_sources(self) -> list:
+        """Retrieves active Facebook source URLs from Firestore collection 'scraper_sources'.
+        Seeds the 50 default Louisiana, Texas, and National Facebook group URLs if empty.
+        """
+        try:
+            sources_ref = self.db.collection("scraper_sources").where(filter=FieldFilter("platform", "==", "facebook")).where(filter=FieldFilter("active", "==", True))
+            docs = list(sources_ref.stream())
+            if docs:
+                urls = [doc.to_dict()["url"] for doc in docs if "url" in doc.to_dict()]
+                print(f"Loaded {len(urls)} Facebook group sources from Firestore 'scraper_sources'.", flush=True)
+                return urls
+
+            print("No Facebook sources found in Firestore 'scraper_sources'. Seeding default 50 groups...", flush=True)
+            return self.seed_default_facebook_sources()
+        except Exception as e:
+            print(f"Error fetching Facebook sources from Firestore: {e}", flush=True)
+            return [s["url"] for s in INITIAL_FACEBOOK_SOURCES]
+
+    def seed_default_facebook_sources(self) -> list:
+        """Seeds the 50 default Louisiana, Texas, and National Facebook group URLs into Firestore."""
+        seeded_urls = []
+        try:
+            batch = self.db.batch()
+            sources_col = self.db.collection("scraper_sources")
+            for item in INITIAL_FACEBOOK_SOURCES:
+                doc_id = item["url"].rstrip("/").split("/groups/")[-1]
+                doc_ref = sources_col.document(f"fb_{doc_id}")
+                doc_data = {
+                    "url": item["url"],
+                    "slug": doc_id,
+                    "platform": "facebook",
+                    "region": item.get("region", "General"),
+                    "category": item.get("category", "General"),
+                    "active": True,
+                    "addedAt": datetime.now(timezone.utc)
+                }
+                batch.set(doc_ref, doc_data, merge=True)
+                seeded_urls.append(item["url"])
+            batch.commit()
+            print(f"Successfully seeded {len(seeded_urls)} Facebook group sources into Firestore.", flush=True)
+        except Exception as e:
+            print(f"Error seeding Facebook sources to Firestore: {e}", flush=True)
+            seeded_urls = [item["url"] for item in INITIAL_FACEBOOK_SOURCES]
+        return seeded_urls
+
+    def add_scraper_source(self, url: str, platform: str = "facebook", region: str = "General", category: str = "General") -> bool:
+        """Adds a new scraper target source URL to Firestore."""
+        try:
+            slug = url.rstrip("/").split("/groups/")[-1] if "/groups/" in url else url.rstrip("/").split("/")[-1]
+            doc_ref = self.db.collection("scraper_sources").document(f"{platform}_{slug}")
+            doc_ref.set({
+                "url": url,
+                "slug": slug,
+                "platform": platform.lower(),
+                "region": region,
+                "category": category,
+                "active": True,
+                "addedAt": datetime.now(timezone.utc)
+            }, merge=True)
+            print(f"Added new {platform} source to Firestore: {url}", flush=True)
+            return True
+        except Exception as e:
+            print(f"Error adding scraper source to Firestore: {e}", flush=True)
+            return False
+
+INITIAL_FACEBOOK_SOURCES = [
+    # Louisiana
+    {"url": "https://www.facebook.com/groups/livemusicinLC/", "region": "Louisiana", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/louisianamusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/louisianalivemusic/", "region": "Louisiana", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/louisianabands/", "region": "Louisiana", "category": "Bands"},
+    {"url": "https://www.facebook.com/groups/neworleansmusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/batonrougemusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/lafayettemusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/lafayettelivemusic/", "region": "Louisiana", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/academianlivemusic/", "region": "Louisiana", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/cajunmusic/", "region": "Louisiana", "category": "Cajun Music"},
+    {"url": "https://www.facebook.com/groups/cajunandzydeco/", "region": "Louisiana", "category": "Cajun/Zydeco"},
+    {"url": "https://www.facebook.com/groups/louisianamusicscene/", "region": "Louisiana", "category": "Music Scene"},
+    {"url": "https://www.facebook.com/groups/louisianalivemusicscene/", "region": "Louisiana", "category": "Live Music Scene"},
+    {"url": "https://www.facebook.com/groups/northshorelivemusic/", "region": "Louisiana", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/shreveportmusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/monroemusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/lakecharlesmusicians/", "region": "Louisiana", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/louisianafestivals/", "region": "Louisiana", "category": "Festivals"},
+    {"url": "https://www.facebook.com/groups/louisianaweddingvendors/", "region": "Louisiana", "category": "Weddings"},
+    {"url": "https://www.facebook.com/groups/louisianaeventplanners/", "region": "Louisiana", "category": "Events"},
+
+    # Texas
+    {"url": "https://www.facebook.com/groups/texaslivemusic/", "region": "Texas", "category": "Live Music"},
+    {"url": "https://www.facebook.com/groups/texasmusicians/", "region": "Texas", "category": "Musicians"},
+    {"url": "https://www.facebook.com/groups/texascountrymusic/", "region": "Texas", "category": "Country Music"},
+    {"url": "https://www.facebook.com/groups/dfwlocalmusic/", "region": "Texas", "category": "DFW Local Music"},
+    {"url": "https://www.facebook.com/groups/dallascovermusicians/", "region": "Texas", "category": "Cover Bands"},
+    {"url": "https://www.facebook.com/groups/texasnightlife/", "region": "Texas", "category": "Nightlife"},
+    {"url": "https://www.facebook.com/groups/austinmusicians/", "region": "Texas", "category": "Austin Musicians"},
+    {"url": "https://www.facebook.com/groups/austinmusicscene/", "region": "Texas", "category": "Austin Music Scene"},
+    {"url": "https://www.facebook.com/groups/houstonmusicians/", "region": "Texas", "category": "Houston Musicians"},
+    {"url": "https://www.facebook.com/groups/houstonlivemusic/", "region": "Texas", "category": "Houston Live Music"},
+    {"url": "https://www.facebook.com/groups/sanantoniomusicians/", "region": "Texas", "category": "San Antonio Musicians"},
+    {"url": "https://www.facebook.com/groups/corpuschristimusicians/", "region": "Texas", "category": "Corpus Christi Musicians"},
+    {"url": "https://www.facebook.com/groups/rockportmusicians/", "region": "Texas", "category": "Rockport Musicians"},
+    {"url": "https://www.facebook.com/groups/easttexasmusicians/", "region": "Texas", "category": "East Texas Musicians"},
+    {"url": "https://www.facebook.com/groups/beaumontmusicians/", "region": "Texas", "category": "Beaumont Musicians"},
+    {"url": "https://www.facebook.com/groups/portarthurmusicians/", "region": "Texas", "category": "Port Arthur Musicians"},
+    {"url": "https://www.facebook.com/groups/texasbands/", "region": "Texas", "category": "Bands"},
+    {"url": "https://www.facebook.com/groups/texasmusicnetwork/", "region": "Texas", "category": "Music Network"},
+    {"url": "https://www.facebook.com/groups/texasmusicscene/", "region": "Texas", "category": "Music Scene"},
+    {"url": "https://www.facebook.com/groups/reddirtmusic/", "region": "Texas", "category": "Red Dirt Music"},
+    {"url": "https://www.facebook.com/groups/texasfestivalmusic/", "region": "Texas", "category": "Festivals"},
+
+    # National Gig Groups
+    {"url": "https://www.facebook.com/groups/diytourpostings/", "region": "National", "category": "DIY Tour"},
+    {"url": "https://www.facebook.com/groups/livemusicbooking/", "region": "National", "category": "Booking"},
+    {"url": "https://www.facebook.com/groups/musicianswanted/", "region": "National", "category": "Musicians Wanted"},
+    {"url": "https://www.facebook.com/groups/bandslookingformusicians/", "region": "National", "category": "Bands Seeking Musicians"},
+    {"url": "https://www.facebook.com/groups/giggingmusicians/", "region": "National", "category": "Gigging Musicians"},
+    {"url": "https://www.facebook.com/groups/themusiciansnetwork/", "region": "National", "category": "Musicians Network"},
+    {"url": "https://www.facebook.com/groups/independentmusicartists/", "region": "National", "category": "Independent Artists"},
+    {"url": "https://www.facebook.com/groups/apromoterslife/", "region": "National", "category": "Promoters"},
+    {"url": "https://www.facebook.com/groups/coverbandcentral/", "region": "National", "category": "Cover Bands"},
+]
+

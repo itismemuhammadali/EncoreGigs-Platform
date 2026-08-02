@@ -612,11 +612,11 @@ class AuthService extends ChangeNotifier {
 
   Future<String?> createUser(String email, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_backendUrl/auth/create-user'),
+      final response = await httpWithFallback((baseUrl) => http.post(
+        Uri.parse('$baseUrl/auth/create-user'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         await _auth.signInWithEmailAndPassword(email: email, password: password);

@@ -162,11 +162,44 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(name,
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700)),
+                                     Row(
+                                       children: [
+                                         Flexible(
+                                           child: Text(name,
+                                               style: const TextStyle(
+                                                   color: Colors.white,
+                                                   fontSize: 20,
+                                                   fontWeight: FontWeight.w700)),
+                                         ),
+                                         if (data['isFeatured'] == true) ...[
+                                           const SizedBox(width: 8),
+                                           Container(
+                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                             decoration: BoxDecoration(
+                                               color: const Color(0xFFA2F301).withValues(alpha: 0.2),
+                                               border: Border.all(color: const Color(0xFFA2F301), width: 1.5),
+                                               borderRadius: BorderRadius.circular(8),
+                                             ),
+                                             child: const Row(
+                                               mainAxisSize: MainAxisSize.min,
+                                               children: [
+                                                 Icon(Icons.star, color: Color(0xFFA2F301), size: 12),
+                                                 SizedBox(width: 4),
+                                                 Text(
+                                                   'FEATURED ARTIST',
+                                                   style: TextStyle(
+                                                     color: Color(0xFFA2F301),
+                                                     fontSize: 10,
+                                                     fontWeight: FontWeight.bold,
+                                                     letterSpacing: 0.5,
+                                                   ),
+                                                 ),
+                                               ],
+                                             ),
+                                           ),
+                                         ],
+                                       ],
+                                     ),
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [

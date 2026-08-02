@@ -9,10 +9,18 @@ npx -y firebase-tools emulators:start --project demo-onlygigz
 ```
 
 ## 2. Backend (FastAPI)
-Run from the project root:
+Run from the project root (`onlygigz`):
 ```bash
-python3 -m pip install -r backend/requirements.txt
+# 1. Create a Python virtual environment (if not created yet)
+python3 -m venv .venv
+
+# 2. Activate the virtual environment
 source .venv/bin/activate
+
+# 3. Install requirements
+pip install -r backend/requirements.txt
+
+# 4. Run the backend server
 python3 -m uvicorn backend.main:app --reload
 ```
 

@@ -25,7 +25,6 @@ window.chrome = { runtime: {}, app: { isInstalled: false } };
 with sync_playwright() as p:
     browser = p.chromium.launch(
         headless=False,
-        proxy=proxy,
         args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
     )
     context = browser.new_context(

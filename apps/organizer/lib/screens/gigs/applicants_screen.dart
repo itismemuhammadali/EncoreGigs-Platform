@@ -21,6 +21,7 @@ class ApplicantModel {
   final String location;
   final List<String> genres;
   final String status;
+  final bool isFeatured;
   final String? previousStatus;
   final String? proposedRate;
   final String? coverMessage;
@@ -35,6 +36,7 @@ class ApplicantModel {
     required this.location,
     required this.genres,
     required this.status,
+    this.isFeatured = false,
     this.previousStatus,
     this.proposedRate,
     this.coverMessage,
@@ -70,6 +72,37 @@ class ApplicantsScreen extends StatefulWidget {
 class _ApplicantsScreenState extends State<ApplicantsScreen> {
   final ApiService _apiService = ApiService();
 
+  Future<List<Map<String, dynamic>>> _loadApplicationsWithProfiles() async {
+    final applications = await _apiService.getApplications(gigId: widget.gigId);
+    final results = await Future.wait(applications.map((app) async {
+      final mId = app['musicianId'] ?? '';
+      try {
+        final prof = await _apiService.getProfile(mId);
+        return {
+          'app': app,
+          'profile': prof,
+          'isFeatured': prof['isFeatured'] == true,
+        };
+      } catch (_) {
+        return {
+          'app': app,
+          'profile': <String, dynamic>{},
+          'isFeatured': false,
+        };
+      }
+    }));
+
+    results.sort((a, b) {
+      bool isFA = a['isFeatured'] as bool;
+      bool isFB = b['isFeatured'] as bool;
+      if (isFA && !isFB) return -1;
+      if (!isFA && isFB) return 1;
+      return 0;
+    });
+
+    return results;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -100,10 +133,10 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
       body: SafeArea(
         bottom: false,
         child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _apiService.getApplications(gigId: widget.gigId),
+          future: _loadApplicationsWithProfiles(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFA2F301)));
             }
             if (snapshot.hasError) {
               return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
@@ -115,7 +148,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
               );
             }
 
-            final applications = snapshot.data!;
+            final items = snapshot.data!;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +159,7 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${applications.length} Applications',
+                        '${items.length} Applications',
                         style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -143,48 +176,40 @@ class _ApplicantsScreenState extends State<ApplicantsScreen> {
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                    itemCount: applications.length,
+                    itemCount: items.length,
                     itemBuilder: (context, index) {
-                      final appData = applications[index];
+                      final item = items[index];
+                      final appData = item['app'] as Map<String, dynamic>;
+                      final musData = item['profile'] as Map<String, dynamic>;
                       final musicianId = appData['musicianId'] ?? '';
-                      
-                      return FutureBuilder<Map<String, dynamic>>(
-                        future: _apiService.getProfile(musicianId),
-                        builder: (context, musSnapshot) {
-                          if (!musSnapshot.hasData) {
-                            return const SizedBox(height: 100);
-                          }
-                          
-                          final musData = musSnapshot.data!;
 
-                          final applicant = ApplicantModel(
-                            id: appData['id'] ?? '',
-                            musicianId: musicianId,
-                            name: musData['fullName'] ?? musData['name'] ?? 'Unknown Musician',
-                            imagePath: fixEmulatorUrl(musData['profileImageUrl'] ?? 'assets/recent_activity_image1.jpg'),
-                            rating: (musData['averageRating'] ?? 0.0).toDouble(),
-                            reviewCount: musData['reviewCount'] ?? 0,
-                            location: musData['location'] ?? 'Unknown Location',
-                            genres: List<String>.from(musData['genres'] ?? []),
-                            status: appData['status'] ?? 'pending',
-                            previousStatus: appData['previousStatus'],
-                            proposedRate: appData['proposedRate'],
-                            coverMessage: appData['coverMessage'],
-                          );
+                      final applicant = ApplicantModel(
+                        id: appData['id'] ?? '',
+                        musicianId: musicianId,
+                        name: musData['fullName'] ?? musData['name'] ?? 'Unknown Musician',
+                        imagePath: fixEmulatorUrl(musData['profileImageUrl'] ?? 'assets/recent_activity_image1.jpg'),
+                        rating: (musData['averageRating'] ?? 0.0).toDouble(),
+                        reviewCount: musData['reviewCount'] ?? 0,
+                        location: musData['location'] ?? 'Unknown Location',
+                        genres: List<String>.from(musData['genres'] ?? []),
+                        status: appData['status'] ?? 'pending',
+                        isFeatured: item['isFeatured'] == true,
+                        previousStatus: appData['previousStatus'],
+                        proposedRate: appData['proposedRate'],
+                        coverMessage: appData['coverMessage'],
+                      );
 
-                          return _ApplicantCard(
-                            applicant: applicant, 
-                            gigId: widget.gigId,
-                            gigTitle: widget.gigTitle, 
-                            gigBudget: widget.gigBudget,
-                            gigDate: widget.gigDate,
-                            gigTime: widget.gigTime,
-                            gigDuration: widget.gigDuration,
-                            location: widget.location,
-                            organizerName: widget.organizerName,
-                            onRefresh: () => setState(() {}),
-                          );
-                        },
+                      return _ApplicantCard(
+                        applicant: applicant, 
+                        gigId: widget.gigId,
+                        gigTitle: widget.gigTitle, 
+                        gigBudget: widget.gigBudget,
+                        gigDate: widget.gigDate,
+                        gigTime: widget.gigTime,
+                        gigDuration: widget.gigDuration,
+                        location: widget.location,
+                        organizerName: widget.organizerName,
+                        onRefresh: () => setState(() {}),
                       );
                     },
                   ),
@@ -296,13 +321,46 @@ class _ApplicantCard extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(applicant.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600)),
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(applicant.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600)),
+                                    ),
+                                    if (applicant.isFeatured) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFA2F301).withValues(alpha: 0.15),
+                                          border: Border.all(color: const Color(0xFFA2F301), width: 1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.star, color: Color(0xFFA2F301), size: 10),
+                                            SizedBox(width: 3),
+                                            Text(
+                                              'FEATURED',
+                                              style: TextStyle(
+                                                color: Color(0xFFA2F301),
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                                 if (applicant.status != 'pending' && applicant.status != 'hired')
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),

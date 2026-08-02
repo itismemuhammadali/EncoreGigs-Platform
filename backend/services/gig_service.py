@@ -40,6 +40,29 @@ class GigService:
         }
         doc_ref = db.collection("gigs").document()
         doc_ref.set(gig_data)
+
+        # Trigger Notifications
+        try:
+            from backend.services.notification_service import NotificationService
+            # 1. Notify Organizer that gig was created
+            NotificationService.send_to_user(
+                user_id=request.organizerId,
+                title="Gig Created Successfully",
+                body=f"Your gig '{request.title}' has been published and is now live.",
+                notif_type="gig_created",
+                data={"gigId": doc_ref.id, "type": "gig"}
+            )
+            # 2. Notify Musicians about new gig match
+            NotificationService.send_broadcast(
+                title="New Gig Available!",
+                body=f"New gig posted: '{request.title}' in {request.location or 'your area'}",
+                audience="Musicians",
+                notif_type="new_gig_match",
+                data={"gigId": doc_ref.id, "type": "gig"}
+            )
+        except Exception as notif_err:
+            print(f"Error sending notifications on gig creation: {notif_err}")
+
         return doc_ref.id
 
     @staticmethod
