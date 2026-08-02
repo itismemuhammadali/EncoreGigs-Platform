@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 from backend.services.scraper_service import ScraperService
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 router = APIRouter(prefix="/scraper", tags=["scraper"])
