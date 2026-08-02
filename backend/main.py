@@ -13,19 +13,7 @@ app = FastAPI(title="OnlyGigz API")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://192.168.100.55:3000",
-        "http://192.168.100.55:3001",
-        "http://192.168.100.55:8000",
-        "http://177.7.32.116",
-        "http://177.7.32.116:8000",
-        "http://177.7.32.116:3000",
-        "http://177.7.32.116:4000",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
