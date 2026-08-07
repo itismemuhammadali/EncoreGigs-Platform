@@ -91,3 +91,10 @@ build/
 # Sensitive files
 backend/serviceAccountKey.json
 .mimocode/
+
+# Large build artifacts
+*.apk
+*.ipa
+*.zip
+apps/musician/ios/Runner.app.dSYM.zip
+apps/organizer/ios/Runner.app.dSYM.zip
