@@ -8,7 +8,10 @@ import {
   AlertTriangle,
   FileText,
   Loader2,
-  Eye
+  Eye,
+  Check,
+  ExternalLink,
+  User
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -44,6 +47,19 @@ interface ImportedGig {
   id: string;
   title: string;
   source: string;
+  sourceUrl?: string;
+  source_url?: string;
+  url?: string;
+  link?: string;
+  organizerProfileUrl?: string;
+  posterUrl?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  externalContactEmail?: string;
+  externalContactPhone?: string;
+  budget?: string;
+  location?: string;
+  description?: string;
   classification: string;
   confidence: string;
   flags: "None" | "Duplicate" | "Spam";
@@ -76,7 +92,7 @@ export default function ScraperModule() {
       const [statsData, runsData, gigsData] = await Promise.all([
         apiRequest("/scraper/stats"),
         apiRequest("/scraper/runs"),
-        apiRequest(`/scraper/imported?filter_type=${activeTab}`)
+        apiRequest(`/scraper/imported?limit=2000&filter_type=${activeTab}`)
       ]);
 
       // Map icons to stats
@@ -186,7 +202,7 @@ export default function ScraperModule() {
   }
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-screen" suppressHydrationWarning>
       <div className="space-y-8 animate-in fade-in duration-700 pb-20">
         {/* --- HEADER --- */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -314,6 +330,8 @@ export default function ScraperModule() {
                 <tr className="bg-[#262626] border-y border-[#2A2A2A]">
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Title</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Source</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Original Link</th>
+                  <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Contact Details</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">AI Classification</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Confidence</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Flags</th>
@@ -322,10 +340,70 @@ export default function ScraperModule() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2A2A2A]">
-                {importedGigs.map((gig) => (
+                {importedGigs.map((gig) => {
+                  const rawSourceUrl = (gig as any).sourceUrl || (gig as any).source_url || (gig as any).postUrl || (gig as any).post_url || (gig as any).permalink || (gig as any).url || (gig as any).link || "";
+                  const rawPosterUrl = (gig as any).organizerProfileUrl || (gig as any).posterUrl || (gig as any).organizer_profile_url || "";
+                  
+                  const formatExternalUrl = (url: string) => {
+                    if (!url) return "";
+                    let trimmed = url.trim();
+                    if (!trimmed) return "";
+                    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+                      trimmed = "https://" + trimmed;
+                    }
+                    return trimmed;
+                  };
+
+                  const sourceLink = formatExternalUrl(rawSourceUrl);
+                  const posterLink = formatExternalUrl(rawPosterUrl) || sourceLink;
+
+                  return (
                   <tr key={gig.id} className="hover:bg-white/[0.02] transition-colors group">
-                    <td className="px-6 py-5 text-white font-bold text-[14px] truncate max-w-[200px]">{gig.title}</td>
+                    <td className="px-6 py-5 text-white font-bold text-[14px] truncate max-w-[180px]">{gig.title}</td>
                     <td className="px-6 py-5 text-[#a1a1aa] text-[14px] font-medium">{gig.source}</td>
+                    <td className="px-6 py-5">
+                      {sourceLink ? (
+                        <a 
+                          href={sourceLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-[#b3ff00] text-black px-3.5 py-1.5 rounded-[6px] text-[13px] font-bold hover:bg-[#a2e600] inline-flex items-center gap-1.5 transition-all shadow-md shadow-[#b3ff00]/10 whitespace-nowrap"
+                          title={`Open Original Post: ${sourceLink}`}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 stroke-[2.5px]" />
+                          Open Gig Link ↗
+                        </a>
+                      ) : (
+                        <span className="text-[#52525b] text-[13px] italic">No Link</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-5 text-[#a1a1aa] text-[13px]">
+                      <div className="flex flex-col gap-1.5">
+                        {posterLink ? (
+                          <a 
+                            href={posterLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-white hover:text-[#b3ff00] text-[12px] font-bold inline-flex items-center gap-1.5 bg-white/5 border border-white/10 px-2.5 py-1 rounded-[6px] hover:bg-white/10 transition-all w-fit"
+                            title="Open Poster Profile / Source"
+                          >
+                            <User className="w-3.5 h-3.5 text-[#b3ff00]" />
+                            View Poster ↗
+                          </a>
+                        ) : (
+                          <span className="text-zinc-500 text-[12px] italic">No Link</span>
+                        )}
+
+                        {((gig as any).contactEmail || (gig as any).externalContactEmail) && (
+                          <span className="text-[#b3ff00] text-[11px] font-mono">{ (gig as any).contactEmail || (gig as any).externalContactEmail }</span>
+                        )}
+                        {((gig as any).contactPhone || (gig as any).externalContactPhone) && (
+                          <span className="text-zinc-400 text-[11px] font-mono">{ (gig as any).contactPhone || (gig as any).externalContactPhone }</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-5">
                       <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${
                         gig.flags === 'Spam' ? 'bg-[#ef4444]/10 text-[#ef4444]' : 'bg-[#b3ff00]/10 text-[#b3ff00]'
@@ -344,46 +422,48 @@ export default function ScraperModule() {
                     </td>
                     <td className="px-6 py-5 text-[#a1a1aa] text-[13px]">{formatDate(gig.importedAt)}</td>
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-4">
-                        {gig.flags === 'None' && !gig.publishedToApp && (
+                      <div className="flex items-center gap-3">
+                        {!gig.publishedToApp ? (
                           <button 
                             onClick={() => handlePublishGig(gig.id)}
                             disabled={publishing === gig.id}
-                            className="text-[#b3ff00] text-[13px] font-bold hover:underline flex items-center gap-1 disabled:opacity-50"
+                            className="bg-[#b3ff00]/10 border border-[#b3ff00]/30 text-[#b3ff00] px-3 py-1.5 rounded-[6px] text-[13px] font-bold hover:bg-[#b3ff00]/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                            title="Approve & Show in App"
                           >
                             {publishing === gig.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
-                              <Eye className="w-3 h-3" />
+                              <Check className="w-3.5 h-3.5 stroke-[2.5px]" />
                             )}
-                            Show in App
+                            Approve
                           </button>
-                        )}
-                        {gig.publishedToApp && (
-                          <span className="text-[#10b981] text-[12px] font-bold flex items-center gap-1">
-                            <CheckCircle className="w-3 h-3" />
-                            Published
+                        ) : (
+                          <span className="bg-[#10b981]/10 text-[#10b981] px-3 py-1.5 rounded-[6px] text-[12px] font-bold flex items-center gap-1.5 border border-[#10b981]/30">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Approved
                           </span>
                         )}
+
                         <button 
                           onClick={() => setEditModal({ show: true, gig })}
-                          className="text-[#b3ff00] text-[13px] font-bold hover:underline"
+                          className="text-[#a1a1aa] hover:text-white text-[13px] font-medium hover:underline"
                         >
-                          Edit
+                          View / Edit
                         </button>
                         <button 
                           onClick={() => setDeleteModal({ show: true, gigId: gig.id })}
-                          className="text-[#ef4444] text-[13px] font-bold hover:underline"
+                          className="text-[#ef4444] text-[13px] font-medium hover:underline"
                         >
                           Delete
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                );
+                })}
                 {importedGigs.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-[#71717a]">No imported gigs found</td>
+                    <td colSpan={9} className="px-6 py-10 text-center text-[#71717a]">No imported gigs found</td>
                   </tr>
                 )}
               </tbody>

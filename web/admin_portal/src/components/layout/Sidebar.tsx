@@ -33,6 +33,7 @@ const menuItems = [
   { name: "Disputes", href: "/disputes", icon: ShieldAlert },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Reports & Analytics", href: "/reports", icon: BarChart3 },
+  { name: "Support Messages", href: "/messages", icon: MessageSquare },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -63,15 +64,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Header / Logo */}
       <div className="p-8 pb-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="relative w-10 h-10">
-            <Image
-              src="/logo.png"
-              alt="OnlyGigz Logo"
-              fill
-              sizes="40px"
-              className="object-contain"
-            />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="OnlyGigz Logo"
+            width={40}
+            height={40}
+            className="object-contain"
+          />
           <div>
             <h2 className="text-white font-bold text-[18px] leading-tight">
               OnlyGigz Admin

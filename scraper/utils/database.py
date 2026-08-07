@@ -100,6 +100,7 @@ DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
                 "time": data["time"],
                 "imageUrl": data["image_url"],
                 "sourceUrl": data["source_url"],
+                "organizerProfileUrl": data["organizer"].get("profile_url") or data["organizer"].get("website"),
                 "sourceType": data["source_type"],
                 "externalId": data["external_id"],
                 "isScraped": True,

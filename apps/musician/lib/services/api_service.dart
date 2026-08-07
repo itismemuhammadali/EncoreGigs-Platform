@@ -378,4 +378,18 @@ class ApiService {
       debugPrint('Error sending notification: $e');
     }
   }
+
+  Future<void> postMusicianSign(String bookingId, String signatureUrl) async {
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/bookings/$bookingId/musician-sign'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'signatureUrl': signatureUrl,
+      }),
+    ));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to sign contract: ${response.body}');
+    }
+  }
 }

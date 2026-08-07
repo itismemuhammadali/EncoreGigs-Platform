@@ -103,7 +103,11 @@ export function Header({ onMenuClick }: HeaderProps) {
         >
           <div className="text-right flex flex-col justify-center hidden sm:flex">
             <p className="text-[14px] font-bold text-white leading-none mb-1 group-hover:text-[#b3ff00] transition-colors">
-              {adminUser?.displayName || "Admin User"}
+              {(adminUser as any)?.displayName && (adminUser as any).displayName !== "Admin User"
+                ? (adminUser as any).displayName
+                : (adminUser as any)?.name || ((adminUser as any)?.firstName || (adminUser as any)?.lastName
+                    ? `${(adminUser as any)?.firstName || ''} ${(adminUser as any)?.lastName || ''}`.trim()
+                    : "Muhammad Ali")}
             </p>
             <p className="text-[11px] text-[#52525b] font-medium leading-none">Super Admin</p>
           </div>

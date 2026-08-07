@@ -3,9 +3,9 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 
-const String PRIMARY_BACKEND_HOST = '177.7.32.116';
+const String PRIMARY_BACKEND_HOST = '192.168.100.55';
 const String FALLBACK_BACKEND_HOST = '10.0.2.2'; // Standard Android Emulator loopback
-const String OLD_BACKEND_HOST = '192.168.1.76';
+const String OLD_BACKEND_HOST = '177.7.32.116';
 
 const String STRIPE_PUBLISHABLE_KEY_DEFAULT = 'pk_test_51TWa16C4PTfB0I2XPl7KWaEgeyQOWAKXvicPoQoF3GxAmIFBYMeKI2Y9AsRNvdny7dzVJ7Inj9W15zVP7CfyKDPF003AgOz7G8';
 
@@ -32,19 +32,23 @@ Future<void> initStripeKey() async {
 
 // List of available hosts in order of priority
 List<String> get BACKEND_HOSTS {
-  if (kIsWeb) return ['localhost', '127.0.0.1'];
+  if (kIsWeb) return ['localhost', '127.0.0.1', PRIMARY_BACKEND_HOST];
   if (Platform.isAndroid) {
     return [
+      PRIMARY_BACKEND_HOST,
+      '192.168.100.55',  // Physical phone via Wi-Fi (Current Mac IP)
+      '10.0.2.2',        // Android emulator loopback
+      '192.168.100.58',  // Physical phone via Wi-Fi (Previous Mac IP)
       '127.0.0.1',       // Physical phone via adb reverse
-      '192.168.100.55',  // Physical phone via Wi-Fi
-      '10.0.2.2',        // Android emulator
       'localhost',
     ];
   }
   // iOS and others
   return [
-    '127.0.0.1',
+    PRIMARY_BACKEND_HOST,
     '192.168.100.55',
+    '192.168.100.58',
+    '127.0.0.1',
     'localhost',
     '10.0.2.2',
   ];

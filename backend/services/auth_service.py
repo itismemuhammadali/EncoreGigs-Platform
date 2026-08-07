@@ -11,7 +11,9 @@ class AuthService:
         # Check admins collection
         user_doc = db.collection("admins").document(uid).get()
         if user_doc.exists:
-            return user_doc.to_dict() | {"id": user_doc.id, "role": "admin"}
+            doc_data = user_doc.to_dict()
+            role = doc_data.get("role", "super_admin")
+            return doc_data | {"id": user_doc.id, "role": role}
 
         # Check organizers collection
         user_doc = db.collection("organizers").document(uid).get()

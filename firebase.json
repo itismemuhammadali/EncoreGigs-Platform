@@ -1,36 +1,16 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20"
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
-  "emulators": {
-    "auth": {
-      "host": "0.0.0.0",
-      "port": 9099
-    },
-    "functions": {
-      "host": "0.0.0.0",
-      "port": 5001
-    },
-    "firestore": {
-      "host": "0.0.0.0",
-      "port": 8080
-    },
-    "storage": {
-      "host": "0.0.0.0",
-      "port": 9199
-    },
-    "ui": {
-      "enabled": true,
-      "host": "0.0.0.0",
-      "port": 4000
-    }
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

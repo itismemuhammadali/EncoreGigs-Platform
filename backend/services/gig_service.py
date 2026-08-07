@@ -1,7 +1,7 @@
-from firebase_admin import firestore
+from typing import List, Optional, Any, Dict
+from google.cloud.firestore import SERVER_TIMESTAMP, Increment, Query, FieldFilter
 from backend.database import db
 from backend.models.gig_models import GigRequest, ApplicationRequest
-from typing import List, Optional
 
 class GigService:
     @staticmethod
@@ -10,9 +10,9 @@ class GigService:
         organizer_name = "Organizer"
         organizer_image = ""
         try:
-            org_doc = db.collection("organizers").document(request.organizerId).get()
+            org_doc: Any = db.collection("organizers").document(request.organizerId).get()
             if org_doc.exists:
-                org_data = org_doc.to_dict()
+                org_data = org_doc.to_dict() or {}
                 organizer_name = org_data.get("name") or org_data.get("orgName") or "Organizer"
                 organizer_image = org_data.get("profileImageUrl") or ""
         except Exception as e:
@@ -36,7 +36,7 @@ class GigService:
             "isUrgent": request.isUrgent,
             "status": "open",
             "applicantsCount": 0,
-            "createdAt": firestore.SERVER_TIMESTAMP
+            "createdAt": SERVER_TIMESTAMP
         }
         doc_ref = db.collection("gigs").document()
         doc_ref.set(gig_data)
@@ -44,46 +44,42 @@ class GigService:
         # Trigger Notifications
         try:
             from backend.services.notification_service import NotificationService
-            # 1. Notify Organizer that gig was created
-            NotificationService.send_to_user(
-                user_id=request.organizerId,
-                title="Gig Created Successfully",
-                body=f"Your gig '{request.title}' has been published and is now live.",
-                notif_type="gig_created",
-                data={"gigId": doc_ref.id, "type": "gig"}
-            )
-            # 2. Notify Musicians about new gig match
             NotificationService.send_broadcast(
-                title="New Gig Available!",
-                body=f"New gig posted: '{request.title}' in {request.location or 'your area'}",
-                audience="Musicians",
-                notif_type="new_gig_match",
-                data={"gigId": doc_ref.id, "type": "gig"}
+                title="New Gig Posted! 🎵",
+                body=f"'{request.title}' in {request.location} is now accepting applications.",
+                audience="All Users",
+                notif_type="gig_created",
+                data={"gigId": doc_ref.id}
             )
-        except Exception as notif_err:
-            print(f"Error sending notifications on gig creation: {notif_err}")
+        except Exception as e:
+            print(f"Failed to send push notifications: {e}")
 
         return doc_ref.id
 
     @staticmethod
-    def get_gigs(status: Optional[str] = None, organizer_id: Optional[str] = None, search_query: Optional[str] = None):
+    def get_gigs(
+        status: Optional[str] = "open", 
+        organizer_id: Optional[str] = None,
+        search_query: Optional[str] = None
+    ):
         query = db.collection("gigs")
         if status:
             query = query.where("status", "==", status)
         if organizer_id:
             query = query.where("organizerId", "==", organizer_id)
         
-        docs = query.order_by("createdAt", direction=firestore.Query.DESCENDING).get()
+        docs = query.order_by("createdAt", direction=Query.DESCENDING).get()
         gigs = []
         
         for doc in docs:
-            gig_data = doc.to_dict() | {"id": doc.id}
+            d_dict = doc.to_dict() or {}
+            gig_data = {**d_dict, "id": doc.id}
             
             # Use stored counter if available, otherwise fallback to manual count
             if "applicantsCount" not in gig_data:
                 apps = db.collection("applications").where("gigId", "==", doc.id).get()
                 gig_data["applicantsCount"] = len(apps)
-                # Optionally sync it back to the doc
+                # Sync back to doc
                 db.collection("gigs").document(doc.id).update({"applicantsCount": len(apps)})
             
             gigs.append(gig_data)
@@ -102,20 +98,22 @@ class GigService:
 
     @staticmethod
     def get_gig_by_id(gig_id: str):
-        doc = db.collection("gigs").document(gig_id).get()
+        doc: Any = db.collection("gigs").document(gig_id).get()
         if not doc.exists:
             return None
-        return doc.to_dict() | {"id": doc.id}
+        d_dict = doc.to_dict() or {}
+        return {**d_dict, "id": doc.id}
 
     @staticmethod
     def apply_to_gig(request: ApplicationRequest):
         # Fetch musician profile to get name and image
         musician_name = "Musician"
         musician_image = ""
+        m_data: Dict[str, Any] = {}
         try:
-            musician_doc = db.collection("musicians").document(request.musicianId).get()
+            musician_doc: Any = db.collection("musicians").document(request.musicianId).get()
             if musician_doc.exists:
-                m_data = musician_doc.to_dict()
+                m_data = musician_doc.to_dict() or {}
                 musician_name = m_data.get("fullName") or m_data.get("name") or m_data.get("displayName") or "Musician"
                 musician_image = m_data.get("profileImageUrl") or m_data.get("imageUrl") or ""
         except Exception as e:
@@ -137,7 +135,7 @@ class GigService:
             "coverMessage": request.coverMessage,
             "attachments": request.attachments,
             "status": request.status,
-            "appliedAt": firestore.SERVER_TIMESTAMP
+            "appliedAt": SERVER_TIMESTAMP
         }
         
         doc_ref = db.collection("applications").document()
@@ -145,10 +143,10 @@ class GigService:
         
         # Increment applicantsCount in the gig document
         db.collection("gigs").document(request.gigId).update({
-            "applicantsCount": firestore.Increment(1)
+            "applicantsCount": Increment(1)
         })
         
-        # 4. Trigger Push Notification to Organizer
+        # Trigger Push Notification to Organizer
         from backend.services.notification_service import NotificationService
         NotificationService.send_to_user(
             user_id=request.organizerId,
@@ -157,6 +155,35 @@ class GigService:
             notif_type="application_received",
             data={"gigId": request.gigId, "type": "application"}
         )
+
+        # If gig is external/scraped, send polite email notification with app link to poster
+        try:
+            gig_doc: Any = db.collection("gigs").document(request.gigId).get()
+            if gig_doc.exists:
+                g_data = gig_doc.to_dict() or {}
+                if g_data.get("isScraped") or g_data.get("isExternal"):
+                    poster_email = g_data.get("contactEmail") or g_data.get("externalContactEmail") or g_data.get("organizerEmail")
+                    if not poster_email:
+                        import re
+                        full_text = f"{g_data.get('title', '')} {g_data.get('description', '')}"
+                        emails_found = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', full_text)
+                        if emails_found:
+                            poster_email = emails_found[0]
+
+                    if poster_email:
+                        from backend.services.email_service import EmailService
+                        instrument = m_data.get("primaryInstrument") or m_data.get("instrument") or "Musician"
+                        EmailService.send_external_applicant_email(
+                            poster_email=poster_email,
+                            gig_title=request.gigTitle,
+                            musician_name=musician_name,
+                            musician_instrument=instrument,
+                            cover_message=request.coverMessage or ""
+                        )
+                    else:
+                        print(f"GigService: External gig {request.gigId} has no public contact email to notify.")
+        except Exception as e:
+            print(f"Error notifying external poster via email: {e}")
         
         return doc_ref.id
 
@@ -172,22 +199,22 @@ class GigService:
         if status:
             query = query.where("status", "==", status)
             
-        docs = query.order_by("appliedAt", direction=firestore.Query.DESCENDING).get()
-        return [doc.to_dict() | {"id": doc.id} for doc in docs]
+        docs = query.order_by("appliedAt", direction=Query.DESCENDING).get()
+        return [{**(doc.to_dict() or {}), "id": doc.id} for doc in docs]
 
     @staticmethod
     def update_application_status(application_id: str, status: str):
         app_ref = db.collection("applications").document(application_id)
-        app_doc = app_ref.get()
+        app_doc: Any = app_ref.get()
         if not app_doc.exists:
             return False
             
-        app_data = app_doc.to_dict()
+        app_data = app_doc.to_dict() or {}
         old_status = app_data.get("status", "pending")
         
         update_data = {"status": status}
         
-        # If we are rejecting, save the current status so we can revert to it
+        # If rejecting, save current status so we can revert
         if status == "rejected" and old_status != "rejected":
             update_data["previousStatus"] = old_status
             
@@ -208,11 +235,11 @@ class GigService:
         
         if status in status_titles:
             NotificationService.send_to_user(
-                user_id=app_data["musicianId"],
+                user_id=app_data.get("musicianId", ""),
                 title=status_titles.get(status, "Application Status Updated"),
-                body=f"Your application for '{app_data['gigTitle']}' is now {status}",
+                body=f"Your application for '{app_data.get('gigTitle', 'Gig')}' is now {status}",
                 notif_type=status_types.get(status, "system"),
-                data={"gigId": app_data["gigId"], "type": "application_update"}
+                data={"gigId": app_data.get("gigId", ""), "type": "application_update"}
             )
         return True
 
@@ -221,11 +248,11 @@ class GigService:
         activity = []
         
         try:
-            gigs = db.collection("gigs").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            gigs = db.collection("gigs").where(filter=FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=Query.DESCENDING).limit(limit).get()
             for doc in gigs:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 ts = data.get("createdAt")
-                if hasattr(ts, 'timestamp'):
+                if ts is not None and hasattr(ts, 'isoformat') and callable(getattr(ts, 'isoformat')):
                     ts = ts.isoformat()
                 activity.append({
                     "id": doc.id, "type": "gig",
@@ -238,11 +265,11 @@ class GigService:
             print(f"Activity gigs query failed: {e}")
 
         try:
-            apps = db.collection("applications").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("appliedAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            apps = db.collection("applications").where(filter=FieldFilter("organizerId", "==", organizer_id)).order_by("appliedAt", direction=Query.DESCENDING).limit(limit).get()
             for doc in apps:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 ts = data.get("appliedAt")
-                if hasattr(ts, 'timestamp'):
+                if ts is not None and hasattr(ts, 'isoformat') and callable(getattr(ts, 'isoformat')):
                     ts = ts.isoformat()
                 activity.append({
                     "id": doc.id, "type": "application",
@@ -255,11 +282,11 @@ class GigService:
             print(f"Activity applications query failed: {e}")
             
         try:
-            bookings = db.collection("bookings").where(filter=firestore.FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=firestore.Query.DESCENDING).limit(limit).get()
+            bookings = db.collection("bookings").where(filter=FieldFilter("organizerId", "==", organizer_id)).order_by("createdAt", direction=Query.DESCENDING).limit(limit).get()
             for doc in bookings:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 ts = data.get("musicianSignedAt") or data.get("createdAt")
-                if hasattr(ts, 'timestamp'):
+                if ts is not None and hasattr(ts, 'isoformat') and callable(getattr(ts, 'isoformat')):
                     ts = ts.isoformat()
                 musician_signed = data.get("musicianSignedAt") is not None
                 musician_name = data.get("musicianName", "Musician")
@@ -274,15 +301,15 @@ class GigService:
             print(f"Activity bookings query failed: {e}")
             
         try:
-            chats = db.collection("chats").where(filter=firestore.FieldFilter("participantIds", "array_contains", organizer_id)).order_by("lastMessageTime", direction=firestore.Query.DESCENDING).limit(limit).get()
+            chats = db.collection("chats").where(filter=FieldFilter("participantIds", "array_contains", organizer_id)).order_by("lastMessageTime", direction=Query.DESCENDING).limit(limit).get()
         
             for doc in chats:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 other_participant_name = "User"
                 other_participant_image = ""
                 other_participant_id = ""
-                p_names = data.get("participantNames", {})
-                p_images = data.get("participantImages", {})
+                p_names = data.get("participantNames", {}) if isinstance(data.get("participantNames"), dict) else {}
+                p_images = data.get("participantImages", {}) if isinstance(data.get("participantImages"), dict) else {}
             
                 for p_id, name in p_names.items():
                     if p_id != organizer_id:
@@ -292,7 +319,7 @@ class GigService:
                         break
                 
                 ts = data.get("lastMessageTime")
-                if hasattr(ts, 'timestamp'):
+                if ts is not None and hasattr(ts, 'isoformat') and callable(getattr(ts, 'isoformat')):
                     ts = ts.isoformat()
                 activity.append({
                     "id": doc.id, "type": "message",
@@ -314,12 +341,12 @@ class GigService:
         # 1. Recent Applications (Status updates)
         apps = db.collection("applications")\
                  .where("musicianId", "==", musician_id)\
-                 .order_by("appliedAt", direction=firestore.Query.DESCENDING)\
+                 .order_by("appliedAt", direction=Query.DESCENDING)\
                  .limit(limit)\
                  .get()
         
         for doc in apps:
-            data = doc.to_dict()
+            data = doc.to_dict() or {}
             status = data.get("status", "pending")
             status_text = {
                 "pending": "Application submitted",
@@ -335,19 +362,19 @@ class GigService:
                 "title": status_text,
                 "subtitle": data.get("gigTitle", "Gig"),
                 "timestamp": data.get("appliedAt"),
-                "imageAsset": "", # Could be organizer logo
+                "imageAsset": "",
                 "metadata": data
             })
             
-        # 2. Recent Bookings (Contract signatures required)
+        # 2. Recent Bookings
         bookings = db.collection("bookings")\
                      .where("musicianId", "==", musician_id)\
-                     .order_by("createdAt", direction=firestore.Query.DESCENDING)\
+                     .order_by("createdAt", direction=Query.DESCENDING)\
                      .limit(limit)\
                      .get()
         
         for doc in bookings:
-            data = doc.to_dict()
+            data = doc.to_dict() or {}
             organizer_name = data.get("organizerName", "Organizer")
             
             activity.append({
@@ -363,18 +390,18 @@ class GigService:
         # 3. Recent Chats
         chats = db.collection("chats")\
                   .where("participantIds", "array_contains", musician_id)\
-                  .order_by("lastMessageTime", direction=firestore.Query.DESCENDING)\
+                  .order_by("lastMessageTime", direction=Query.DESCENDING)\
                   .limit(limit)\
                   .get()
         
         for doc in chats:
-            data = doc.to_dict()
+            data = doc.to_dict() or {}
             other_participant_name = "User"
             other_participant_image = ""
             other_participant_id = ""
             
-            p_names = data.get("participantNames", {})
-            p_images = data.get("participantImages", {})
+            p_names = data.get("participantNames", {}) if isinstance(data.get("participantNames"), dict) else {}
+            p_images = data.get("participantImages", {}) if isinstance(data.get("participantImages"), dict) else {}
             
             for p_id, name in p_names.items():
                 if p_id != musician_id:
@@ -397,23 +424,23 @@ class GigService:
                 }
             })
             
-        activity.sort(key=lambda x: x["timestamp"] if x["timestamp"] else 0, reverse=True)
+        activity.sort(key=lambda x: str(x.get("timestamp", "")) if x.get("timestamp") else "", reverse=True)
         return activity[:limit]
 
     @staticmethod
     def get_reviews(musician_id: str, limit: int = 5):
         docs = db.collection("reviews")\
                  .where("musicianId", "==", musician_id)\
-                 .order_by("createdAt", direction=firestore.Query.DESCENDING)\
+                 .order_by("createdAt", direction=Query.DESCENDING)\
                  .limit(limit)\
                  .get()
-        return [doc.to_dict() | {"id": doc.id} for doc in docs]
+        return [{**(doc.to_dict() or {}), "id": doc.id} for doc in docs]
 
     @staticmethod
     def get_dashboard_stats(organizer_id: str):
         # Count gigs
         gigs = db.collection("gigs").where("organizerId", "==", organizer_id).get()
-        active_gigs = [g for g in gigs if g.get("status") in ("open", "hired")]
+        active_gigs = [g for g in gigs if (g.to_dict() or {}).get("status") in ("open", "hired")]
         
         # Count applications
         apps = db.collection("applications").where("organizerId", "==", organizer_id).get()

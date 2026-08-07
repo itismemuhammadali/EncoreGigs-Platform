@@ -1,7 +1,7 @@
 import json
 import os
 import re
-from typing import List
+from typing import List, Optional
 from scraper.sources.base_scraper import BaseScraper
 from scraper.models.gig import GigDetails, OrganizerDetails
 from playwright.sync_api import sync_playwright
@@ -10,7 +10,7 @@ import time
 COOKIES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "facebook_cookies.json")
 
 class FacebookScraper(BaseScraper):
-    def __init__(self, target_groups: List[str] = None):
+    def __init__(self, target_groups: Optional[List[str]] = None):
         super().__init__()
         self.target_groups = target_groups or [
             "AustinMusicians",
@@ -61,7 +61,7 @@ class FacebookScraper(BaseScraper):
 
         with sync_playwright() as p:
             browser = p.chromium.launch(
-                headless=False,
+                headless=True,
                 args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
             )
             context = browser.new_context(
@@ -77,9 +77,13 @@ class FacebookScraper(BaseScraper):
                 url = self._normalize_group_url(group)
                 print(f"  Loading group: {url}...", flush=True)
                 try:
+                    if page.is_closed():
+                        page = context.new_page()
+                        page.add_init_script(STEALTH_JS)
+
                     page.goto(url, wait_until="domcontentloaded", timeout=30000)
 
-                    time.sleep(8)
+                    time.sleep(4)
 
                     if "login" in page.url.lower():
                         print(f"  WARNING: Session expired for {group}.", flush=True)
@@ -133,10 +137,50 @@ class FacebookScraper(BaseScraper):
                                     title = line[:100]
                                     break
 
+                            # Extract exact post permalink & poster profile URL
+                            post_permalink = url
+                            poster_name = "Facebook Group Member"
+                            poster_profile_url = None
+
+                            try:
+                                post_link_found = False
+                                for a in elem.query_selector_all("a[href]"):
+                                    h = a.get_attribute("href") or ""
+                                    if any(k in h for k in ["/posts/", "/permalink/", "story_fbid", "fbid=", "multi_permalinks", "set=a."]):
+                                        if h.startswith("/"):
+                                            h = "https://www.facebook.com" + h
+                                        post_permalink = h.split("&__cft__")[0].split("?__cft__")[0].split("&__tn__")[0].split("?__tn__")[0].split("&ref=")[0].split("?ref=")[0]
+                                        post_link_found = True
+                                        break
+                                
+                                if not post_link_found:
+                                    link_elem = elem.query_selector("a[href*='/posts/'], a[href*='/permalink/'], a[href*='story_fbid'], a[href*='multi_permalinks'], a[href*='fbid='], a[href*='set=a.']")
+                                    if link_elem:
+                                        h = link_elem.get_attribute("href")
+                                        if h:
+                                            if h.startswith("/"):
+                                                h = "https://www.facebook.com" + h
+                                            post_permalink = h.split("&__cft__")[0].split("?__cft__")[0].split("&__tn__")[0].split("?__tn__")[0].split("&ref=")[0].split("?ref=")[0]
+
+                                # Look for author profile link
+                                author_elem = elem.query_selector("h2 a, h3 a, h4 a, a[role='link'][href*='facebook.com'], a[role='link'][href*='/user/'], a[role='link'][href*='profile.php']")
+                                if author_elem:
+                                    a_name = author_elem.inner_text().strip()
+                                    a_href = author_elem.get_attribute("href")
+                                    if a_name and len(a_name) > 1 and not any(k in a_name.lower() for k in ["like", "comment", "share", "group", "joined", "member"]):
+                                        poster_name = a_name
+                                    if a_href:
+                                        if a_href.startswith("/"):
+                                            a_href = "https://www.facebook.com" + a_href
+                                        poster_profile_url = a_href.split("&__cft__")[0].split("?__cft__")[0]
+                            except Exception:
+                                pass
+
                             organizer = OrganizerDetails(
-                                name="Facebook Group Member",
+                                name=poster_name,
                                 personal_email=contact["email"],
                                 personal_phone=contact["phone"],
+                                profile_url=poster_profile_url,
                                 organization_type="Private",
                             )
 
@@ -144,7 +188,7 @@ class FacebookScraper(BaseScraper):
                                 title=title,
                                 description=text[:500],
                                 location="Austin, TX",
-                                source_url=url,
+                                source_url=post_permalink,
                                 source_type=self.source_name,
                                 external_id=f"fb_{group}_{hash(text[:100])}",
                                 organizer=organizer,

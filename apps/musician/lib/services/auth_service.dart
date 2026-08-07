@@ -571,6 +571,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _auth.signOut();
+    _user = null;
+    _appliedGigIds = [];
+    notifyListeners();
   }
 
   Future<String?> sendVerificationEmail(String email) async {
@@ -607,6 +610,105 @@ class AuthService extends ChangeNotifier {
       return false;
     } catch (e) {
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> check2FAStatus(String uid, String collectionName) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection(collectionName).doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        return {
+          'is2FAEnabled': data['is2FAEnabled'] == true,
+          'phoneNumber': data['phoneNumber'],
+        };
+      }
+    } catch (e) {
+      debugPrint('Error checking 2FA status: $e');
+    }
+    return {'is2FAEnabled': false, 'phoneNumber': null};
+  }
+
+  Future<String?> sendEmailOtp(String email, String uid) async {
+    try {
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'https://onlygigz-33557.firebaseapp.com/?app=musician',
+        handleCodeInApp: true,
+        androidPackageName: 'com.onlygigz.musician',
+        androidInstallApp: true,
+        androidMinimumVersion: '12',
+      );
+      await _auth.sendSignInLinkToEmail(
+        email: email,
+        actionCodeSettings: actionCodeSettings,
+      );
+      return null;
+    } catch (e) {
+      debugPrint('Error sending email link via Firebase: $e');
+      return e.toString();
+    }
+  }
+
+  Future<String?> verifyEmailOtp(String email, String otp) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendUrl/auth/verify-email-otp'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'otp': otp}),
+      );
+      if (response.statusCode == 200) return null;
+      final data = jsonDecode(response.body);
+      return data['detail']?.toString() ?? 'Failed to verify OTP';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<void> sendSmsOtp(
+    String phoneNumber, {
+    required Function(String verificationId, int? resendToken) codeSent,
+    required Function(FirebaseAuthException e) verificationFailed,
+    required Function(String verificationId) codeAutoRetrievalTimeout,
+    int? resendToken,
+  }) async {
+    await _auth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 120),
+      forceResendingToken: resendToken,
+      verificationCompleted: (PhoneAuthCredential credential) {}, // Handled manually
+      verificationFailed: verificationFailed,
+      codeSent: codeSent,
+      codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+    );
+  }
+
+  Future<String?> verifySmsOtp(String verificationId, String smsCode) async {
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+      // We don't sign in since we are already signed in via email/password.
+      // We can just link it or verify it works.
+      // Easiest is to just create the credential and if it doesn't throw, it's valid.
+      // However, Firebase doesn't allow 'verifying' a credential without signing in or linking.
+      // Wait, we CAN link it to the current user!
+      final user = _auth.currentUser;
+      if (user != null) {
+        // If it's already linked, it might throw, so we catch it.
+        try {
+          await user.linkWithCredential(credential);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'credential-already-in-use' || e.code == 'provider-already-linked') {
+             // Already verified, which is fine!
+             return null;
+          }
+          return e.message;
+        }
+      }
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 

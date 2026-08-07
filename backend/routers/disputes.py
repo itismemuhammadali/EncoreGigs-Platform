@@ -31,10 +31,16 @@ async def get_dispute(dispute_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from backend.models.gig_models import DisputeRequest, ResolveDisputeRequest
+
 @router.post("/{dispute_id}/resolve")
-async def resolve_dispute(dispute_id: str):
+async def resolve_dispute(dispute_id: str, request: Optional[ResolveDisputeRequest] = None):
     try:
-        DisputeService.resolve_dispute(dispute_id)
+        action = request.resolutionAction if (request and request.resolutionAction) else "refund_organizer"
+        notes = request.resolutionNotes if (request and request.resolutionNotes) else ""
+        amount = request.resolutionAmount if request else None
+        DisputeService.resolve_dispute(dispute_id, action, notes, amount)
         return {"message": "Dispute resolved successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+

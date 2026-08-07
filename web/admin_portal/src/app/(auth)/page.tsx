@@ -13,7 +13,16 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = React.useState(false);
   const router = useRouter();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <main className="min-h-screen bg-[#0A0A0F]" suppressHydrationWarning />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +37,44 @@ export default function LoginPage() {
 
       if (data.role !== "admin") {
         throw new Error("Unauthorized: Only admins can access this portal.");
+      }
+
+      if (data.is2FAEnabled) {
+        // Check which 2FA method is configured
+        if (data.twoFactorMethod === "email_link") {
+          // Store email and pending 2FA data for the check-email-2fa / verify-2fa-link page
+          localStorage.setItem("emailForSignIn", data.email);
+          localStorage.setItem("admin_pending_2fa", JSON.stringify(data));
+          // Send the email verification link via Firebase JS SDK + Backend API fallback
+          try {
+            const { sendSignInLinkToEmail } = await import("firebase/auth");
+            const { auth } = await import("@/lib/firebase");
+            const actionCodeSettings = {
+              url: `${window.location.origin}/verify-2fa-link`,
+              handleCodeInApp: true,
+            };
+            await sendSignInLinkToEmail(auth, data.email, actionCodeSettings);
+          } catch (sdkErr: any) {
+            console.warn("Client SDK link send warning, calling backend API:", sdkErr);
+            await apiRequest("/auth/send-email-link-2fa", {
+              method: "POST",
+              body: JSON.stringify({ 
+                email: data.email, 
+                uid: data.localId,
+                userType: "admin",
+                idToken: data.idToken,
+                continueUrl: `${window.location.origin}/verify-2fa-link`
+              }),
+            });
+          }
+          router.push("/check-email-2fa");
+          return;
+        } else {
+          // For SMS OTP, go to the OTP verification screen
+          localStorage.setItem("admin_pending_2fa", JSON.stringify(data));
+          router.push("/verify-2fa");
+          return;
+        }
       }
 
       // Store token/user info in localStorage or cookie

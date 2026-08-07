@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
@@ -10,9 +10,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F]">
+    <div className="min-h-screen bg-[#0A0A0F]" suppressHydrationWarning>
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
       {/* Mobile Overlay */}
@@ -27,8 +32,8 @@ export default function DashboardLayout({
         "xl:pl-[280px]"
       }`}>
         <Header onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="mt-[80px] flex-1 p-4 sm:p-6 lg:p-10">
-          {children}
+        <main className="mt-[80px] flex-1 p-4 sm:p-6 lg:p-10" suppressHydrationWarning>
+          {mounted ? children : null}
         </main>
       </div>
     </div>

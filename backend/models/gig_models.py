@@ -67,3 +67,9 @@ class DisputeResponse(BaseModel):
     status: str
     createdAt: Any
     updatedAt: Optional[Any] = None
+
+class ResolveDisputeRequest(BaseModel):
+    resolutionAction: Optional[str] = "refund_organizer" # 'refund_organizer', 'pay_musician', 'split'
+    resolutionNotes: Optional[str] = ""
+    resolutionAmount: Optional[float] = None
+

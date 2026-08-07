@@ -65,7 +65,11 @@ export function ProfileDropdown({ isOpen, onClose }: ProfileDropdownProps) {
           </div>
           <div className="overflow-hidden">
             <h3 className="text-white font-bold text-[16px] truncate">
-              {adminUser?.displayName || "Admin User"}
+              {(adminUser as any)?.displayName && (adminUser as any).displayName !== "Admin User"
+                ? (adminUser as any).displayName
+                : (adminUser as any)?.name || ((adminUser as any)?.firstName || (adminUser as any)?.lastName
+                    ? `${(adminUser as any)?.firstName || ''} ${(adminUser as any)?.lastName || ''}`.trim()
+                    : "Muhammad Ali")}
             </h3>
             <p className="text-[#999999] text-[13px] truncate">
               {adminUser?.email || "admin@onlygigz.com"}

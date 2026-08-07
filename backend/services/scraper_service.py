@@ -1,6 +1,7 @@
-from firebase_admin import firestore
+from google.cloud import firestore as gc_firestore
 from backend.database import db
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
 import subprocess
 import os
 
@@ -13,16 +14,17 @@ class ScraperService:
             total_scraped = len(gigs)
             
             runs = db.collection("scraper_runs").get()
-            total_runs_count = len(runs)
-            # Only count terminal statuses for success rate calculation
-            terminal_runs = [r.to_dict() for r in runs if r.to_dict().get("status") in ["success", "failed"]]
+            terminal_runs = []
+            for r in runs:
+                r_data = r.to_dict() or {}
+                if r_data.get("status") in ["success", "failed"]:
+                    terminal_runs.append(r_data)
+
             successful_runs = len([r for r in terminal_runs if r.get("status") == "success"])
-            
             success_rate = (successful_runs / len(terminal_runs) * 100) if len(terminal_runs) > 0 else 0
             
-            # Real flags from the scraped_gigs collection
-            duplicates = len([g for g in gigs if g.to_dict().get("flags") == "Duplicate"])
-            spam = len([g for g in gigs if g.to_dict().get("flags") == "Spam"])
+            duplicates = len([g for g in gigs if (g.to_dict() or {}).get("flags") == "Duplicate"])
+            spam = len([g for g in gigs if (g.to_dict() or {}).get("flags") == "Spam"])
             
             return [
                 {"label": "Total Scraped Gigs", "value": f"{total_scraped:,}", "subtext": "Unique items found", "icon": "Database"},
@@ -38,14 +40,14 @@ class ScraperService:
     def get_recent_runs(limit: int = 5):
         """Fetch recent scraper runs."""
         try:
-            runs = db.collection("scraper_runs").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).get()
+            runs = db.collection("scraper_runs").order_by("timestamp", direction=gc_firestore.Query.DESCENDING).limit(limit).get()
             formatted_runs = []
             for doc in runs:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 timestamp = data.get("timestamp")
                 formatted_runs.append({
                     "id": doc.id,
-                    "timestamp": timestamp.isoformat() if timestamp else "N/A",
+                    "timestamp": timestamp.isoformat() if timestamp and hasattr(timestamp, "isoformat") else "N/A",
                     "source": data.get("source", "Unknown"),
                     "imported": data.get("imported", 0),
                     "duplicates": data.get("duplicates", 0),
@@ -59,38 +61,51 @@ class ScraperService:
             return []
 
     @staticmethod
-    def get_imported_gigs(limit: int = 50, filter_type: str = "all"):
+    def get_imported_gigs(limit: int = 2000, filter_type: str = "all"):
         """Fetch recently imported gigs from the scraped_gigs collection."""
         try:
-            # Sort by updatedAt so fresh duplicates jump to the top
-            query = db.collection("scraped_gigs").order_by("updatedAt", direction=firestore.Query.DESCENDING)
-            
+            query = db.collection("scraped_gigs").order_by("updatedAt", direction=gc_firestore.Query.DESCENDING)
             docs = query.get() 
             
             gigs = []
             for doc in docs:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 flags = data.get("flags", "None")
 
-                # Apply Filtering
                 if filter_type == "duplicates" and flags != "Duplicate": continue
                 if filter_type == "spam" and flags != "Spam": continue
                 
-                # Calculate Completeness
                 important_fields = [data.get("title"), data.get("description"), data.get("date"), data.get("location"), data.get("sourceUrl")]
                 filled_fields = [f for f in important_fields if f and str(f).lower() not in ["not specified", "none", "unknown"]]
                 confidence = int((len(filled_fields) / len(important_fields)) * 100)
                 
-                classification = "Jazz" if "jazz" in data.get("description", "").lower() else "Rock"
+                classification = "Jazz" if "jazz" in str(data.get("description", "")).lower() else "Rock"
                 if flags == "Spam": classification = "Suspicious"
 
                 created_at = data.get("updatedAt") or data.get("createdAt")
                 imported_at = created_at.isoformat() if created_at and hasattr(created_at, 'isoformat') else "Unknown"
 
+                organizer_data = data.get("organizer", {}) if isinstance(data.get("organizer"), dict) else {}
+                organizer_profile = data.get("organizerProfileUrl") or data.get("organizer_profile_url") or data.get("posterUrl") or data.get("poster_url") or organizer_data.get("profile_url") or organizer_data.get("website") or ""
+
+                source_url = data.get("sourceUrl") or data.get("source_url") or data.get("postUrl") or data.get("post_url") or data.get("permalink") or data.get("url") or data.get("link") or ""
+
+                contact_email = data.get("contactEmail") or data.get("externalContactEmail") or organizer_data.get("personal_email") or organizer_data.get("business_email") or ""
+                contact_phone = data.get("contactPhone") or data.get("externalContactPhone") or organizer_data.get("personal_phone") or organizer_data.get("business_phone") or ""
+
                 gigs.append({
                     "id": doc.id,
                     "title": data.get("title", "Untitled"),
                     "source": data.get("sourceType", "Unknown"),
+                    "sourceUrl": source_url,
+                    "organizerProfileUrl": organizer_profile,
+                    "contactEmail": contact_email,
+                    "contactPhone": contact_phone,
+                    "budget": data.get("budget", ""),
+                    "location": data.get("location", ""),
+                    "date": data.get("date", ""),
+                    "duration": data.get("duration", ""),
+                    "description": data.get("description", ""),
                     "classification": classification,
                     "confidence": f"{confidence}%",
                     "flags": flags,
@@ -157,11 +172,20 @@ class ScraperService:
         """Publishes a scraped gig to the main gigs collection so musicians can see it."""
         try:
             doc = db.collection("scraped_gigs").document(gig_id).get()
-            if not doc.exists:
+            raw_data = doc.to_dict() if hasattr(doc, "to_dict") and getattr(doc, "exists", False) else None
+            if not isinstance(raw_data, dict):
                 return None
-            data = doc.to_dict()
+            data: dict[str, Any] = raw_data
 
             organizer_data = data.get("organizer", {}) if isinstance(data.get("organizer"), dict) else {}
+            contact_email = data.get("contactEmail") or data.get("externalContactEmail") or organizer_data.get("personal_email") or organizer_data.get("business_email") or organizer_data.get("email") or ""
+
+            if not contact_email:
+                import re
+                full_text = f"{data.get('title', '')} {data.get('description', '')}"
+                emails_found = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', full_text)
+                if emails_found:
+                    contact_email = emails_found[0]
 
             gig_data = {
                 "title": data.get("title", ""),
@@ -176,6 +200,10 @@ class ScraperService:
                 "organizer_id": "scraped",
                 "organizerName": organizer_data.get("name", data.get("sourceType", "Scraped")),
                 "organizerImage": organizer_data.get("profile_image_url", ""),
+                "contactEmail": contact_email,
+                "organizerEmail": contact_email,
+                "externalContactEmail": contact_email,
+                "organizerProfileUrl": data.get("organizerProfileUrl") or organizer_data.get("profile_url") or "",
                 "imageUrl": data.get("imageUrl", ""),
                 "duration": data.get("duration", ""),
                 "isUrgent": False,
@@ -184,7 +212,7 @@ class ScraperService:
                 "isScraped": True,
                 "sourceUrl": data.get("sourceUrl", ""),
                 "sourceType": data.get("sourceType", ""),
-                "createdAt": firestore.SERVER_TIMESTAMP
+                "createdAt": gc_firestore.SERVER_TIMESTAMP
             }
 
             gig_ref = db.collection("gigs").document()
@@ -211,7 +239,7 @@ class ScraperService:
             skipped = 0
             errors = 0
             for doc in docs:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
                 if data.get("publishedToApp"):
                     already_published += 1
                     continue
@@ -236,14 +264,15 @@ class ScraperService:
             docs = db.collection("scraper_sources").get()
             sources = []
             for doc in docs:
-                data = doc.to_dict()
+                data = doc.to_dict() or {}
+                added_at = data.get("addedAt", "")
                 sources.append({
                     "id": doc.id,
                     "url": data.get("url", ""),
                     "name": data.get("name", "Facebook Group"),
                     "type": data.get("type", "facebook_group"),
                     "enabled": data.get("enabled", True),
-                    "addedAt": data.get("addedAt", "").isoformat() if hasattr(data.get("addedAt"), "isoformat") else str(data.get("addedAt", ""))
+                    "addedAt": added_at.isoformat() if hasattr(added_at, "isoformat") else str(added_at)
                 })
             return sources
         except Exception as e:
@@ -260,7 +289,7 @@ class ScraperService:
                 "name": name,
                 "type": source_type,
                 "enabled": True,
-                "addedAt": firestore.SERVER_TIMESTAMP
+                "addedAt": gc_firestore.SERVER_TIMESTAMP
             })
             return {"id": source_ref.id, "url": url, "name": name, "type": source_type}
         except Exception as e:
@@ -286,7 +315,6 @@ class ScraperService:
             root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
             cookies_path = os.path.join(root_dir, "scraper", "facebook_cookies.json")
             
-            # Validate JSON format before writing
             parsed = json.loads(cookies_content)
             with open(cookies_path, "w", encoding="utf-8") as f:
                 json.dump(parsed, f, indent=2)

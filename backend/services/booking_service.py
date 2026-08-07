@@ -68,8 +68,8 @@ class BookingService:
             organizer_name = request.organizerName
             organizer_image = ""
             org_doc = db.collection("organizers").document(request.organizerId).get()
-            if org_doc.exists:
-                org_data = org_doc.to_dict()
+            if org_doc.exists and org_doc.to_dict():  # type: ignore
+                org_data = org_doc.to_dict()  # type: ignore
                 organizer_name = org_data.get("name") or request.organizerName or "Organizer"
                 organizer_image = org_data.get("profileImageUrl") or ""
 
@@ -92,8 +92,8 @@ class BookingService:
                 "currency": request.currency or "usd",
                 "escrow_status": "pending",
                 "sections": request.sections,
-                "createdAt": firestore.SERVER_TIMESTAMP,
-                "organizerSignedAt": firestore.SERVER_TIMESTAMP
+                "createdAt": firestore.SERVER_TIMESTAMP,  # type: ignore
+                "organizerSignedAt": firestore.SERVER_TIMESTAMP  # type: ignore
             }
             
             doc_ref = db.collection("bookings").document()
@@ -140,7 +140,7 @@ class BookingService:
             query = query.where("organizerId", "==", organizer_id)
             
         docs = query.get()
-        bookings = [doc.to_dict() | {"id": doc.id} for doc in docs]
+        bookings = [(doc.to_dict() or {}) | {"id": doc.id} for doc in docs]
         
         # Sort in-memory to avoid composite index requirements
         bookings.sort(key=lambda x: x.get("createdAt") or 0, reverse=True)
@@ -149,9 +149,9 @@ class BookingService:
     @staticmethod
     def get_booking_by_id(booking_id: str):
         doc = db.collection("bookings").document(booking_id).get()
-        if not doc.exists:
+        if not doc.exists:  # type: ignore
             return None
-        return doc.to_dict() | {"id": doc.id}
+        return doc.to_dict() | {"id": doc.id}  # type: ignore
 
     @staticmethod
     def _get_image_from_url(url, width=120, height=45):
@@ -192,8 +192,8 @@ class BookingService:
         org_doc = db.collection("organizers").document(booking.get("organizerId", "")).get() if booking.get("organizerId") else None
         mus_doc = db.collection("musicians").document(booking.get("musicianId", "")).get() if booking.get("musicianId") else None
         
-        org_data = org_doc.to_dict() if org_doc and org_doc.exists else {}
-        mus_data = mus_doc.to_dict() if mus_doc and mus_doc.exists else {}
+        org_data = org_doc.to_dict() if org_doc and org_doc.exists else {}  # type: ignore
+        mus_data = mus_doc.to_dict() if mus_doc and mus_doc.exists else {}  # type: ignore
 
         amount = float(booking.get("amount", 0) or 0)
         deposit = round(amount * 0.5, 2)
@@ -267,3 +267,52 @@ class BookingService:
         pdf_content = BookingService._docusign_seal_document(pdf_content, booking_id)
         return pdf_content
 
+    @staticmethod
+    def musician_sign_contract(booking_id: str, signature_url: str):
+        from backend.services.email_service import EmailService
+        
+        doc_ref = db.collection("bookings").document(booking_id)
+        doc = doc_ref.get()
+        if not doc.exists:  # type: ignore
+            raise Exception("Booking not found")
+        
+        # Update booking
+        doc_ref.update({
+            "status": "Payment in escrow",
+            "musicianSignedAt": firestore.SERVER_TIMESTAMP,  # type: ignore
+            "musicianSignatureUrl": signature_url,
+        })
+        
+        # Refetch updated booking
+        updated_doc = doc_ref.get()
+        booking_data = (updated_doc.to_dict() or {}) | {"id": booking_id}  # type: ignore
+        
+        # Generate final PDF with both signatures
+        pdf_bytes = BookingService.generate_contract_pdf(booking_id)
+        
+        if pdf_bytes:
+            # Send Email
+            try:
+                EmailService.send_contract_email(booking_data, pdf_bytes)
+            except Exception as e:
+                print(f"Failed to send contract email: {e}")
+        
+        # Send Push Notification
+        from backend.services.notification_service import NotificationService
+        organizer_id = booking_data.get("organizerId")
+        if organizer_id:
+            musician_name = booking_data.get("musicianName", "The musician")
+            gig_title = booking_data.get("gigTitle", "Gig")
+            NotificationService.send_to_user(
+                user_id=organizer_id,
+                title="Contract Signed!",
+                body=f"{musician_name} has signed the agreement for '{gig_title}'.",
+                notif_type="agreement_signed",
+                data={
+                    "bookingId": booking_id,
+                    "gigId": booking_data.get("gigId", ""),
+                    "type": "booking"
+                }
+            )
+        
+        return {"message": "Contract signed successfully"}

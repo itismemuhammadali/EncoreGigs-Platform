@@ -53,3 +53,15 @@ async def get_booking(booking_id: str):
     except Exception as e:
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=str(e))
+
+from pydantic import BaseModel
+class MusicianSignRequest(BaseModel):
+    signatureUrl: str
+
+@router.post("/{booking_id}/musician-sign")
+async def musician_sign(booking_id: str, request: MusicianSignRequest):
+    try:
+        result = BookingService.musician_sign_contract(booking_id, request.signatureUrl)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

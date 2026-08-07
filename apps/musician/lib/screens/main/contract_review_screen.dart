@@ -9,8 +9,9 @@ import 'package:provider/provider.dart';
 import '../../models/booking_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import 'package:shared_config/shared_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'contract_success_screen.dart';
-
 class SignaturePainter extends CustomPainter {
   final List<Offset?> points;
   SignaturePainter(this.points);
@@ -48,6 +49,29 @@ class _ContractReviewScreenState extends State<ContractReviewScreen> {
   bool _isSubmitting = false;
   final List<Offset?> _points = [];
   final GlobalKey _signatureKey = GlobalKey();
+
+  Future<void> _downloadPdf() async {
+    final String bookingId = widget.booking.id;
+    try {
+      final baseUrl = getBackendUrl();
+      final uri = Uri.parse('$baseUrl/bookings/$bookingId/contract/pdf');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open the contract PDF.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
 
   String _getTimeRange() {
     final String time = widget.booking.gigTime ?? 'TBD';
@@ -166,36 +190,8 @@ class _ContractReviewScreenState extends State<ContractReviewScreen> {
             'Failed to upload signature to Storage - URL is null or empty');
       }
 
-      await FirebaseFirestore.instance
-          .collection('bookings')
-          .doc(widget.booking.id)
-          .update({
-        'status': 'Payment in escrow',
-        'musicianSignedAt': FieldValue.serverTimestamp(),
-        'musicianSignatureUrl': signatureUrl,
-      });
-
-      // Send Notification to Organizer
-      final organizerId = widget.booking.organizerId;
-      if (organizerId != null && organizerId.isNotEmpty) {
-        final musicianName = authService.user?.displayName ?? 'The musician';
-        final gigTitle = widget.booking.gigTitle;
-        try {
-          await ApiService().sendNotification(
-            userId: organizerId,
-            title: 'Contract Signed!',
-            body: '$musicianName has signed the agreement for "$gigTitle".',
-            type: 'agreement_signed',
-            data: {
-              'bookingId': widget.booking.id,
-              'gigId': widget.booking.gigId ?? '',
-              'type': 'booking',
-            },
-          );
-        } catch (e) {
-          debugPrint('Error triggering contract signed notification: $e');
-        }
-      }
+      // Call the backend to finalize the contract signing and trigger emails/notifications
+      await ApiService().postMusicianSign(widget.booking.id, signatureUrl);
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -420,18 +416,48 @@ class _ContractReviewScreenState extends State<ContractReviewScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.arrow_back, color: Color(0xFF999999), size: 20),
-                SizedBox(width: 6),
-                Text('Back',
-                    style:
-                        TextStyle(color: Color(0xFF999999), fontSize: 16)),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.arrow_back, color: Color(0xFF999999), size: 20),
+                    SizedBox(width: 6),
+                    Text('Back',
+                        style:
+                            TextStyle(color: Color(0xFF999999), fontSize: 16)),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: _downloadPdf,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E2D0E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.download, color: Color(0xFFA1F301), size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'PDF',
+                        style: TextStyle(
+                          color: Color(0xFFA1F301),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           Row(

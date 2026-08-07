@@ -69,6 +69,17 @@ service cloud.firestore {
         allow create: if isSignedIn();
       }
     }
+
+    // --- Support Chats ---
+    match /support_chats/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || request.auth.token.admin == true);
+      allow write: if isSignedIn() && (request.auth.uid == userId || request.auth.token.admin == true);
+      
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn();
+      }
+    }
     
     // Deny everything else by default
     match /{document=**} {

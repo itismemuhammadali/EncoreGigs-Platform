@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 
@@ -18,7 +17,7 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
   final _descriptionController = TextEditingController();
   String? _selectedBookingId;
   String _selectedReason = 'Payment';
-  List<File> _attachments = [];
+  final List<File> _attachments = [];
   bool _isSubmitting = false;
   List<Map<String, dynamic>> _bookings = [];
   bool _isLoadingBookings = true;
@@ -84,6 +83,13 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
 
   Future<void> _pickFiles() async {
     try {
+      if (_attachments.length >= 5) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Maximum 5 evidence files allowed per dispute.')),
+        );
+        return;
+      }
+
       FilePickerResult? result = await FilePicker.pickFiles(
         allowMultiple: true,
         type: FileType.custom,
@@ -91,14 +97,25 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
       );
 
       if (result != null) {
+        final newFiles = result.paths.where((path) => path != null).map((path) => File(path!)).toList();
+        final availableSlots = 5 - _attachments.length;
+        if (newFiles.length > availableSlots) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Capped attachments to 5 files limit. Added $availableSlots file(s).')),
+            );
+          }
+        }
         setState(() {
-          _attachments.addAll(result.paths.where((path) => path != null).map((path) => File(path!)));
+          _attachments.addAll(newFiles.take(availableSlots));
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error picking files: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking files: $e')),
+        );
+      }
     }
   }
 
@@ -113,11 +130,13 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
     setState(() => _isSubmitting = true);
     final authService = Provider.of<AuthService>(context, listen: false);
 
-    // In a real app, we would upload files to Firebase Storage first
     List<String> attachmentUrls = [];
     for (var file in _attachments) {
-      // Mocking upload for prototype
-      attachmentUrls.add('https://placeholder.com/${file.path.split('/').last}');
+      final String filename = 'dispute_${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}';
+      final String? uploadedUrl = await authService.uploadImage(file, 'disputes/$filename');
+      if (uploadedUrl != null) {
+        attachmentUrls.add(uploadedUrl);
+      }
     }
 
     final error = await authService.createDispute(

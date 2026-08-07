@@ -28,7 +28,10 @@ interface Dispute {
   musician: string;
   reason: string;
   evidenceLink: string;
+  attachments?: string[];
   description: string;
+  resolutionAction?: string;
+  resolutionNotes?: string;
 }
 
 export default function DisputesPage() {
@@ -40,6 +43,12 @@ export default function DisputesPage() {
   const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false);
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
+  
+  // Resolution Modal State
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [resolveAction, setResolveAction] = useState<"refund_organizer" | "pay_musician" | "split">("refund_organizer");
+  const [resolveNotes, setResolveNotes] = useState("");
+  const [isResolving, setIsResolving] = useState(false);
 
   useEffect(() => {
     fetchDisputes();
@@ -73,16 +82,32 @@ export default function DisputesPage() {
     }
 
     if (action === "Close Dispute") {
-      try {
-        await apiRequest(`/disputes/${id}/resolve`, { method: "POST" });
-        setToast({ show: true, message: `Dispute ${id} resolved successfully.` });
-        
-        // Refresh the list
-        fetchDisputes();
-      } catch (error) {
-        console.error("Failed to resolve dispute:", error);
-        setToast({ show: true, message: "Error resolving dispute." });
-      }
+      setSelectedDisputeId(id);
+      setIsResolveModalOpen(true);
+    }
+  };
+
+  const confirmResolution = async () => {
+    if (!selectedDisputeId) return;
+    setIsResolving(true);
+    try {
+      await apiRequest(`/disputes/${selectedDisputeId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({
+          resolutionAction: resolveAction,
+          resolutionNotes: resolveNotes
+        })
+      });
+      setToast({ show: true, message: `Dispute resolved successfully (${resolveAction.replace('_', ' ')}).` });
+      setIsResolveModalOpen(false);
+      setSelectedDisputeId(null);
+      setResolveNotes("");
+      fetchDisputes();
+    } catch (error) {
+      console.error("Failed to resolve dispute:", error);
+      setToast({ show: true, message: "Error resolving dispute." });
+    } finally {
+      setIsResolving(false);
     }
   };
 
@@ -150,53 +175,55 @@ export default function DisputesPage() {
         </div>
         <button 
           onClick={fetchDisputes}
-          className="p-2 bg-[#1A1A1A] border border-[#2A2A2A] rounded-full hover:bg-white/5 transition-all"
+          className="h-[40px] px-4 rounded-[8px] bg-white/5 hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-2 border border-white/10 transition-all"
         >
-          <Clock size={20} className={isLoading ? "animate-spin text-[#A2F301]" : "text-[#999999]"} />
+          Refresh List
         </button>
       </div>
 
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
-        {statCards.map((card, i) => (
-          <div key={i} className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[8px] p-4 sm:p-6 flex items-center gap-4 hover:border-white/10 transition-all group shadow-xl">
-            <div className={`w-12 h-12 sm:w-[48px] sm:h-[48px] ${card.bg} ${card.border} border rounded-[8px] flex items-center justify-center shrink-0`}>
-              <card.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${card.color}`} />
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {statCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <div key={index} className={`p-5 rounded-[8px] bg-[#1A1A1A] border ${card.border} flex items-center justify-between`}>
+              <div>
+                <p className="text-[#999999] text-xs font-medium mb-1">{card.label}</p>
+                <h3 className="text-2xl font-bold text-white">{card.value}</h3>
+              </div>
+              <div className={`p-3 rounded-[8px] ${card.bg} ${card.color}`}>
+                <Icon size={20} />
+              </div>
             </div>
-            <div>
-              <p className="text-[#999999] text-[12px] sm:text-[14px] font-medium mb-0.5">{card.label}</p>
-              <p className="text-white text-2xl sm:text-[28px] font-bold leading-none">{card.value}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 sm:gap-8 mb-8 border-b border-[#2A2A2A] overflow-x-auto custom-scrollbar whitespace-nowrap">
+      <div className="flex border-b border-[#2A2A2A] mb-8">
         {[
           { id: "open", label: `Open Disputes (${stats.open})` },
-          { id: "resolved", label: `Resolved (${stats.resolved})` }
+          { id: "resolved", label: `Resolved (${stats.resolved})` },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`pb-4 text-[14px] font-bold transition-all relative shrink-0 ${
-              activeTab === tab.id ? "text-[#A2F301]" : "text-[#999999] hover:text-white"
+            className={`pb-4 px-6 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === tab.id
+                ? "border-[#A2F301] text-[#A2F301]"
+                : "border-transparent text-[#999999] hover:text-white"
             }`}
           >
             {tab.label}
-            {activeTab === tab.id && (
-              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#A2F301] shadow-[0_0_10px_rgba(162,243,1,0.5)]" />
-            )}
           </button>
         ))}
       </div>
 
       {/* Disputes List */}
-      <div className="flex flex-col gap-6">
+      <div className="space-y-6">
         {isLoading ? (
-          <div className="py-20 flex justify-center">
-            <Loader2 size={48} className="text-[#A2F301] animate-spin" />
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="animate-spin text-[#A2F301]" size={32} />
           </div>
         ) : (
           <>
@@ -232,14 +259,25 @@ export default function DisputesPage() {
                     <p className="text-white text-[14px] sm:text-[15px] font-semibold">{dispute.reason}</p>
                   </div>
                   <div>
-                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Evidence Attached</p>
-                    <div 
-                      className="flex items-center gap-2 text-[#A2F301] text-[14px] sm:text-[15px] font-semibold cursor-pointer hover:underline"
-                      onClick={() => dispute.evidenceLink !== "No evidence" && window.open(dispute.evidenceLink, '_blank')}
-                    >
-                      <Paperclip size={14} className="shrink-0" />
-                      <span className="truncate">{dispute.evidenceLink.split('/').at(-1) || dispute.evidenceLink}</span>
-                    </div>
+                    <p className="text-[#52525b] text-[11px] uppercase tracking-wider font-bold mb-1">Evidence Files</p>
+                    {dispute.attachments && dispute.attachments.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {dispute.attachments.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#2A2A2A] text-[#A2F301] text-xs font-medium hover:bg-[#3A3A3A] transition-all border border-[#3A3A3A]"
+                          >
+                            <Paperclip size={12} />
+                            <span>Evidence #{idx + 1}</span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[#999999] text-sm">No files uploaded</p>
+                    )}
                   </div>
                 </div>
 
@@ -250,6 +288,21 @@ export default function DisputesPage() {
                     {dispute.description}
                   </p>
                 </div>
+
+                {/* Resolution Notes if Resolved */}
+                {dispute.status === "resolved" && dispute.resolutionAction && (
+                  <div className="mb-8 p-4 rounded-[8px] bg-[#10B981]/10 border border-[#10B981]/20">
+                    <p className="text-[#10B981] text-[12px] uppercase font-bold tracking-wider mb-1">Resolution Outcome</p>
+                    <p className="text-white text-sm font-semibold capitalize mb-1">
+                      Action: {dispute.resolutionAction.replace('_', ' ')}
+                    </p>
+                    {dispute.resolutionNotes && (
+                      <p className="text-[#999999] text-xs leading-relaxed">
+                        Notes: {dispute.resolutionNotes}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Actions */}
                 {dispute.status === "open" && (
@@ -270,10 +323,10 @@ export default function DisputesPage() {
                     </button>
                     <button 
                       onClick={() => handleAction(dispute.id, "Close Dispute")}
-                      className="h-[44px] px-6 rounded-[8px] bg-[#10B981]/10 text-[#10B981] text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#10B981]/20 transition-all sm:ml-auto"
+                      className="h-[44px] px-6 rounded-[8px] bg-[#A2F301] text-black text-[14px] font-bold flex items-center justify-center sm:justify-start gap-2 hover:bg-[#8EE000] transition-all sm:ml-auto shadow-lg"
                     >
                       <CheckCircle2 size={18} />
-                      Close Dispute
+                      Resolve & Decision
                     </button>
                   </div>
                 )}
@@ -289,6 +342,90 @@ export default function DisputesPage() {
           </>
         )}
       </div>
+
+      {/* Resolution Decision Modal */}
+      {isResolveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-[16px] p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-2">Resolve Dispute #{selectedDisputeId?.substring(0, 8).toUpperCase()}</h3>
+            <p className="text-sm text-[#999999] mb-6">Select a financial resolution outcome for this gig dispute.</p>
+            
+            <div className="space-y-3 mb-6">
+              <label 
+                className={`flex items-center justify-between p-4 rounded-[10px] border cursor-pointer transition-all ${
+                  resolveAction === "refund_organizer" 
+                    ? "bg-[#A2F301]/10 border-[#A2F301] text-white" 
+                    : "bg-[#262626] border-[#333333] text-[#999999]"
+                }`}
+                onClick={() => setResolveAction("refund_organizer")}
+              >
+                <div>
+                  <p className="font-bold text-sm text-white">Full Refund to Organizer</p>
+                  <p className="text-xs text-[#999999]">Cancel booking & return escrowed funds</p>
+                </div>
+                <input type="radio" checked={resolveAction === "refund_organizer"} onChange={() => {}} className="accent-[#A2F301]" />
+              </label>
+
+              <label 
+                className={`flex items-center justify-between p-4 rounded-[10px] border cursor-pointer transition-all ${
+                  resolveAction === "pay_musician" 
+                    ? "bg-[#A2F301]/10 border-[#A2F301] text-white" 
+                    : "bg-[#262626] border-[#333333] text-[#999999]"
+                }`}
+                onClick={() => setResolveAction("pay_musician")}
+              >
+                <div>
+                  <p className="font-bold text-sm text-white">Full Payout to Musician</p>
+                  <p className="text-xs text-[#999999]">Complete booking & release escrowed funds</p>
+                </div>
+                <input type="radio" checked={resolveAction === "pay_musician"} onChange={() => {}} className="accent-[#A2F301]" />
+              </label>
+
+              <label 
+                className={`flex items-center justify-between p-4 rounded-[10px] border cursor-pointer transition-all ${
+                  resolveAction === "split" 
+                    ? "bg-[#A2F301]/10 border-[#A2F301] text-white" 
+                    : "bg-[#262626] border-[#333333] text-[#999999]"
+                }`}
+                onClick={() => setResolveAction("split")}
+              >
+                <div>
+                  <p className="font-bold text-sm text-white">Split Payout (50 / 50)</p>
+                  <p className="text-xs text-[#999999]">Partial refund & partial musician payout</p>
+                </div>
+                <input type="radio" checked={resolveAction === "split"} onChange={() => {}} className="accent-[#A2F301]" />
+              </label>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[#999999] uppercase mb-2">Admin Resolution Notes</label>
+              <textarea
+                value={resolveNotes}
+                onChange={(e) => setResolveNotes(e.target.value)}
+                placeholder="Explain the rationale behind this decision..."
+                className="w-full bg-[#262626] border border-[#333333] rounded-[8px] p-3 text-sm text-white focus:outline-none focus:border-[#A2F301] h-24 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsResolveModalOpen(false)}
+                className="flex-1 h-[44px] rounded-[8px] bg-white/10 hover:bg-white/20 text-white text-sm font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmResolution}
+                disabled={isResolving}
+                className="flex-1 h-[44px] rounded-[8px] bg-[#A2F301] hover:bg-[#8EE000] text-black text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {isResolving && <Loader2 className="animate-spin" size={16} />}
+                Confirm & Resolve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notifications */}
       <SendWarningModal 

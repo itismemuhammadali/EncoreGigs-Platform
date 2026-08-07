@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'live_chat_screen.dart';
 
 class HelpCenterScreen extends StatefulWidget {
@@ -121,13 +122,25 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildContactItem(
-                      svgIcon: 'assets/email_icon.svg',
-                      iconColor: const Color(0xFF06B6D4),
-                      title: 'Email Support',
-                      subtitle: 'support@gighub.com',
-                      badge: 'Response in 24hrs',
-                      badgeColor: const Color(0xFFA1F301),
+                    GestureDetector(
+                      onTap: () async {
+                        final Uri emailUri = Uri(
+                          scheme: 'mailto',
+                          path: 'support@onlygigz.com',
+                          queryParameters: {'subject': 'OnlyGigz Support Request'},
+                        );
+                        if (await canLaunchUrl(emailUri)) {
+                          await launchUrl(emailUri);
+                        }
+                      },
+                      child: _buildContactItem(
+                        svgIcon: 'assets/email_icon.svg',
+                        iconColor: const Color(0xFF06B6D4),
+                        title: 'Email Support',
+                        subtitle: 'support@onlygigz.com',
+                        badge: 'Response in 24hrs',
+                        badgeColor: const Color(0xFFA1F301),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildContactItem(
@@ -147,7 +160,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     const SizedBox(height: 16),
                     // Getting Started
                     _buildFAQGroup(
-                      icon: 'assets/help_icon.svg',
+                      icon: 'assets/question_mark_icon.svg',
                       iconColor: const Color(0xFFA1F301),
                       groupTitle: 'Getting Started',
                       items: [
@@ -160,7 +173,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     const SizedBox(height: 12),
                     // Payments & Earnings
                     _buildFAQGroup(
-                      icon: 'assets/help_icon.svg',
+                      icon: 'assets/question_mark_icon.svg',
                       iconColor: const Color(0xFF06B6D4),
                       groupTitle: 'Payments & Earnings',
                       items: [
@@ -173,7 +186,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     const SizedBox(height: 12),
                     // Bookings & Contracts
                     _buildFAQGroup(
-                      icon: 'assets/help_icon.svg',
+                      icon: 'assets/question_mark_icon.svg',
                       iconColor: const Color(0xFFEC4899),
                       groupTitle: 'Bookings & Contracts',
                       items: [
@@ -186,7 +199,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                     const SizedBox(height: 12),
                     // Account & Security
                     _buildFAQGroup(
-                      icon: 'assets/help_icon.svg',
+                      icon: 'assets/question_mark_icon.svg',
                       iconColor: const Color(0xFFA1F301),
                       groupTitle: 'Account & Security',
                       items: [

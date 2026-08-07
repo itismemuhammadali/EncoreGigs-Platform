@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from firebase_admin import firestore
 from backend.database import db
 
 class FeaturedService:
     @staticmethod
-    def purchase_featured(musician_id: str, plan: str, amount: float, payment_token: str = None) -> dict:
+    def purchase_featured(musician_id: str, plan: str, amount: float, payment_token: Optional[str] = None) -> dict:
         now = datetime.now(timezone.utc)
         
         # Calculate duration based on plan

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TwoFactorAuthenticationScreen extends StatefulWidget {
   const TwoFactorAuthenticationScreen({super.key});
@@ -9,9 +11,138 @@ class TwoFactorAuthenticationScreen extends StatefulWidget {
 }
 
 class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationScreen> {
-  bool is2FAEnabled = true;
+  bool is2FAEnabled = false;
+  String? phoneNumber;
+  String twoFactorMethod = 'sms'; // 'sms' or 'email'
+  bool _isLoading = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('musicians').doc(user.uid).get();
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        setState(() {
+          is2FAEnabled = data['is2FAEnabled'] ?? false;
+          phoneNumber = data['phoneNumber'];
+          twoFactorMethod = data['twoFactorMethod'] ?? 'sms';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _selectMethod(String method) async {
+    if (method == 'sms' && (phoneNumber == null || phoneNumber!.isEmpty)) {
+      setState(() => twoFactorMethod = 'sms');
+      _showPhoneNumberDialog();
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set(
+        {
+          'twoFactorMethod': method,
+        },
+        SetOptions(merge: true),
+      );
+    }
+    if (mounted) {
+      setState(() {
+        twoFactorMethod = method;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Selected 2FA method: ${method.toUpperCase()}')),
+      );
+    }
+  }
+
+  Future<void> _toggle2FA(bool value) async {
+    if (value && twoFactorMethod == 'sms' && (phoneNumber == null || phoneNumber!.isEmpty)) {
+      _showPhoneNumberDialog();
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set(
+        {
+          'is2FAEnabled': value,
+          'twoFactorMethod': twoFactorMethod,
+        },
+        SetOptions(merge: true),
+      );
+      if (mounted) {
+        setState(() {
+          is2FAEnabled = value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(value ? '2FA Enabled with ${twoFactorMethod.toUpperCase()}' : '2FA Disabled')),
+        );
+      }
+    }
+  }
+
+  Future<void> _showPhoneNumberDialog() async {
+    final controller = TextEditingController(text: phoneNumber);
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A24),
+        title: const Text('Add Phone Number', style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.phone,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: '+1 234 567 8900',
+            hintStyle: TextStyle(color: Colors.grey),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFA1F301))),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFA1F301))),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user != null && controller.text.isNotEmpty) {
+                await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set(
+                  {
+                    'phoneNumber': controller.text,
+                    'is2FAEnabled': true,
+                    'twoFactorMethod': twoFactorMethod,
+                  },
+                  SetOptions(merge: true),
+                );
+                if (mounted) {
+                  setState(() {
+                    phoneNumber = controller.text;
+                    is2FAEnabled = true;
+                  });
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Phone number saved and 2FA Enabled with ${twoFactorMethod.toUpperCase()}')),
+                  );
+                }
+              }
+            },
+            child: const Text('Save & Enable', style: TextStyle(color: Color(0xFFA1F301))),
+          ),
+        ],
+      ),
+    );
+  }
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
@@ -137,8 +268,10 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                                       color: const Color(0xFFA1F301).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: const Text(
-                                      'Active method: SMS to +1 (555) ***-4567',
+                                    child: Text(
+                                      twoFactorMethod == 'email'
+                                          ? 'Active method: Email to ${FirebaseAuth.instance.currentUser?.email ?? "your email"}'
+                                          : 'Active method: SMS to ${phoneNumber ?? "your phone"}',
                                       style: TextStyle(
                                         color: Color(0xFFA1F301),
                                         fontSize: 12,
@@ -272,93 +405,87 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: is2FAEnabled ? const Color(0xFFA1F301).withValues(alpha: 0.5) : const Color(0xFFA1F301).withValues(alpha: 0.3),
-                          width: 1.5,
+                          color: twoFactorMethod == 'sms' ? const Color(0xFFA1F301) : const Color(0xFFA1F301).withValues(alpha: 0.3),
+                          width: twoFactorMethod == 'sms' ? 2 : 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFA1F301).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: SvgPicture.asset(
-                                  'assets/phone_icon.svg',
-                                  fit: BoxFit.contain,
-                                  colorFilter: const ColorFilter.mode(
-                                    Color(0xFFA1F301),
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
+                      child: GestureDetector(
+                        onTap: () => _selectMethod('sms'),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: twoFactorMethod == 'sms'
+                                    ? const Icon(Icons.check_circle, color: Color(0xFFA1F301), size: 24)
+                                    : const Icon(Icons.radio_button_unchecked, color: Color(0xFFA1F301), size: 24),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Text(
-                                      'SMS Authentication',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    if (is2FAEnabled) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFA1F301).withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(4),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'SMS Authentication',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                        child: const Text(
-                                          'Active',
-                                          style: TextStyle(
-                                            color: Color(0xFFA1F301),
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
+                                      ),
+                                      if (twoFactorMethod == 'sms' && is2FAEnabled) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Active',
+                                            style: TextStyle(
+                                              color: Color(0xFFA1F301),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
-                                      ),
+                                      ],
                                     ],
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Receive verification codes via text message',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 12,
                                   ),
-                                ),
-                                if (is2FAEnabled) ...[
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Phone: +1 (555) ***-4567',
+                                    'Receive verification codes via text message',
                                     style: TextStyle(
-                                      color: Colors.grey[600],
+                                      color: Colors.grey[500],
                                       fontSize: 12,
                                     ),
                                   ),
+                                  if (phoneNumber != null && phoneNumber!.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Phone: $phoneNumber',
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -367,73 +494,87 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                          width: 1.5,
+                          color: twoFactorMethod == 'email' ? const Color(0xFFA1F301) : const Color(0xFFA1F301).withValues(alpha: 0.3),
+                          width: twoFactorMethod == 'email' ? 2 : 1.5,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF06B6D4).withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.email_outlined,
-                                color: Color(0xFF06B6D4),
-                                size: 20,
+                      child: GestureDetector(
+                        onTap: () => _selectMethod('email'),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF06B6D4).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: twoFactorMethod == 'email'
+                                    ? const Icon(Icons.check_circle, color: Color(0xFF06B6D4), size: 24)
+                                    : const Icon(Icons.radio_button_unchecked, color: Color(0xFF06B6D4), size: 24),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Email Authentication',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Email Authentication',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (twoFactorMethod == 'email' && is2FAEnabled) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'Active',
+                                            style: TextStyle(
+                                              color: Color(0xFFA1F301),
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Receive verification codes via email',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                GestureDetector(
-                                  onTap: () {},
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFA1F301).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Receive verification codes via email',
+                                    style: TextStyle(
+                                      color: Colors.grey[500],
+                                      fontSize: 12,
                                     ),
-                                    child: const Text(
-                                      'Set Up',
+                                  ),
+                                  if (FirebaseAuth.instance.currentUser?.email != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Email: ${FirebaseAuth.instance.currentUser?.email}',
                                       style: TextStyle(
-                                        color: Color(0xFFA1F301),
+                                        color: Colors.grey[600],
                                         fontSize: 12,
-                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  ),
-                                ),
-                              ],
+                                  ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     if (!is2FAEnabled) ...[
@@ -526,7 +667,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                         const SizedBox(width: 12),
                         Expanded(
                           child: GestureDetector(
-                            onTap: () => setState(() => is2FAEnabled = !is2FAEnabled),
+                            onTap: () => _toggle2FA(!is2FAEnabled),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -548,7 +689,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -561,23 +702,27 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
 
   Widget _buildBulletPoint(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '• ',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 14,
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: Color(0xFFA1F301),
+              shape: BoxShape.circle,
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
               style: TextStyle(
                 color: Colors.grey[400],
-                fontSize: 13,
+                fontSize: 14,
+                height: 1.4,
               ),
             ),
           ),

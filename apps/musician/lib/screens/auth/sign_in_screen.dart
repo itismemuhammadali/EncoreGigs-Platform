@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import 'two_factor_verification_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -49,6 +50,23 @@ class _SignInScreenState extends State<SignInScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (error == null) {
+        final user = authService.currentUser;
+        if (user != null) {
+          final status = await authService.check2FAStatus(user.uid, 'musicians');
+          if (status['is2FAEnabled']) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => TwoFactorVerificationScreen(
+                  email: user.email!,
+                  uid: user.uid,
+                  phoneNumber: status['phoneNumber'],
+                  userRole: 'musician',
+                ),
+              ),
+            );
+            return;
+          }
+        }
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

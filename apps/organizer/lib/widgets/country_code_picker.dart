@@ -14,15 +14,6 @@ class CountryCode {
 
 const List<CountryCode> countries = [
   CountryCode(name: 'United States', flag: '🇺🇸', code: '+1'),
-  CountryCode(name: 'United Kingdom', flag: '🇬🇧', code: '+44'),
-  CountryCode(name: 'Canada', flag: '🇨🇦', code: '+1'),
-  CountryCode(name: 'Australia', flag: '🇦🇺', code: '+61'),
-  CountryCode(name: 'Germany', flag: '🇩🇪', code: '+49'),
-  CountryCode(name: 'France', flag: '🇫🇷', code: '+33'),
-  CountryCode(name: 'India', flag: '🇮🇳', code: '+91'),
-  CountryCode(name: 'Pakistan', flag: '🇵🇰', code: '+92'),
-  CountryCode(name: 'United Arab Emirates', flag: '🇦🇪', code: '+971'),
-  CountryCode(name: 'Saudi Arabia', flag: '🇸🇦', code: '+966'),
 ];
 
 class CountryCodePicker extends StatelessWidget {

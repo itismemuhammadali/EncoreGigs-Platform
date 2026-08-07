@@ -21,6 +21,8 @@ async def purchase_featured(request: FeaturedPurchaseRequest):
             payment_token=request.paymentToken
         )
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -31,6 +33,8 @@ async def get_featured_artists():
     try:
         artists = FeaturedService.get_featured_artists()
         return artists
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

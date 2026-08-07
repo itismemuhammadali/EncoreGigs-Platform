@@ -14,6 +14,7 @@ import 'package:onlygigz_musician/screens/main/payment_method_screen.dart';
 import 'package:onlygigz_musician/screens/main/privacy_settings_screen.dart';
 import 'package:onlygigz_musician/screens/main/data_privacy_screen.dart';
 import 'package:onlygigz_musician/screens/main/two_factor_authentication_screen.dart';
+import 'package:onlygigz_musician/screens/main/my_contracts_screen.dart';
 import 'package:onlygigz_musician/models/profile_model.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
 import 'package:provider/provider.dart';
@@ -222,10 +223,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildSectionLabel('Privacy & Security'),
                         const SizedBox(height: 12),
                         _buildGroup([
-                          _buildItem(svgIcon: 'assets/shield_icon.svg', title: 'Two-Factor Authentication',
-                              subtitle: 'Enabled', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TwoFactorAuthenticationScreen()))),
+                          _buildItem(
+                            svgIcon: 'assets/shield_icon.svg',
+                            title: 'Two-Factor Authentication',
+                            subtitle: (snapshot.hasData && snapshot.data!.exists && ((snapshot.data!.data() as Map<String, dynamic>)['is2FAEnabled'] == true)) ? 'Enabled' : 'Disabled',
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TwoFactorAuthenticationScreen())),
+                          ),
                           _buildItem(svgIcon: 'assets/eye_icon.svg', title: 'Privacy Settings', subtitle: '', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()))),
                           _buildItem(svgIcon: 'assets/lock_icon.svg', title: 'Data & Privacy', subtitle: '', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataPrivacyScreen()))),
+                        ]),
+                        const SizedBox(height: 32),
+
+                        // Contracts Section
+                        _buildSectionLabel('Contracts & Legal'),
+                        const SizedBox(height: 12),
+                        _buildGroup([
+                          _buildItem(
+                            svgIcon: 'assets/application_icon.svg', 
+                            title: 'My Contracts', 
+                            subtitle: 'View signed and pending contracts',
+                            iconColor: const Color(0xFF06B6D4), 
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyContractsScreen()))
+                          ),
                         ]),
                         const SizedBox(height: 32),
 
@@ -233,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildSectionLabel('Support'),
                         const SizedBox(height: 12),
                         _buildGroup([
-                          _buildItem(svgIcon: 'assets/help_icon.svg', title: 'Help Center', subtitle: '',
+                          _buildItem(svgIcon: 'assets/question_mark_icon.svg', title: 'Help Center', subtitle: '',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpCenterScreen()))),
                           _buildItem(icon: Icons.gavel_outlined, title: 'Dispute Management', subtitle: 'Report and track gig issues',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisputeManagementScreen()))),

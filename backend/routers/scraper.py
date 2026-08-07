@@ -10,6 +10,8 @@ async def get_scraper_stats():
     try:
         stats = ScraperService.get_stats()
         return stats
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -18,17 +20,21 @@ async def get_recent_runs(limit: int = Query(5)):
     try:
         runs = ScraperService.get_recent_runs(limit)
         return runs
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/imported")
 async def get_imported_gigs(
-    limit: int = Query(10),
+    limit: int = Query(2000),
     filter_type: str = Query("all")
 ):
     try:
         gigs = ScraperService.get_imported_gigs(limit, filter_type)
         return gigs
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -39,6 +45,8 @@ async def run_scraper():
         if not success:
             raise HTTPException(status_code=500, detail="Failed to trigger scraper")
         return {"message": "Scraper triggered successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -49,6 +57,8 @@ async def delete_scraped_gig(gig_id: str):
         if not success:
             raise HTTPException(status_code=404, detail="Gig not found")
         return {"message": "Gig deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -59,6 +69,8 @@ async def update_scraped_gig(gig_id: str, updates: Dict[str, Any]):
         if not success:
             raise HTTPException(status_code=404, detail="Gig not found")
         return {"message": "Gig updated successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -84,6 +96,8 @@ async def publish_all_to_app():
             return {"message": f"Published {published} new gigs to app", "publishedCount": published, **result}
         else:
             return {"message": f"All {already} gigs are already published in app", "publishedCount": 0, **result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -91,6 +105,8 @@ async def publish_all_to_app():
 async def get_scraper_sources():
     try:
         return ScraperService.get_sources()
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -102,10 +118,14 @@ class AddSourceRequest(BaseModel):
 @router.post("/sources")
 async def add_scraper_source(request: AddSourceRequest):
     try:
-        result = ScraperService.add_source(request.url, request.name, request.type)
+        name = request.name or "Facebook Group"
+        source_type = request.type or "facebook_group"
+        result = ScraperService.add_source(request.url, name, source_type)
         if not result:
             raise HTTPException(status_code=500, detail="Failed to add scraper source")
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -116,6 +136,8 @@ async def delete_scraper_source(source_id: str):
         if not success:
             raise HTTPException(status_code=404, detail="Source not found")
         return {"message": "Source deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -129,6 +151,71 @@ async def update_scraper_cookies(request: UpdateCookiesRequest):
         if not success:
             raise HTTPException(status_code=400, detail="Invalid cookies JSON or file write failed")
         return {"message": "Facebook cookies updated successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/config")
+async def get_scraper_config():
+    try:
+        from backend.database import db
+        doc = db.collection("system_config").document("scraper").get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            return {
+                "scheduleFrequency": data.get("scheduleFrequency", "Daily"),
+                "duplicateThreshold": data.get("duplicateThreshold", 85),
+                "activePlatforms": data.get("activePlatforms", {
+                    "Facebook": True,
+                    "Craigslist": True,
+                    "GigSalad": True,
+                    "Eventbrite": True
+                })
+            }
+        return {
+            "scheduleFrequency": "Daily",
+            "duplicateThreshold": 85,
+            "activePlatforms": {
+                "Facebook": True,
+                "Craigslist": True,
+                "GigSalad": True,
+                "Eventbrite": True
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/config")
+async def update_scraper_config(request: dict):
+    try:
+        from backend.database import db
+        from firebase_admin import firestore
+        schedule_frequency = request.get("scheduleFrequency", "Daily")
+        duplicate_threshold = int(request.get("duplicateThreshold", 85))
+        active_platforms = request.get("activePlatforms", {
+            "Facebook": True,
+            "Craigslist": True,
+            "GigSalad": True,
+            "Eventbrite": True
+        })
+
+        if duplicate_threshold < 0 or duplicate_threshold > 100:
+            raise ValueError("Duplicate threshold must be between 0% and 100%")
+
+        config_data = {
+            "scheduleFrequency": schedule_frequency,
+            "duplicateThreshold": duplicate_threshold,
+            "activePlatforms": active_platforms,
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        }
+        db.collection("system_config").document("scraper").set(config_data, merge=True)
+        return {
+            "message": "Scraper configuration updated successfully",
+            "scheduleFrequency": schedule_frequency,
+            "duplicateThreshold": duplicate_threshold,
+            "activePlatforms": active_platforms
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 

@@ -1,6 +1,7 @@
 import os
 from backend.database import db
 import stripe
+from firebase_admin import firestore
 
 
 from fastapi import APIRouter, HTTPException, Request, Header
@@ -272,4 +273,50 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
         raise HTTPException(status_code=400, detail=f"Signature error: {e}")
     except Exception as e:
         print(f"Webhook error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/config")
+async def get_payment_config():
+    try:
+        doc = db.collection("system_config").document("payments").get()
+        if doc.exists:
+            data = doc.to_dict()
+            return {
+                "provider": "Stripe",
+                "holdPeriod": data.get("holdPeriod", 24),
+                "platformFee": data.get("platformFee", 12.0)
+            }
+        return {
+            "provider": "Stripe",
+            "holdPeriod": 24,
+            "platformFee": 12.0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/config")
+async def update_payment_config(request: dict):
+    try:
+        hold_period = int(request.get("holdPeriod", 24))
+        platform_fee = float(request.get("platformFee", 12.0))
+
+        if platform_fee < 0 or platform_fee > 100:
+            raise ValueError("Platform Fee percentage must be between 0% and 100%")
+        if hold_period < 0:
+            raise ValueError("Hold Period must be 0 or greater")
+
+        config_data = {
+            "provider": "Stripe",
+            "holdPeriod": hold_period,
+            "platformFee": platform_fee,
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        }
+        db.collection("system_config").document("payments").set(config_data, merge=True)
+        return {
+            "message": "Payment & Escrow configuration updated successfully",
+            "provider": "Stripe",
+            "holdPeriod": hold_period,
+            "platformFee": platform_fee
+        }
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

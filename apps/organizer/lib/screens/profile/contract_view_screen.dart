@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'signature_canvas_screen.dart';
+import 'package:shared_config/shared_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ContractViewScreen extends StatelessWidget {
   final String bookingId;
@@ -76,6 +78,54 @@ class ContractViewScreen extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
             ),
             centerTitle: true,
+            actions: [
+              GestureDetector(
+                onTap: () async {
+                  try {
+                    final baseUrl = getBackendUrl();
+                    final uri = Uri.parse('$baseUrl/bookings/$bookingId/contract/pdf');
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Could not open the contract PDF.')),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E2D0E),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.download, color: Color(0xFFA1F301), size: 16),
+                      SizedBox(width: 4),
+                      Text(
+                        'PDF',
+                        style: TextStyle(
+                          color: Color(0xFFA1F301),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
           body: SafeArea(
             bottom: false,

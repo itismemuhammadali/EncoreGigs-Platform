@@ -23,9 +23,15 @@ class StripeManager:
     @staticmethod
     def _get_fee_percentage() -> float:
         try:
-            return float(os.getenv("PLATFORM_FEE_PERCENTAGE", "10.0"))
+            doc = db.collection("system_config").document("payments").get()
+            if doc.exists and doc.to_dict() and "platformFee" in doc.to_dict():
+                return float(doc.to_dict()["platformFee"])
+        except Exception as e:
+            print(f"Error fetching platformFee from system_config: {e}")
+        try:
+            return float(os.getenv("PLATFORM_FEE_PERCENTAGE", "12.0"))
         except ValueError:
-            return 10.0
+            return 12.0
 
     @staticmethod
     def create_musician_account(musician_id: str) -> str:

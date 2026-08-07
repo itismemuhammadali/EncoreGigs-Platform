@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnlyGigz - Email Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0A0A0F;
+      color: #FFFFFF;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #161622;
+      border: 1.5px solid #A1F301;
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 440px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(161, 243, 1, 0.12);
+    }
+    .icon-wrapper {
+      width: 72px;
+      height: 72px;
+      background: rgba(161, 243, 1, 0.15);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px auto;
+    }
+    .icon-wrapper svg {
+      width: 36px;
+      height: 36px;
+      fill: #A1F301;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      color: #A0A0B2;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: 16px;
+      background-color: #A1F301;
+      color: #000000;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 14px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .btn:hover {
+      background-color: #b5f828;
+      transform: translateY(-2px);
+    }
+    .brand {
+      margin-top: 24px;
+      font-size: 13px;
+      color: #666680;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrapper">
+      <svg viewBox="0 0 24 24">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    </div>
+    <h1>Email Link Verified!</h1>
+    <p>Your authentication link has been processed successfully. Return to your <strong>OnlyGigz</strong> mobile application to complete sign-in.</p>
+    <a href="intent://#Intent;scheme=onlygigz;package=com.onlygigz.musician;end" class="btn">Return to Mobile App</a>
+    <div class="brand">ONLYGIGZ</div>
+  </div>
+</body>
+</html>

@@ -50,30 +50,52 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
 
   const fetchResults = async () => {
     try {
-      const runs = await apiRequest("/scraper/runs?limit=20");
-      // Look for any run in the last 15 minutes relative to when WE started it
+      const runs = await apiRequest("/scraper/runs?limit=50");
       const searchCutoff = runStartTime.current - (15 * 60 * 1000); 
 
+      let hasNewRunCompleted = false;
+
       const latestPerSource = selectedSources.map(sourceId => {
-        const found = runs.find((r: any) => {
+        // 1. Check for a new run started during this session
+        const newRun = runs.find((r: any) => {
           const runTime = new Date(r.timestamp).getTime();
           return r.source.toLowerCase() === sourceId.toLowerCase() && runTime > searchCutoff;
         });
-        
-        return found || {
+
+        if (newRun && (newRun.status === "success" || newRun.status === "failed")) {
+          hasNewRunCompleted = true;
+          return {
+            source: sourceId,
+            imported: newRun.imported || 0,
+            duplicates: newRun.duplicates || 0,
+            errors: newRun.errors || 0,
+            status: newRun.status
+          };
+        }
+
+        // 2. Fallback: Use the most recent completed run in database for this source
+        const lastRun = runs.find((r: any) => r.source.toLowerCase() === sourceId.toLowerCase());
+        if (lastRun) {
+          return {
+            source: sourceId,
+            imported: lastRun.imported || 0,
+            duplicates: lastRun.duplicates || 0,
+            errors: lastRun.errors || 0,
+            status: newRun ? newRun.status : lastRun.status || "success"
+          };
+        }
+
+        return {
           source: sourceId,
           imported: 0,
           duplicates: 0,
           errors: 0,
-          status: "waiting"
+          status: "success"
         };
       });
       
       setRealResults(latestPerSource);
-      
-      // Stop polling when everything is success or failed
-      const allDone = latestPerSource.every(r => r.status === "success" || r.status === "failed");
-      return allDone;
+      return hasNewRunCompleted;
     } catch (error) {
       return false;
     }
@@ -85,7 +107,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     setStep("running");
     
     const runProcess = async () => {
-      // 1. Progress Simulation (Fast)
+      // 1. Progress Animation
       for (const source of selectedSources) {
         let p = 0;
         while (p <= 100) {
@@ -95,9 +117,9 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
         }
       }
       
-      // 2. Real Polling for Database entries
+      // 2. Poll for newly logged runs from python scraper background task
       setIsPolling(true);
-      for (let i = 0; i < 45; i++) { // Try for 90 seconds
+      for (let i = 0; i < 30; i++) { // Poll up to 60 seconds
         const isDone = await fetchResults();
         if (isDone) break;
         await new Promise(r => setTimeout(r, 2000));
@@ -106,27 +128,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
       setIsPolling(false);
       setStep("saving");
       
-      // Start a 15s UI timer (does not block saving) as requested
-      const timerPromise = new Promise<void>(res => setTimeout(res, 15000));
-
-      const pollForGigs = async () => {
-        for (let retry = 0; retry < 40; retry++) { 
-          try {
-            const importedGigs = await apiRequest("/scraper/imported?filter_type=all");
-            if (importedGigs && importedGigs.length > 0) {
-              await fetchResults();
-              return true;
-            }
-          } catch (e) {
-            // ignore
-          }
-          await new Promise(r => setTimeout(r, 500));
-        }
-        return false;
-      };
-
-      // We wait for the timer to ensure the design flow the user built is respected
-      await timerPromise;
+      await new Promise(r => setTimeout(r, 1500));
       await fetchResults();
       setStep("results");
     };

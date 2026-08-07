@@ -65,3 +65,40 @@ class UserStatusRequest(BaseModel):
     uid: str
     status: str # 'active', 'suspended'
     email: str
+
+class SendEmailOTPRequest(BaseModel):
+    email: EmailStr
+    uid: str
+
+class VerifyEmailOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+class Enable2FARequest(BaseModel):
+    uid: str
+    enabled: bool
+    userType: str  # 'musician' or 'organizer'
+
+class Set2FAMethodRequest(BaseModel):
+    uid: str
+    method: str  # 'sms' or 'email'
+    userType: str  # 'musician' or 'organizer'
+
+class SavePhoneNumberRequest(BaseModel):
+    uid: str
+    phoneNumber: str
+    userType: str  # 'musician' or 'organizer'
+
+class SendEmailLink2FARequest(BaseModel):
+    uid: str
+    email: EmailStr
+    userType: str  # 'musician', 'organizer', or 'admin'
+    idToken: Optional[str] = None  # Optional, frontend sends it but we don't need it
+    continueUrl: Optional[str] = None
+
+class CreateAdminMemberRequest(BaseModel):
+    firstName: str
+    lastName: str
+    email: EmailStr
+    password: str
+    role: str  # 'super_admin', 'admin', or 'support'

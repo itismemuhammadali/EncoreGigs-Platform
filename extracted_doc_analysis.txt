@@ -1,0 +1,160 @@
+[COLOR:0f172a] OnlyGigz
+Requirements and Questions Document
+[COLOR:cbd5e1] ———————————————————————————————————————————————————————
+[COLOR:0f172a] Executive Summary
+This document outlines the legal & compliance requirements for the OnlyGigz platform, alongside operational, architectural, and financial questions identified through codebase analysis and client requirements.
+The contents cover all four main system components:
+[COLOR:2d3748] Musician Mobile App (apps/musician)
+[COLOR:2d3748] Organizer Mobile App (apps/organizer)
+[COLOR:2d3748] Web Admin Portal (web/admin_portal)
+[COLOR:2d3748] Gig Scraper & Backend Engine (scraper & backend)
+[COLOR:0f172a] Part 1: Requirements (Legal, Compliance & Policy Documents)
+To launch and operate OnlyGigz legally and securely, the following documentation and policies must be drafted and integrated into all client-facing applications:
+[COLOR:1e293b] 1. Terms & Conditions (T&C)
+[COLOR:2d3748] User Accounts & Eligibility:  [COLOR:2d3748] Rules governing account creation, verification, age requirements, and profile accuracy for both musicians and event organizers.
+[COLOR:2d3748] Platform Role:  [COLOR:2d3748] Explicit statement that OnlyGigz acts as a venue/marketplace facilitating connections between musicians and event organizers, outlining liability limits.
+[COLOR:2d3748] Conduct & Acceptable Use:  [COLOR:2d3748] Rules against spam, harassment, circumvention of platform payments, and fraudulent gig postings.
+[COLOR:1e293b] 2. Privacy Policy
+[COLOR:2d3748] Data Collection & Usage:  [COLOR:2d3748] Disclosure of personal data collected (name, email, location, payment info, audio clips, portfolio media, device metadata).
+[COLOR:2d3748] Third-Party Services:  [COLOR:2d3748] Transparent disclosure of integrated services including Firebase (Auth, Firestore, Storage), Stripe (Payments & Connect payouts), and OpenAI/Gemini (AI classification).
+[COLOR:2d3748] Data Scraping Transparency:  [COLOR:2d3748] Informing users how publicly available gig data is ingested, processed, and displayed on the platform.
+[COLOR:2d3748] Data Retention & Deletion:  [COLOR:2d3748] Instructions for users on how to request profile deletion and data export in compliance with privacy regulations (GDPR / CCPA).
+[COLOR:1e293b] 3. Terms of Service (ToS)
+[COLOR:2d3748] Service Agreements & Bookings:  [COLOR:2d3748] Binding agreement terms between organizers and musicians upon gig acceptance.
+[COLOR:2d3748] Cancellation & Refund Policies:  [COLOR:2d3748] Clear conditions for booking cancellations, refund eligibility, notice periods, and emergency no-shows.
+[COLOR:2d3748] Payment & Escrow Terms:  [COLOR:2d3748] Terms detailing how funds are held prior to gig completion and released upon verification.
+[COLOR:1e293b] 4. Copyright & Scraped Content Policy (DMCA / Fair Use)
+[COLOR:2d3748] External Scraped Gigs:  [COLOR:2d3748] Legal notice explaining that scraped gig listings originate from public third-party sources (e.g., Facebook Marketplace, Craigslist).
+[COLOR:2d3748] Takedown Request Mechanism:  [COLOR:2d3748] A clear process allowing original venue owners or gig posters to request removal of their scraped listing or claim ownership of their gig account on OnlyGigz.
+[COLOR:1e293b] 5. Payment, Escrow & Payout Policy
+[COLOR:2d3748] Platform Service Fees:  [COLOR:2d3748] Breakdown of service fees charged to musicians and organizers per transaction.
+[COLOR:2d3748] Stripe Connect & Payout Terms:  [COLOR:2d3748] Requirements for Stripe onboarding, identity verification (KYC), bank payout schedules, and dispute/chargeback responsibilities.
+[COLOR:1e293b] 6. About Us & Company Overview Document
+[COLOR:2d3748] Store Submission & Compliance:  [COLOR:2d3748] Official company biography and mission statement required for Apple App Store and Google Play Store developer review and publication.
+[COLOR:2d3748] User & Partner Transparency:  [COLOR:2d3748] Informational content explaining the OnlyGigz origin, core team background, marketplace values, and service offerings to users.
+[COLOR:0f172a] Part 2: Questions & Operational Decisions
+[COLOR:0f172a] Question 1: Scraped Gigs Workflow & Communication Bridge
+Context: The Scraper module ingests publicly listed gigs from Facebook Marketplace, Craigslist, and other external sources. The original posters of these gigs are not registered users on OnlyGigz.
+Focus / Impact: When an OnlyGigz musician applies to a scraped gig through the Musician app, the original external poster does not have an OnlyGigz account to receive notifications or view the applicant's profile.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] How should communication be established between an OnlyGigz musician and an external gig poster?
+[COLOR:2d3748] Should OnlyGigz automatically send an email/SMS notification to the external contact with a  [COLOR:2d3748] magic link [COLOR:2d3748]  to view the musician's profile and accept/decline?  [HIGHLIGHT:yellow]  [COLOR:2d3748] YES we want to send a [HIGHLIGHT:yellow]  magic link–what is your recommendation since we are scraping FB/Craigslist
+[COLOR:2d3748] Should the p [COLOR:2d3748] latform invite the external poster to claim their gig  [COLOR:2d3748] by registering on the Organizer app?
+[COLOR:2d3748] Alternatively, should an OnlyGigz Admin act as a [COLOR:2d3748]  liaison/relay to manually forward applications to external posters?
+[COLOR:2d3748] Should musicians simply be redirected to the original external link (Craigslist / Facebook post)  [COLOR:2d3748] to apply directly on the external platform?
+[COLOR:0f172a] Question 2: Support & Customer Service Chat System Across Apps
+Context: In the Musician App (lib/screens/main/help_center_screen.dart & live_chat_screen.dart), a 'Live Chat' screen exists ('Sarah from Support'), but it currently operates with mock static data. In the Organizer App, there is currently no Help & Support screen. In the Web Admin Portal, there is no admin dashboard interface for support chats.
+Focus / Impact: Unification and implementation strategy for customer support across apps.
+[COLOR:2563eb] Questions for Client:
+Admin Portal Support UI: Should we build a real-time Customer Support Dashboard in web/admin_portal connected to a Firestore support_chats collection so admins can chat live with app users?   YES USE THIS
+Organizer App Parity: Should we implement a dedicated 'Help & Support Center' screen in the Organizer App mirroring the Musician App?  YES
+[COLOR:2d3748] Third-Party vs. Custom: Should we proceed with building custom Firestore live chat support, or integrate a third-party customer support widget (e.g., Intercom, Crisp, Zendesk)?
+[COLOR:0f172a] Question 3: Scraper Module UI & Data Depth in Web Admin Portal
+Context: Currently, on the Web Admin Portal (/scraper page), the 'Recently Imported Gigs' table displays minimal fields: Title, Source, AI Classification, Confidence Score, Flags, and Imported Date.
+Focus / Impact: Admins approving or publishing scraped gigs cannot see the full details (pay range, duration, images, description, location) directly in the table or modal, nor can they preview the original listing link.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Expanded Columns & Popup Details: Should the Scraper table / detail modal be upgraded to display all extracted fields including Budget/Pay Range, Event Date & Duration, Location/Venue, Cover Images, and Full Gig Description? [COLOR:2d3748]   [COLOR:2d3748] YES only [COLOR:2d3748]  with contact details and the original link if it can be added to it for only the admin to view? Admin should be able to view each scraped gig in its entirety.
+[COLOR:2d3748] Original Listing Link: Should every scraped gig row feature a direct 'Original Source URL' button opening the original Craigslist/Facebook post in a new browser tab for admin verification before publishing? YES
+[HIGHLIGHT:yellow]  [COLOR:2d3748] Auto-Publish Rules: Should scraped gigs with high AI confidence (e.g., >95%) be auto-published to the app, or should ALL scraped gigs require manual admin approval ('Show in App')?  [HIGHLIGHT:yellow]  [COLOR:2d3748]   [HIGHLIGHT:yellow] Can this be changed at a later date? For now I would like them all to be admin approved just until we kick off good
+[COLOR:0f172a] Question 4: Two-Factor Authentication (2FA) Scope Across Platforms
+Context: The Musician App includes a Two-Factor Authentication screen (two_factor_authentication_screen.dart) under Account Settings. Neither the Organizer App nor the Web Admin Portal currently features 2FA settings.
+Focus / Impact: Scope and enforcement of 2FA across user roles.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Platform Scope: Is 2FA intended to be supported and enforced across all three platforms (Musician App, Organizer App, and Web Admin Portal)?  YES ALL NEEDS TO HAVE 2FA
+[COLOR:2d3748] Admin Security: Given that the Web Admin Portal manages financial payouts, scraper engines, and user disputes, should 2FA be mandatory for Admin account logins?  [COLOR:2d3748] YES
+[COLOR:2d3748] Authentication Method: Which 2FA mechanisms should be supported (SMS OTP via Firebase Phone Auth, Email OTP, or Authenticator App TOTP)?   SMS OTP
+[COLOR:0f172a] Question 5: Financial Settlement in Admin Dispute Management
+Context: In web/admin_portal/src/app/(dashboard)/disputes/page.tsx, resolving a dispute currently only changes the status flag or triggers user warnings/suspensions. It does not perform financial actions on held funds.
+Focus / Impact: Financial resolution controls for disputed escrow funds.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Admin Financial Actions: When an Admin resolves an open dispute, should the UI provide explicit financial controls (Full Refund to Organizer, Full Release to Musician, Custom 50/50 Split)?  YES give me the controls I need
+[COLOR:2d3748] Automated Stripe Triggering: Should resolving a dispute automatically trigger the corresponding Stripe Refund or Stripe Transfer API calls immediately? YES
+[COLOR:0f172a] Question 6: Featured Profile & Gig Upgrades (Monetization Engine)
+Context: Both the Musician App (featured_upgrade_screen.dart) and Web Admin Portal (/featured route) include provisions for 'Featured Profile' and 'Featured Gig' placements.
+Focus / Impact: Monetization model, pricing, and feed placement.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Pricing & Subscription Plans: What are the pricing tiers for featured promotions (e.g. $9.99/week, $29.99/month)?
+[COLOR:2d3748] Payment Gateway: Should featured profile upgrades be billed via Apple In-App Purchase / Google Play Billing on mobile, or via Stripe Web Checkout?
+[COLOR:2d3748] Search Priority: How should featured musicians and gigs be prioritized in search and feed screens (top placement banner vs highlighted card styling)?
+[COLOR:0f172a] Question 7: Sharing Signed Digital Contracts with Users
+Context: Digital contract signing is completed in-app via signature canvas, but there is currently no email or export mechanism to deliver a copy of the signed contract to the users.
+Focus / Impact: Mechanism for delivering signed contracts to organizers and musicians.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Contract Delivery: How should signed contracts be shared with the organizer and musician once signed?
+[COLOR:2d3748] Email Delivery: Should an automated copy of the signed contract be emailed to both parties upon completion? YES
+[COLOR:2d3748] In-App PDF Download: Should users be able to download a PDF copy directly within the mobile apps, or keep it purely as an in-app text record? Should be able to view in app with option to download
+[COLOR:0f172a] Question 8: Target Geographic Regions & International Rollout Scope
+Context: Defining the geographical boundaries of the platform impacts payment currency, phone verification, legal compliance, and Stripe Connect capabilities.
+Focus / Impact: Target operating countries, currency, and international rollout.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Operational Countries: In which country or countries is the OnlyGigz app intended to launch and operate (e.g.,  [COLOR:2d3748] United States only, [COLOR:2d3748]  Canada, UK, Australia, or Global)?
+[COLOR:2d3748] Multi-Currency Support: Should the app support multiple currencies ( [COLOR:2d3748] USD,  [COLOR:2d3748] CAD, EUR, GBP) or strictly operate in a single currency (USD)?
+[COLOR:2d3748] Phone & Identity Verification: Are phone verification and identity checks restricted to domestic phone formats or open internationally? DOMESTIC USA ONLY
+[COLOR:0f172a] Question 9: Platform Fee Percentage & Refund/Cancellation Policy
+Context: The platform revenue model depends on commission fees collected during gig completion, as well as handling fee retention during cancellations.
+Focus / Impact: Platform commission percentage, refund fee retention, and cancellation penalties.
+[COLOR:2563eb] Questions for Client:
+[COLOR:2d3748] Commission Fee Percentage: What exact percentage (or fixed fee) will OnlyGigz deduct as a platform commission fee on every completed gig transaction?
+[COLOR:2d3748] Refund Charges & Retention: Does the platform retain any administrative fee or percentage when a refund is processed for a cancelled job?
+[COLOR:2d3748] Cancellation Rules: What are the penalty structures or non-refundable fee rules when an organizer or musician cancels a booking close to the event date?
+[COLOR:0f172a] Complete Requirements & Questions Summary Table
+[COLOR:ffffff] Category
+[COLOR:ffffff] Item
+[COLOR:ffffff] Current Codebase Status
+[COLOR:ffffff] Action Required
+[COLOR:334155] Legal
+[COLOR:334155] Terms & Conditions
+[COLOR:334155] Missing
+[COLOR:334155] Drafting & In-app integration
+[COLOR:334155] Legal
+[COLOR:334155] Privacy Policy
+[COLOR:334155] Missing
+[COLOR:334155] Drafting & In-app integration
+[COLOR:334155] Legal
+[COLOR:334155] Terms of Service
+[COLOR:334155] Missing
+[COLOR:334155] Drafting & In-app integration
+[COLOR:334155] Legal
+[COLOR:334155] Copyright / DMCA Takedown
+[COLOR:334155] Missing
+[COLOR:334155] Policy & Takedown Form creation
+[COLOR:334155] Legal
+[COLOR:334155] About Us & Company Overview
+[COLOR:334155] Missing
+[COLOR:334155] Drafting for Apple & Google App Store submission
+[COLOR:334155] Workflow
+[COLOR:334155] Scraped Gig Applications
+[COLOR:334155] Musician can apply in-app
+[COLOR:334155] Define communication bridge for external posters
+[COLOR:334155] Feature
+[COLOR:334155] Support Live Chat
+[COLOR:334155] UI exists in Musician app (mock data)
+[COLOR:334155] Build Admin Portal Support UI & Organizer App Support Screen
+[COLOR:334155] Feature
+[COLOR:334155] Scraper Admin UI
+[COLOR:334155] Table shows basic summary
+[COLOR:334155] Expand table/modals with full gig details & source URLs
+[COLOR:334155] Security
+[COLOR:334155] Two-Factor Auth (2FA)
+[COLOR:334155] Musician App UI only
+[COLOR:334155] Decide on 2FA scope for Organizer App & Web Admin Portal
+[COLOR:334155] Finance
+[COLOR:334155] Dispute Financials
+[COLOR:334155] Status toggle only
+[COLOR:334155] Add refund, release, and partial split actions to Admin UI
+[COLOR:334155] Revenue
+[COLOR:334155] Featured Upgrades
+[COLOR:334155] UI screen present
+[COLOR:334155] Define pricing tiers, billing method (IAP vs Stripe), and feed logic
+[COLOR:334155] Legal
+[COLOR:334155] Contract Delivery
+[COLOR:334155] Signature canvas present
+[COLOR:334155] Define email delivery or in-app PDF export for signed contracts
+[COLOR:334155] Scope
+[COLOR:334155] Target Regions
+[COLOR:334155] App configured for US
+[COLOR:334155] Define operating countries, currency, and international rollout
+[COLOR:334155] Finance
+[COLOR:334155] Platform Fee & Refund Policy
+[COLOR:334155] Escrow buttons wired
+[COLOR:334155] Define exact commission %, fee retention on refunds & cancellations

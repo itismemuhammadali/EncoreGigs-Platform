@@ -10,6 +10,8 @@ import 'musician_management_screen.dart';
 import 'payment_history_screen.dart';
 import 'wallet_screen.dart';
 import 'dispute_management_screen.dart';
+import 'help_center_screen.dart';
+import 'two_factor_authentication_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -127,6 +129,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const DisputeManagementScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      iconPath: 'assets/shield_icon.svg',
+                      title: 'Two-Factor Authentication',
+                      subtitle: 'Secure your account',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TwoFactorAuthenticationScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      iconPath: 'assets/question_mark_icon.svg',
+                      title: 'Help & Support',
+                      subtitle: 'FAQs and Live Chat',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const HelpCenterScreen(),
                         ),
                       ),
                     ),

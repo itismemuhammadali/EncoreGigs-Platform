@@ -10,6 +10,7 @@ class OrganizerDetails(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     profile_image_url: Optional[str] = None
+    profile_url: Optional[str] = None
 
     # Organization Details
     organization_name: Optional[str] = None

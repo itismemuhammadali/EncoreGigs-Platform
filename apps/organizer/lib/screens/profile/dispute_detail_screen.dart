@@ -163,7 +163,7 @@ class _DisputeDetailScreenState extends State<DisputeDetailScreen> {
   }
 
   Widget _buildAttachmentsGrid() {
-    final attachments = _dispute!['attachments'] as List;
+    final attachments = List<String>.from(_dispute!['attachments'] ?? []);
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -174,17 +174,22 @@ class _DisputeDetailScreenState extends State<DisputeDetailScreen> {
       ),
       itemCount: attachments.length,
       itemBuilder: (context, index) {
-        return Container(
-          decoration: BoxDecoration(
+        final url = attachments[index];
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
             color: const Color(0xFF2A2A2F),
-            borderRadius: BorderRadius.circular(10),
-            image: const DecorationImage(
-              image: NetworkImage('https://via.placeholder.com/150'), // Placeholder for demo
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: const Center(
-            child: Icon(Icons.file_present, color: Colors.white54),
+            child: url.startsWith('http')
+                ? Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(Icons.insert_drive_file, color: Colors.white54, size: 32),
+                    ),
+                  )
+                : const Center(
+                    child: Icon(Icons.insert_drive_file, color: Colors.white54, size: 32),
+                  ),
           ),
         );
       },
