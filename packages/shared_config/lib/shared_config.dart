@@ -3,9 +3,9 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:io' show Platform;
 
-const String PRIMARY_BACKEND_HOST = '192.168.100.55';
-const String FALLBACK_BACKEND_HOST = '10.0.2.2'; // Standard Android Emulator loopback
-const String OLD_BACKEND_HOST = '177.7.32.116';
+const String PRIMARY_BACKEND_HOST = '177.7.32.116';
+const String FALLBACK_BACKEND_HOST = '177.7.32.116';
+const String OLD_BACKEND_HOST = '192.168.100.55';
 
 const String STRIPE_PUBLISHABLE_KEY_DEFAULT = 'pk_test_51TWa16C4PTfB0I2XPl7KWaEgeyQOWAKXvicPoQoF3GxAmIFBYMeKI2Y9AsRNvdny7dzVJ7Inj9W15zVP7CfyKDPF003AgOz7G8';
 
@@ -123,7 +123,7 @@ String fixEmulatorUrl(String? url) {
 
 String getBackendUrl() {
   if (kIsWeb) {
-    return 'http://localhost:8000';
+    return 'https://api.onlygigz.app';
   }
   return 'http://$BACKEND_HOST:8000';
 }
