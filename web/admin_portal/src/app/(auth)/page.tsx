@@ -35,7 +35,8 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
 
-      if (data.role !== "admin") {
+      const allowedRoles = ["admin", "super_admin", "support", "admin_member"];
+      if (!allowedRoles.includes(data.role)) {
         throw new Error("Unauthorized: Only admins can access this portal.");
       }
 
