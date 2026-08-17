@@ -12,6 +12,7 @@ app = FastAPI(title="OnlyGigz API")
 
 # Configure CORS
 origins = [
+    "https://admin.onlygigz.app",
     "https://onlygigz.app",
     "https://www.onlygigz.app",
     "http://localhost:3000",
