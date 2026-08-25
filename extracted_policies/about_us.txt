@@ -1,0 +1,31 @@
+EFFECTIVE_DATE: Built to Get You Booked.
+
+Built From the Booking Problems We Lived
+
+OnlyGigz was created by a working musician and booking agent who were experiencing the challenges of live entertainment booking firsthand. Entertainers were coming to us looking for help finding gigs, getting in front of venues, and managing everything that happens behind the scenes. At the same time, venues and organizers were reaching out to us for help finding dependable talent and keeping their entertainment calendars filled. We found ourselves right in the middle of two groups of people who needed each other—but were still struggling to connect. The problem wasn't a lack of talent. And it wasn't a lack of opportunities. It was the way the two were finding each other and getting booked. That's where OnlyGigz began.
+
+How It Started
+
+It was late one night, driving home after a gig, when everything we had been seeing finally clicked. That’s when the idea for OnlyGigz was born. We started talking about everything we had been seeing: talented entertainers struggling to get in front of the right venues, venues struggling to find dependable entertainment, and both sides trying to manage the entire process through a mix of social media, texts, phone calls, calendars, payment apps, and handshake agreements. There had to be a better way. So we decided to build one. At first, we tried to build OnlyGigz ourselves. With the help of AI, a lot of determination, and probably too much confidence, we jumped in. We also went down plenty of rabbit holes. We spent money learning what worked, what didn't, and just how much would actually be required to build the platform we had envisioned. Eventually, we realized something important: if we were going to do this, we wanted to do it right. So we made the decision to go all in and hired a professional development team to turn the idea into a real platform. What followed were months of late nights, hundreds of decisions, countless revisions, testing, problem-solving, and more than a few conversations that started with: “Wait... what if we added this?” Little by little, the idea that started after a gig became something real. Today, OnlyGigz is in beta testing—and we're getting closer to putting it into the hands of the people we built it for.
+
+What We're Building
+
+OnlyGigz is an all-in-one platform designed to make live entertainment easier to discover, book, and manage. For entertainers, that means one place to build a professional profile, showcase their talent, manage availability, discover opportunities, apply for gigs, communicate with organizers, manage bookings, sign contracts, and get paid. For venues and organizers, it means a simpler way to post opportunities, find and review talent, communicate, hire, manage booking details, handle contracts and payments, and build relationships with entertainers they want to book again. Instead of piecing together Facebook posts, DMs, texts, spreadsheets, calendars, contracts, and payment apps, OnlyGigz brings the booking process together in one place. From finding the opportunity to finishing the gig.
+
+Why OnlyGigz Is Different
+
+We didn't build OnlyGigz by looking at the live entertainment industry from the outside. We built it from inside it. We know what it's like to finish a gig and immediately start thinking about where the next one is coming from. We know how much work happens before an entertainer ever steps on stage. And we know how frustrating it can be for a venue or organizer who simply needs dependable entertainment for an open date. Those experiences influence the decisions we make about OnlyGigz. The goal isn't to add technology just for the sake of technology. It's to remove the parts of booking that waste time, create confusion, cause missed opportunities, or make an already demanding industry harder than it needs to be.
+
+Our Mission
+
+To make booking live entertainment simpler, more trusted, and more professional while giving entertainers better tools to find opportunities, manage their bookings, and build sustainable careers. We want entertainers spending more time doing what they do best—not chasing messages, contracts, payments, and booking details. And we want venues and organizers to be able to find and book great entertainment without rebuilding the process every single time.
+
+Our Vision
+
+We believe live entertainment deserves better infrastructure. Our vision is to build a platform where discovering talent, finding opportunities, communicating, booking, contracting, paying, and building a professional reputation can all happen in one connected place. And our vision goes beyond simply helping someone book one gig. We want OnlyGigz to become a platform entertainers can use to build their businesses and careers—and a tool organizers can rely on to manage live entertainment confidently. As OnlyGigz grows, so will the tools we build around the people who make live entertainment possible.
+
+Built for the People Who Make Live Entertainment Happen
+
+OnlyGigz is for the musician playing every weekend. The band trying to fill its calendar. The DJ looking for the next event. The venue owner staring at an open Saturday night. The festival organizer building a lineup. The event planner trying to find the right entertainment for an important night. It's for the people behind the stage, behind the calendar, behind the messages, and behind every successful booking. Because live entertainment doesn't start when the music does. There's an entire business behind it. We're building OnlyGigz for that business.
+
+FOOTER: ONLYGIGZ Built to Get You Booked.

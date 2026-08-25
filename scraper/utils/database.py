@@ -91,13 +91,20 @@ DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
 
             # 3. Save as New Scraped Gig
             data = gig.dict()
+            
+            def cap_words(t):
+                if not t or not isinstance(t, str): return ""
+                abbrevs = {"tx", "la", "ny", "ca", "fl", "ga", "nc", "sc", "va", "dc", "usa", "uk"}
+                return re.sub(r'\b[a-zA-Z]+\b', lambda m: m.group(0).upper() if m.group(0).lower() in abbrevs else m.group(0)[0].upper() + m.group(0)[1:], t)
+
             firestore_data = {
-                "title": data["title"],
+                "title": cap_words(data["title"]),
                 "description": data["description"],
-                "location": data["location"],
+                "location": cap_words(data["location"]),
                 "budget": data["budget"],
                 "date": data["date"],
                 "time": data["time"],
+                "expiryDate": data["date"],
                 "imageUrl": data["image_url"],
                 "sourceUrl": data["source_url"],
                 "organizerProfileUrl": data["organizer"].get("profile_url") or data["organizer"].get("website"),

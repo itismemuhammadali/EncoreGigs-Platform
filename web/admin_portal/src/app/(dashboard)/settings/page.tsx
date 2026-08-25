@@ -112,6 +112,59 @@ export default function SettingsPage() {
     role: "admin" as "super_admin" | "admin" | "support"
   });
   const [isSubmittingMember, setIsSubmittingMember] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteAccountModal, setDeleteAccountModal] = useState(false);
+
+  const handleDownloadData = async () => {
+    try {
+      setIsExporting(true);
+      const uid = profile.uid || (JSON.parse(localStorage.getItem("admin_user") || "{}")).uid;
+      if (!uid) {
+        setToast({ show: true, message: "User ID not found", type: "error" });
+        return;
+      }
+      const data = await apiRequest(`/auth/export-data?uid=${uid}`);
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `onlygigz_data_export_${uid.slice(0, 6)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setToast({ show: true, message: "Data export downloaded successfully", type: "success" });
+    } catch (e) {
+      setToast({ show: true, message: "Failed to download data export", type: "error" });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      const uid = profile.uid || (JSON.parse(localStorage.getItem("admin_user") || "{}")).uid;
+      if (!uid) {
+        setToast({ show: true, message: "User ID not found", type: "error" });
+        return;
+      }
+      await apiRequest("/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ uid })
+      });
+      localStorage.clear();
+      setToast({ show: true, message: "Account deleted permanently", type: "success" });
+      window.location.href = "/";
+    } catch (e) {
+      setToast({ show: true, message: "Failed to delete account", type: "error" });
+    } finally {
+      setIsDeletingAccount(false);
+      setDeleteAccountModal(false);
+    }
+  };
 
   // Fetch initial data
   useEffect(() => {
@@ -725,7 +778,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="pt-6">
+                <div className="pt-6 border-t border-[#2A2A2A] flex flex-wrap items-center justify-between gap-4">
                   <button 
                     type="submit"
                     disabled={isLoading}
@@ -740,6 +793,84 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </form>
+
+              {/* --- DATA PRIVACY & DANGER ZONE --- */}
+              <div className="pt-8 border-t border-[#2A2A2A] space-y-6">
+                <div>
+                  <h3 className="text-white text-[16px] font-bold mb-1">Data Privacy & Account Controls</h3>
+                  <p className="text-[#999999] text-[13px]">Download your profile archive or permanently delete your account data</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Download Data Card */}
+                  <div className="bg-[#1A1A1A] border border-[#2A2A2A] p-5 rounded-[12px] flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-white font-bold text-[14px] mb-1">Download Account Data</h4>
+                      <p className="text-[#888] text-[12px]">
+                        Export a complete JSON snapshot of your profile, preferences, role assignments, and security activity logs.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDownloadData}
+                      disabled={isExporting}
+                      className="w-fit h-[40px] px-4 bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-[13px] rounded-[8px] flex items-center gap-2 transition-all disabled:opacity-50"
+                    >
+                      {isExporting ? <Loader2 size={16} className="animate-spin" /> : null}
+                      <span>Export Data Archive (.JSON)</span>
+                    </button>
+                  </div>
+
+                  {/* Delete Account Card */}
+                  <div className="bg-[#2A1616] border border-[#ef4444]/30 p-5 rounded-[12px] flex flex-col justify-between space-y-4">
+                    <div>
+                      <h4 className="text-[#ef4444] font-bold text-[14px] mb-1">Delete Account</h4>
+                      <p className="text-[#cc8888] text-[12px]">
+                        Permanently purge your admin user profile and credentials from the system. This action cannot be undone.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteAccountModal(true)}
+                      className="w-fit h-[40px] px-4 bg-[#ef4444] hover:bg-[#dc2626] text-white font-bold text-[13px] rounded-[8px] flex items-center gap-2 transition-all shadow-md shadow-[#ef4444]/20"
+                    >
+                      <Trash2 size={16} />
+                      <span>Delete Account Permanently</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Account Confirmation Modal */}
+          {deleteAccountModal && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+              <div className="bg-[#1A1A1A] border border-[#ef4444]/40 max-w-md w-full p-6 rounded-[14px] shadow-2xl space-y-5">
+                <div className="flex items-center gap-3 text-[#ef4444]">
+                  <Trash2 size={24} />
+                  <h3 className="text-white text-lg font-bold">Delete Account Permanently?</h3>
+                </div>
+                <p className="text-[#aaa] text-sm leading-relaxed">
+                  Are you absolutely sure you want to delete your account? All of your administrative records and authentication credentials will be removed.
+                </p>
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#2A2A2A]">
+                  <button
+                    onClick={() => setDeleteAccountModal(false)}
+                    className="px-4 py-2 bg-[#2A2A2A] hover:bg-[#333] text-zinc-300 text-xs font-bold rounded-lg transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={isDeletingAccount}
+                    className="px-5 py-2 bg-[#ef4444] hover:bg-[#dc2626] text-white text-xs font-bold rounded-lg transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isDeletingAccount ? <Loader2 size={14} className="animate-spin" /> : null}
+                    Yes, Delete My Account
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

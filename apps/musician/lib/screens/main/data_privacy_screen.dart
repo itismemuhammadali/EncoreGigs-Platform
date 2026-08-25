@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/api_service.dart';
 
 class DataPrivacyScreen extends StatefulWidget {
   const DataPrivacyScreen({super.key});
@@ -9,6 +12,130 @@ class DataPrivacyScreen extends StatefulWidget {
 }
 
 class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
+  bool _isExporting = false;
+  bool _isDeleting = false;
+
+  Future<void> _handleExportData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isExporting = true);
+
+    try {
+      final apiService = ApiService();
+      final data = await apiService.exportData(user.uid);
+
+      if (!mounted) return;
+      setState(() => _isExporting = false);
+
+      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1F),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.download_done, color: Color(0xFFA1F301)),
+              SizedBox(width: 8),
+              Text('Data Export Ready', style: TextStyle(color: Colors.white, fontSize: 18)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Your account data export was compiled successfully:',
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF2A2A2F)),
+                  ),
+                  child: Text(
+                    jsonStr.length > 800 ? '${jsonStr.substring(0, 800)}...\n\n[Export Payload Complete]' : jsonStr,
+                    style: const TextStyle(color: Color(0xFFA1F301), fontFamily: 'monospace', fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close', style: TextStyle(color: Color(0xFFA1F301))),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isExporting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error exporting data: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Account?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Are you sure you want to delete your account permanently? This action CANNOT be undone and all your data will be permanently removed.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete Account', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      final apiService = ApiService();
+      await apiService.deleteAccount(user.uid);
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting account: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -195,7 +322,7 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 GestureDetector(
-                                  onTap: () {},
+                                  onTap: _isExporting ? null : _handleExportData,
                                   child: Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -207,27 +334,35 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: SvgPicture.asset(
-                                            'assets/download_icon.svg',
-                                            fit: BoxFit.contain,
-                                            colorFilter: const ColorFilter.mode(
-                                              Color(0xFFA1F301),
-                                              BlendMode.srcIn,
+                                        if (_isExporting)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFA1F301)),
+                                          )
+                                        else ...[
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: SvgPicture.asset(
+                                              'assets/download_icon.svg',
+                                              fit: BoxFit.contain,
+                                              colorFilter: const ColorFilter.mode(
+                                                Color(0xFFA1F301),
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text(
-                                          'Request Data Export',
-                                          style: TextStyle(
-                                            color: Color(0xFFA1F301),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Request Data Export',
+                                            style: TextStyle(
+                                              color: Color(0xFFA1F301),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -360,39 +495,50 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
                                 ),
                                 const SizedBox(height: 14),
                                 GestureDetector(
-                                  onTap: () {},
+                                  onTap: _isDeleting ? null : _handleDeleteAccount,
                                   child: Container(
                                     width: double.infinity,
                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF3D3D1F),
+                                      color: const Color(0xFFEF4444).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                                      ),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: SvgPicture.asset(
-                                            'assets/delete_icon.svg',
-                                            fit: BoxFit.contain,
-                                            colorFilter: const ColorFilter.mode(
-                                              Color(0xFFEF4444),
-                                              BlendMode.srcIn,
+                                        if (_isDeleting)
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFEF4444)),
+                                          )
+                                        else ...[
+                                          SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: SvgPicture.asset(
+                                              'assets/delete_icon.svg',
+                                              fit: BoxFit.contain,
+                                              colorFilter: const ColorFilter.mode(
+                                                Color(0xFFEF4444),
+                                                BlendMode.srcIn,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text(
-                                          'Delete My Account',
-                                          style: TextStyle(
-                                            color: Color(0xFFEF4444),
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Delete My Account',
+                                            style: TextStyle(
+                                              color: Color(0xFFEF4444),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ],
                                     ),
                                   ),

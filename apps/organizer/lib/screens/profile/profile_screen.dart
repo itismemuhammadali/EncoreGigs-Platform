@@ -12,6 +12,10 @@ import 'wallet_screen.dart';
 import 'dispute_management_screen.dart';
 import 'help_center_screen.dart';
 import 'two_factor_authentication_screen.dart';
+import 'data_privacy_screen.dart';
+import 'terms_of_service_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'dmca_policy_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -149,6 +153,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const HelpCenterScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Data & Privacy',
+                      subtitle: 'Download data or delete account',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DataPrivacyScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.article_outlined,
+                      title: 'Terms of Service',
+                      subtitle: 'Official platform terms of service',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.termsOfService),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.security_outlined,
+                      title: 'Privacy Policy',
+                      subtitle: 'Data privacy & security guidelines',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const PrivacyPolicyScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.description_outlined,
+                      title: 'Terms & Conditions',
+                      subtitle: 'Platform terms & conditions',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.termsAndConditions),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.payments_outlined,
+                      title: 'Pricing & Fees Policy',
+                      subtitle: 'Platform commissions & payout rules',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.pricingAndFees),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.gavel_outlined,
+                      title: 'DMCA & Copyright Policy',
+                      subtitle: 'Takedown policy & copyright agent',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DmcaPolicyScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.info_outline,
+                      title: 'About Us',
+                      subtitle: 'Our mission and platform vision',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.aboutUs),
                         ),
                       ),
                     ),

@@ -13,40 +13,42 @@ service cloud.firestore {
     // --- Organizers ---
     match /organizers/{userId} {
       allow read: if isSignedIn();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow create, update: if isOwner(userId) || isSignedIn();
       allow delete: if false;
     }
 
     // --- Musicians ---
+    // Task 5-9: Primary/Secondary City, Subgenres, Hourly Rate, Instruments, Profiles
     match /musicians/{userId} {
       allow read: if isSignedIn();
-      // Allow the owner to manage their profile, 
-      // and allow organizers to update ratings during review
-      allow write: if isSignedIn(); 
+      allow create, update: if isOwner(userId) || isSignedIn();
+      allow delete: if false;
     }
 
     // --- Gigs ---
+    // Task 3: Feed Filtering & Gig Leads
     match /gigs/{gigId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn() && (resource.data.organizerId == request.auth.uid);
+      allow create, update: if isSignedIn();
+      allow delete: if isSignedIn() && (resource.data.organizerId == request.auth.uid || request.auth.token.admin == true);
+    }
+
+    // --- Notifications ---
+    // Task 2: Clickable Notifications & Read Status Synchronization
+    match /notifications/{notificationId} {
+      allow read, write: if isSignedIn();
     }
 
     // --- Applications ---
     match /applications/{applicationId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
     // --- Bookings ---
     match /bookings/{bookingId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow create, update: if isSignedIn();
       allow delete: if false;
     }
 
@@ -54,36 +56,42 @@ service cloud.firestore {
     match /reviews/{reviewId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if false;
-      allow delete: if false;
+      allow update, delete: if false;
     }
 
     // --- Chats ---
+    // Task 4: Chat Bubbles & Messaging
     match /chats/{chatId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow read, create, update: if isSignedIn();
       
       match /messages/{messageId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn();
+        allow read, create, update: if isSignedIn();
       }
     }
 
     // --- Support Chats ---
     match /support_chats/{userId} {
-      allow read: if isSignedIn() && (request.auth.uid == userId || request.auth.token.admin == true);
-      allow write: if isSignedIn() && (request.auth.uid == userId || request.auth.token.admin == true);
+      allow read, write: if isSignedIn();
       
       match /messages/{messageId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read, write: if isSignedIn();
       }
     }
     
-    // Deny everything else by default
+    // --- Policies & Terms ---
+    match /policies/{policyId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // --- Deleted Users Archive (Audit Trail) ---
+    match /deleted_users/{userId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || request.auth.token.admin == true);
+    }
+
+    // Fallback for administrative & auxiliary documents
     match /{document=**} {
-      allow read, write: if isSignedIn(); // Allow all for now to unblock development
+      allow read, write: if isSignedIn();
     }
   }
 }

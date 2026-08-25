@@ -258,38 +258,43 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessage(MessageModel msg, bool isMe) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe ? const Color(0xFFA1F301) : const Color(0xFF1A1A1F),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: Radius.circular(isMe ? 18 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 18),
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Column(
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isMe ? const Color(0xFFA1F301) : const Color(0xFF1A1A1F),
+                border: isMe ? null : Border.all(color: const Color(0xFF2A2A2F), width: 1),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isMe ? 18 : 4),
+                  bottomRight: Radius.circular(isMe ? 4 : 18),
+                ),
+              ),
+              child: Text(
+                msg.text,
+                style: TextStyle(
+                  color: isMe ? Colors.black : Colors.white,
+                  fontSize: 14,
+                  height: 1.4,
+                  fontWeight: isMe ? FontWeight.w500 : FontWeight.w400,
+                ),
               ),
             ),
-            child: Text(
-              msg.text,
-              style: TextStyle(
-                color: isMe ? Colors.black : Colors.white,
-                fontSize: 14,
-                height: 1.4,
-              ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('HH:mm').format(msg.timestamp),
+              style: const TextStyle(color: Color(0xFF666666), fontSize: 11),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            DateFormat('HH:mm').format(msg.timestamp),
-            style: const TextStyle(color: Color(0xFF666666), fontSize: 11),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

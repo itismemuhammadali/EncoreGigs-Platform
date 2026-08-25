@@ -241,28 +241,20 @@ class GigCard extends StatelessWidget {
                         color: Colors.grey[700],
                       ),
                       const SizedBox(height: 12),
-                      // Location and distance
+                      // Location row
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on, color: Color(0xFF999999), size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                gig.location,
-                                style: const TextStyle(
-                                  color: Color(0xFF999999),
-                                  fontSize: 14,
-                                ),
+                          const Icon(Icons.location_on, color: Color(0xFF999999), size: 16),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              gig.location,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF999999),
+                                fontSize: 14,
                               ),
-                            ],
-                          ),
-                          Text(
-                            '${gig.distance} mi',
-                            style: const TextStyle(
-                              color: Color(0xFF999999),
-                              fontSize: 14,
                             ),
                           ),
                         ],

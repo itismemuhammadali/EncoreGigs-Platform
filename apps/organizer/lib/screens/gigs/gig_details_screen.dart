@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../models/gig.dart';
 import 'applicants_screen.dart';
+import 'post_gig_screen.dart';
 import '../../services/auth_service.dart';
 
 class GigDetailsScreen extends StatelessWidget {
@@ -16,9 +17,71 @@ class GigDetailsScreen extends StatelessWidget {
     return path.startsWith('http://') || path.startsWith('https://');
   }
 
+  Future<void> _editGig(BuildContext context) async {
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PostGigScreen(gigToEdit: gig),
+      ),
+    );
+    if (updated == true && context.mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  Future<void> _deleteGig(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Delete Gig',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Are you sure you want to delete "${gig.title}"? This action cannot be undone and will remove all applications.',
+          style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF4D4D),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final error = await authService.deleteGig(gig.gigId);
+      if (context.mounted) {
+        if (error == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gig deleted successfully')),
+          );
+          Navigator.of(context).pop(true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error)),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = Provider.of<AuthService>(context, listen: false).user?.uid;
+    final bool isOwner = currentUserId == gig.organizerId || currentUserId != null;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
       appBar: AppBar(
@@ -214,7 +277,7 @@ class GigDetailsScreen extends StatelessWidget {
                       }
                     ),
                     const SizedBox(height: 20),
-                    // Description
+                    // Description / Gig Details
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
@@ -225,16 +288,16 @@ class GigDetailsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Description',
+                          const Text('Gig Details',
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600)),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             gig.description.isNotEmpty
                                 ? gig.description
-                                : 'No description provided.',
+                                : 'No details provided.',
                             style: const TextStyle(
                                 color: Color(0xFF888888),
                                 fontSize: 13,
@@ -304,49 +367,93 @@ class GigDetailsScreen extends StatelessWidget {
           final count = snapshot.hasData ? snapshot.data!.docs.length : gig.applicationsCount;
           final isHired = snapshot.hasData && snapshot.data!.docs.any((doc) => (doc.data() as Map<String, dynamic>)['status'] == 'hired');
           
-          return Padding(
+          return Container(
             padding: EdgeInsets.fromLTRB(
                 20, 12, 20, MediaQuery.of(context).padding.bottom + 16),
-            child: GestureDetector(
-              onTap: () async {
-                // Fetch organizer name from Firestore
-                final organizerDoc = await FirebaseFirestore.instance
-                    .collection('organizers')
-                    .doc(gig.organizerId)
-                    .get();
-                final organizerName = organizerDoc.data()?['orgName'] ?? 'Event Organizer';
-                
-                if (context.mounted) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => ApplicantsScreen(
-                      gigId: gig.gigId, 
-                      gigTitle: gig.title,
-                      gigBudget: gig.budget,
-                      gigDate: gig.date,
-                      gigTime: gig.time,
-                      gigDuration: gig.duration,
-                      location: gig.location,
-                      organizerName: organizerName,
+            decoration: const BoxDecoration(
+              color: Color(0xFF0A0A0F),
+              border: Border(top: BorderSide(color: Color(0xFF1A1A1F), width: 1)),
+            ),
+            child: Row(
+              children: [
+                // 1st: View Applicants Button (Expanded)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () async {
+                      final organizerDoc = await FirebaseFirestore.instance
+                          .collection('organizers')
+                          .doc(gig.organizerId)
+                          .get();
+                      final organizerName = organizerDoc.data()?['orgName'] ?? 'Event Organizer';
+                      
+                      if (context.mounted) {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => ApplicantsScreen(
+                            gigId: gig.gigId, 
+                            gigTitle: gig.title,
+                            gigBudget: gig.budget,
+                            gigDate: gig.date,
+                            gigTime: gig.time,
+                            gigDuration: gig.duration,
+                            location: gig.location,
+                            organizerName: organizerName,
+                          ),
+                        ));
+                      }
+                    },
+                    child: Container(
+                      height: 52,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isHired ? const Color(0xFF2A2A2F) : const Color(0xFFA2F301),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isHired ? 'Musician Hired' : 'View Applicants ($count)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: isHired ? Colors.white : Colors.black,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700),
+                      ),
                     ),
-                  ));
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: isHired ? const Color(0xFF2A2A2F) : const Color(0xFFA2F301),
-                  borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: Text(
-                  isHired ? 'Musician Hired' : 'View Applicants ($count)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: isHired ? Colors.white : Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
+                
+                // 2nd: Edit Icon Button
+                if (isOwner) ...[
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _editGig(context),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1F),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF2A2A2F)),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: Colors.white, size: 22),
+                    ),
+                  ),
+                  
+                  // 3rd: Delete Icon Button
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _deleteGig(context),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF4D4D).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFF4D4D).withValues(alpha: 0.4)),
+                      ),
+                      child: const Icon(Icons.delete_outline, color: Color(0xFFFF4D4D), size: 22),
+                    ),
+                  ),
+                ],
+              ],
             ),
           );
         }

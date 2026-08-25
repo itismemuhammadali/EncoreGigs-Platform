@@ -492,6 +492,9 @@ export default function ScraperModule() {
         isOpen={editModal.show}
         onClose={() => setEditModal({ show: false, gig: null })}
         gigData={editModal.gig}
+        onApprove={async (gigId) => {
+          await handlePublishGig(gigId);
+        }}
         onSave={async (updatedGig) => {
           try {
             await apiRequest(`/scraper/gigs/${updatedGig.id}`, {

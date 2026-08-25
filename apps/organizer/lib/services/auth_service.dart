@@ -114,6 +114,39 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<String?> sendPasswordResetEmail(String email) async {
+    try {
+      final cleanEmail = email.trim();
+      final lowerEmail = cleanEmail.toLowerCase();
+
+      final query1 = await FirebaseFirestore.instance
+          .collection('organizers')
+          .where('email', isEqualTo: cleanEmail)
+          .limit(1)
+          .get();
+
+      bool exists = query1.docs.isNotEmpty;
+
+      if (!exists) {
+        final query2 = await FirebaseFirestore.instance
+            .collection('organizers')
+            .where('email', isEqualTo: lowerEmail)
+            .limit(1)
+            .get();
+        exists = query2.docs.isNotEmpty;
+      }
+
+      if (!exists) {
+        return 'No account found with this email address.';
+      }
+
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   Future<UserCredential?> _signInWithGoogleCredential() async {
     final googleUser = await GoogleSignIn(scopes: ['email']).signIn();
     if (googleUser == null) return null;
@@ -950,6 +983,7 @@ class AuthService extends ChangeNotifier {
     required List<String> genres,
     required String date,
     required String time,
+    String? expiryDate,
     required String budget,
     required String location,
     String? imageUrl,
@@ -968,12 +1002,31 @@ class AuthService extends ChangeNotifier {
         'genres': genres,
         'date': date,
         'time': time,
+        'expiryDate': expiryDate ?? date,
         'budget': budget,
         'location': location,
         'imageUrl': imageUrl,
         'duration': duration,
         'isUrgent': isUrgent,
       });
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> deleteGig(String gigId) async {
+    try {
+      await FirebaseFirestore.instance.collection('gigs').doc(gigId).delete();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> updateGig(String gigId, Map<String, dynamic> data) async {
+    try {
+      await FirebaseFirestore.instance.collection('gigs').doc(gigId).update(data);
       return null;
     } catch (e) {
       return e.toString();

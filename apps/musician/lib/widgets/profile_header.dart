@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/profile_model.dart';
 import '../services/auth_service.dart';
+import 'profile_image_cropper_dialog.dart';
 
 class ProfileHeader extends StatefulWidget {
   final Profile profile;
@@ -23,18 +24,27 @@ class _ProfileHeaderState extends State<ProfileHeader> {
     try {
       final XFile? pickedFile = await picker.pickImage(
         source: source,
-        maxWidth: 1000,
-        maxHeight: 1000,
+        maxWidth: 1200,
+        maxHeight: 1200,
         imageQuality: 85,
       );
 
-      if (pickedFile == null) return;
+      if (pickedFile == null || !mounted) return;
+
+      final croppedFile = await showDialog<File>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ProfileImageCropperDialog(
+          imageFile: File(pickedFile.path),
+        ),
+      );
+
+      if (croppedFile == null || !mounted) return;
 
       setState(() => _isUploading = true);
 
-      if (!mounted) return;
       final authService = Provider.of<AuthService>(context, listen: false);
-      final error = await authService.updateProfilePicture(File(pickedFile.path));
+      final error = await authService.updateProfilePicture(croppedFile);
 
       if (!mounted) return;
       if (error != null) {

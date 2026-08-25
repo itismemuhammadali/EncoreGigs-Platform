@@ -20,6 +20,61 @@ class ApplicationDetailScreen extends StatefulWidget {
 
 class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   bool _loadingBooking = false;
+  bool _isWithdrawing = false;
+
+  Future<void> _handleWithdrawApplication() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1F),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Withdraw Application?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text(
+          'Are you sure you want to withdraw your application for "${widget.application.gigTitle}"?',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Withdraw', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isWithdrawing = true);
+
+    try {
+      await authService.withdrawApplication(widget.application.id, widget.application.gigId);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Application withdrawn successfully.'),
+          backgroundColor: Color(0xFFA1F301),
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isWithdrawing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error withdrawing application: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   String _formatDate(DateTime date) {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -286,6 +341,51 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                         buttonLabel: 'View Booking Details',
                         isLoading: _loadingBooking,
                         onTap: _openBookingDetails,
+                      ),
+                    ],
+
+                    if (application.status != ApplicationStatus.hired) ...[
+                      const SizedBox(height: 24),
+                      GestureDetector(
+                        onTap: _isWithdrawing ? null : _handleWithdrawApplication,
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                            border: Border.all(
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                              width: 1.5,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: _isWithdrawing
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Color(0xFFEF4444),
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.remove_circle_outline, color: Color(0xFFEF4444), size: 18),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Withdraw Application',
+                                        style: TextStyle(
+                                          color: Color(0xFFEF4444),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
                       ),
                     ],
 

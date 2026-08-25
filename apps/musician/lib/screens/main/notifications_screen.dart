@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/api_service.dart';
 import '../../models/gig_model.dart';
 import 'gig_detail_screen.dart';
+import 'bookings_screen.dart';
+import 'wallet_overview_screen.dart';
+import 'messages_screen.dart';
+import 'applications_screen.dart';
 
 enum NotificationType { application, message, payment, booking, gig, system }
 
@@ -100,7 +105,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _handleNotificationTap(AppNotification notification) async {
     if (notification.isUnread) {
-      await _api.markNotificationRead(notification.id);
+      if (notification.id.isNotEmpty) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(notification.id)
+              .update({'isRead': true});
+        } catch (_) {}
+      }
+      _api.markNotificationRead(notification.id);
       if (mounted) {
         setState(() {
           notification.isUnread = false;
@@ -109,8 +122,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     }
 
-    final gigId = notification.data['gigId'] ?? notification.data['gig_id'];
     if (!mounted) return;
+
+    final gigId = notification.data['gigId'] ?? notification.data['gig_id'];
 
     if (gigId != null && gigId.toString().isNotEmpty) {
       showDialog(
@@ -140,6 +154,35 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
       }
+      return;
+    }
+
+    // Comprehensive fallback routing based on notification type and category
+    switch (notification.type) {
+      case NotificationType.booking:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BookingsScreen()),
+        );
+        break;
+      case NotificationType.payment:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const WalletOverviewScreen()),
+        );
+        break;
+      case NotificationType.message:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MessagesScreen()),
+        );
+        break;
+      case NotificationType.application:
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ApplicationsScreen()),
+        );
+        break;
+      case NotificationType.gig:
+      case NotificationType.system:
+        Navigator.of(context).pop();
+        break;
     }
   }
 
@@ -237,10 +280,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               onTap: () async {
                                 final user = FirebaseAuth.instance.currentUser;
                                 if (user != null) {
-                                  await _api.markAllNotificationsRead(user.uid);
-                                  setState(() {
-                                    for (var n in _notifications) { n.isUnread = false; }
-                                  });
+                                  try {
+                                    final batch = FirebaseFirestore.instance.batch();
+                                    final unreadDocs = await FirebaseFirestore.instance
+                                        .collection('notifications')
+                                        .where('userId', isEqualTo: user.uid)
+                                        .where('isRead', isEqualTo: false)
+                                        .get();
+                                    for (var doc in unreadDocs.docs) {
+                                      batch.update(doc.reference, {'isRead': true});
+                                    }
+                                    await batch.commit();
+                                  } catch (_) {}
+
+                                  _api.markAllNotificationsRead(user.uid);
+                                  if (mounted) {
+                                    setState(() {
+                                      for (var n in _notifications) {
+                                        n.isUnread = false;
+                                        n.isRead = true;
+                                      }
+                                    });
+                                  }
                                 }
                               },
                               child: Container(

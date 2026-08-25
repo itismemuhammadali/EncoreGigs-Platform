@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/api_service.dart';
 import '../../models/gig.dart';
 import '../gigs/gig_details_screen.dart';
 import '../gigs/applicants_screen.dart';
+import '../gigs/gigs_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../messages/messages_screen.dart';
 
@@ -119,7 +121,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _handleNotificationTap(NotificationItem item) async {
     if (item.isUnread) {
-      await _api.markNotificationRead(item.id);
+      if (item.id.isNotEmpty) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('notifications')
+              .doc(item.id)
+              .update({'isRead': true});
+        } catch (_) {}
+      }
+      _api.markNotificationRead(item.id);
       if (mounted) {
         setState(() {
           item.isUnread = false;
@@ -175,7 +185,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           );
         }
       }
-    } else if (item.category == 'booking' || item.category == 'payment') {
+      return;
+    }
+
+    if (item.category == 'booking' || item.category == 'payment') {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const BookingsScreen()),
       );
@@ -183,6 +196,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const MessagesScreen()),
       );
+    } else if (item.category == 'gig' || item.category == 'application') {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const GigsScreen()),
+      );
+    } else {
+      Navigator.of(context).pop();
     }
   }
 
@@ -256,24 +275,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     onTap: () async {
                                       final user = FirebaseAuth.instance.currentUser;
                                       if (user != null) {
-                                        await _api.markAllNotificationsRead(user.uid);
-                                        setState(() {
-                                          _notifications = _notifications
-                                              .map((n) => NotificationItem(
-                                                    id: n.id,
-                                                    icon: n.icon,
-                                                    iconColor: n.iconColor,
-                                                    iconBg: n.iconBg,
-                                                    title: n.title,
-                                                    subtitle: n.subtitle,
-                                                    time: n.time,
-                                                    type: n.type,
-                                                    category: n.category,
-                                                    data: n.data,
-                                                    isUnread: false,
-                                                  ))
-                                              .toList();
-                                        });
+                                        try {
+                                          final batch = FirebaseFirestore.instance.batch();
+                                          final unreadDocs = await FirebaseFirestore.instance
+                                              .collection('notifications')
+                                              .where('userId', isEqualTo: user.uid)
+                                              .where('isRead', isEqualTo: false)
+                                              .get();
+                                          for (var doc in unreadDocs.docs) {
+                                            batch.update(doc.reference, {'isRead': true});
+                                          }
+                                          await batch.commit();
+                                        } catch (_) {}
+
+                                        _api.markAllNotificationsRead(user.uid);
+                                        if (mounted) {
+                                          setState(() {
+                                            _notifications = _notifications
+                                                .map((n) => NotificationItem(
+                                                      id: n.id,
+                                                      icon: n.icon,
+                                                      iconColor: n.iconColor,
+                                                      iconBg: n.iconBg,
+                                                      title: n.title,
+                                                      subtitle: n.subtitle,
+                                                      time: n.time,
+                                                      type: n.type,
+                                                      category: n.category,
+                                                      data: n.data,
+                                                      isUnread: false,
+                                                    ))
+                                                .toList();
+                                          });
+                                        }
                                       }
                                     },
                                     child: const Padding(

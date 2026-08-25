@@ -155,7 +155,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   height: 100,
                   width: 100,
                   child: Image.asset(
-                    'assets/Logo.png',
+                    'assets/musician_logo.jpeg',
                     fit: BoxFit.contain,
                   ),
                 ),

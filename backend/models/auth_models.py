@@ -25,10 +25,19 @@ class ProfileUpdateRequest(BaseModel):
     email: str
     contact: Optional[str] = None
     location: Optional[str] = None
+    primaryCity: Optional[str] = None
+    primaryState: Optional[str] = None
+    primaryZip: Optional[str] = None
+    secondaryCity: Optional[str] = None
+    secondaryState: Optional[str] = None
+    secondaryZip: Optional[str] = None
+    travelRadius: Optional[int] = None
     bio: Optional[str] = None
     profileImageUrl: Optional[str] = None
+    bannerImageUrl: Optional[str] = None
     instruments: Optional[List[str]] = None
     genres: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
     feeRange: Optional[float] = None
     maxFeeRange: Optional[float] = None
     yearsOfExperience: Optional[int] = None
@@ -56,6 +65,7 @@ class SignInRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    role: Optional[str] = None
 
 class PasswordUpdateRequest(BaseModel):
     uid: str

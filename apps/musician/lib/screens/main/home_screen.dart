@@ -9,8 +9,6 @@ import 'notifications_screen.dart';
 import 'gig_detail_screen.dart';
 import '../../widgets/bottom_navigation_bar.dart';
 import '../../widgets/gig_card.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../main/add_bank_account_screen.dart';
 import '../main/payment_method_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -28,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _unreadMessageCount = 0;
   int _unreadNotificationCount = 0;
 
-  final List<String> filters = ['All', 'Nearby', 'This Week', 'High Badge'];
+  final List<String> filters = ['All', 'Gig Leads', 'Direct Gigs', 'This Week', 'High Pay'];
 
   @override
   void initState() {
@@ -332,14 +330,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Category filters
                   List<Gig> filteredGigs = gigs.where((gig) {
                     switch (_selectedFilterIndex) {
-                      case 1: // Nearby
-                        return gig.distance <= 5.0;
-                      case 2: // This Week
+                      case 1: // Gig Leads
+                        return gig.isScraped || (gig.organizer ?? '').toLowerCase().contains('gig lead');
+                      case 2: // Direct Gigs
+                        return !gig.isScraped && !(gig.organizer ?? '').toLowerCase().contains('gig lead');
+                      case 3: // This Week
                         final now = DateTime.now();
-                        final weekFromNow = now.add(const Duration(days: 7));
-                        return gig.date.isAfter(now) && gig.date.isBefore(weekFromNow);
-                      case 3: // High Badge
-                        return gig.rating >= 4.7;
+                        final todayStart = DateTime(now.year, now.month, now.day);
+                        final nextWeek = todayStart.add(const Duration(days: 8));
+                        return gig.date.isAfter(todayStart.subtract(const Duration(seconds: 1))) &&
+                               gig.date.isBefore(nextWeek);
+                      case 4: // High Pay
+                        final budgetDigits = RegExp(r'\d+').firstMatch(gig.pay.replaceAll(',', ''))?.group(0);
+                        final amount = budgetDigits != null ? int.tryParse(budgetDigits) ?? 0 : 0;
+                        return amount >= 200 || gig.pay.toLowerCase().contains('negotiable');
                       default: // All
                         return true;
                     }

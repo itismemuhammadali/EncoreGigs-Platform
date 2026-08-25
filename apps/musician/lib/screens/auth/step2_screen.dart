@@ -2,104 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../widgets/complete_profile_header.dart';
 
-class CustomSliderThumb extends RoundSliderThumbShape {
-  const CustomSliderThumb({
-    super.enabledThumbRadius = 8,
-  });
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final Canvas canvas = context.canvas;
-    
-    // Draw border circle with bright green color (filled area color)
-    final Paint borderPaint = Paint()
-      ..color = const Color(0xFFA1F301)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    canvas.drawCircle(center, enabledThumbRadius, borderPaint);
-  }
-}
-
-class CustomSliderTrackShape extends RoundedRectSliderTrackShape {
-  const CustomSliderTrackShape();
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset offset, {
-    double additionalActiveTrackHeight = 0,
-    required Animation<double> enableAnimation,
-    bool isDiscrete = false,
-    bool isEnabled = true,
-    required RenderBox parentBox,
-    Offset? secondaryOffset,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required Offset thumbCenter,
-  }) {
-    final Canvas canvas = context.canvas;
-    final Paint paint = Paint()
-      ..color = const Color(0xFF1a1a1a)
-      ..style = PaintingStyle.fill;
-
-    final Paint activePaint = Paint()
-      ..color = const Color(0xFFA1F301)
-      ..style = PaintingStyle.fill;
-
-    final Paint borderPaint = Paint()
-      ..color = const Color(0xFFA1F301)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    final Rect trackRect = Rect.fromLTWH(
-      offset.dx,
-      offset.dy + (parentBox.size.height - sliderTheme.trackHeight!) / 2,
-      parentBox.size.width,
-      sliderTheme.trackHeight!,
-    );
-
-    final RRect rRect = RRect.fromRectAndRadius(
-      trackRect,
-      Radius.circular(sliderTheme.trackHeight! / 2),
-    );
-
-    // Draw inactive track
-    canvas.drawRRect(rRect, paint);
-
-    // Draw active track
-    final Rect activeRect = Rect.fromLTWH(
-      offset.dx,
-      offset.dy + (parentBox.size.height - sliderTheme.trackHeight!) / 2,
-      thumbCenter.dx - offset.dx,
-      sliderTheme.trackHeight!,
-    );
-
-    final RRect activeRRect = RRect.fromRectAndRadius(
-      activeRect,
-      Radius.circular(sliderTheme.trackHeight! / 2),
-    );
-
-    canvas.drawRRect(activeRRect, activePaint);
-
-    // Draw border
-    canvas.drawRRect(rRect, borderPaint);
-  }
-}
-
 class Step2Screen extends StatefulWidget {
   final Map<String, dynamic> profileData;
   final VoidCallback onNext;
@@ -117,18 +19,47 @@ class Step2Screen extends StatefulWidget {
 }
 
 class _Step2ScreenState extends State<Step2Screen> {
+  late TextEditingController _hourlyRateController;
   late TextEditingController _yearsController;
-  late TextEditingController _locationController;
+  late TextEditingController _primaryCityController;
+  late TextEditingController _primaryStateController;
+  late TextEditingController _primaryZipController;
+  late TextEditingController _secondaryCityController;
+  late TextEditingController _secondaryStateController;
+  late TextEditingController _secondaryZipController;
+  late TextEditingController _travelRadiusController;
   late TextEditingController _websiteController;
 
   @override
   void initState() {
     super.initState();
+    final initialRate = widget.profileData['hourlyRate'] ?? widget.profileData['feeRange'] ?? 50;
+    _hourlyRateController = TextEditingController(
+      text: initialRate.toString(),
+    );
     _yearsController = TextEditingController(
       text: widget.profileData['yearsOfExperience'].toString(),
     );
-    _locationController = TextEditingController(
-      text: widget.profileData['location'] ?? '',
+    _primaryCityController = TextEditingController(
+      text: widget.profileData['primaryCity'] ?? '',
+    );
+    _primaryStateController = TextEditingController(
+      text: widget.profileData['primaryState'] ?? '',
+    );
+    _primaryZipController = TextEditingController(
+      text: widget.profileData['primaryZip'] ?? '',
+    );
+    _secondaryCityController = TextEditingController(
+      text: widget.profileData['secondaryCity'] ?? '',
+    );
+    _secondaryStateController = TextEditingController(
+      text: widget.profileData['secondaryState'] ?? '',
+    );
+    _secondaryZipController = TextEditingController(
+      text: widget.profileData['secondaryZip'] ?? '',
+    );
+    _travelRadiusController = TextEditingController(
+      text: (widget.profileData['travelRadius'] ?? 50).toString(),
     );
     _websiteController = TextEditingController(
       text: widget.profileData['website'] ?? '',
@@ -137,14 +68,57 @@ class _Step2ScreenState extends State<Step2Screen> {
 
   @override
   void dispose() {
+    _hourlyRateController.dispose();
     _yearsController.dispose();
-    _locationController.dispose();
+    _primaryCityController.dispose();
+    _primaryStateController.dispose();
+    _primaryZipController.dispose();
+    _secondaryCityController.dispose();
+    _secondaryStateController.dispose();
+    _secondaryZipController.dispose();
+    _travelRadiusController.dispose();
     _websiteController.dispose();
     super.dispose();
   }
 
-  String _formatCurrency(double value) {
-    return '\$${value.toStringAsFixed(0)}';
+  void _updateLocationData() {
+    widget.profileData['primaryCity'] = _primaryCityController.text.trim();
+    widget.profileData['primaryState'] = _primaryStateController.text.trim();
+    widget.profileData['primaryZip'] = _primaryZipController.text.trim();
+    widget.profileData['secondaryCity'] = _secondaryCityController.text.trim();
+    widget.profileData['secondaryState'] = _secondaryStateController.text.trim();
+    widget.profileData['secondaryZip'] = _secondaryZipController.text.trim();
+    widget.profileData['travelRadius'] = int.tryParse(_travelRadiusController.text) ?? 50;
+
+    final city = _primaryCityController.text.trim();
+    final st = _primaryStateController.text.trim();
+    final zip = _primaryZipController.text.trim();
+
+    if (city.isNotEmpty && st.isNotEmpty) {
+      widget.profileData['location'] = '$city, $st $zip'.trim();
+    } else if (city.isNotEmpty) {
+      widget.profileData['location'] = city;
+    }
+  }
+
+  InputDecoration _buildInputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[700]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Colors.grey[700]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFA1F301)),
+      ),
+    );
   }
 
   @override
@@ -168,73 +142,53 @@ class _Step2ScreenState extends State<Step2Screen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
 
-          // Typical Fee Range
+          // Hourly Rate
           const Text(
-            'Typical Fee Range',
+            'Hourly Rate (\$/hr)',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _hourlyRateController,
+            onChanged: (value) {
+              final rate = int.tryParse(value) ?? 0;
+              widget.profileData['hourlyRate'] = rate;
+              widget.profileData['feeRange'] = rate;
+            },
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              prefixText: '\$ ',
+              prefixStyle: const TextStyle(
+                color: Color(0xFFA1F301),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              hintText: '50',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: Colors.grey[700]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFA1F301)),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
-          SliderTheme(
-            data: SliderThemeData(
-              trackHeight: 13,
-              thumbShape: const CustomSliderThumb(enabledThumbRadius: 5),
-              trackShape: const CustomSliderTrackShape(),
-              activeTrackColor: const Color(0xFFA1F301),
-              inactiveTrackColor: const Color(0xFF1a1a1a),
-              overlayColor: Colors.transparent,
-              valueIndicatorColor: Colors.transparent,
-            ),
-            child: Slider(
-              value: widget.profileData['feeRange'].toDouble(),
-              min: 100,
-              max: 5000,
-              onChanged: (value) {
-                setState(() {
-                  widget.profileData['feeRange'] = value.toInt();
-                });
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Min: \$100',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              Text(
-                _formatCurrency(widget.profileData['feeRange'].toDouble()),
-                style: const TextStyle(
-                  color: Color(0xFFA1F301),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Inter',
-                ),
-              ),
-              const Text(
-                'Max: \$5000',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontFamily: 'Inter',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
 
-          // Years of Experience
+          // Years Performing Professionally
           const Text(
-            'Years of Experience',
+            'Years Performing Professionally',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14,
@@ -269,24 +223,132 @@ class _Step2ScreenState extends State<Step2Screen> {
           ),
           const SizedBox(height: 24),
 
-          // Location
+          // Primary City
           const Text(
-            'Location',
+            'Primary City',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
+          const SizedBox(height: 2),
+          const Text(
+            '(primarily based)',
+            style: TextStyle(color: Color(0xFF999999), fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextField(
+                  controller: _primaryCityController,
+                  onChanged: (_) => _updateLocationData(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('City'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _primaryStateController,
+                  onChanged: (_) => _updateLocationData(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('State'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _primaryZipController,
+                  onChanged: (_) => _updateLocationData(),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('Zip'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Secondary City
+          const Text(
+            'Secondary City',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            '(where you play second most often)',
+            style: TextStyle(color: Color(0xFF999999), fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextField(
+                  controller: _secondaryCityController,
+                  onChanged: (_) => _updateLocationData(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('City'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _secondaryStateController,
+                  onChanged: (_) => _updateLocationData(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('State'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _secondaryZipController,
+                  onChanged: (_) => _updateLocationData(),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: _buildInputDecoration('Zip'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Distance Willing to Travel
+          const Text(
+            'Distance Willing to Travel',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            '(radius) Miles radius',
+            style: TextStyle(color: Color(0xFF999999), fontSize: 12),
+          ),
           const SizedBox(height: 8),
           TextField(
-            controller: _locationController,
-            onChanged: (value) {
-              widget.profileData['location'] = value;
-            },
-            style: const TextStyle(color: Colors.white),
+            controller: _travelRadiusController,
+            onChanged: (_) => _updateLocationData(),
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
-              hintText: 'City, State',
+              suffixText: 'miles',
+              suffixStyle: const TextStyle(color: Color(0xFFA1F301), fontWeight: FontWeight.bold),
+              hintText: '50',
               hintStyle: TextStyle(color: Colors.grey[600]),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),

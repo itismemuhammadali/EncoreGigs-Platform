@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 import '../constants.dart';
 
 class ApiService {
@@ -394,6 +393,32 @@ class ApiService {
       return jsonDecode(response.body)['count'] ?? 0;
     } else {
       return 0;
+    }
+  }
+
+  Future<void> deleteAccount(String uid) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/delete-account'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uid': uid}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete account: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> exportData(String uid) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/auth/export-data'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uid': uid}),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to export data: ${response.body}');
     }
   }
 }

@@ -32,28 +32,13 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 140,
-              height: 140,
-              child: Image.asset(
-                'assets/Logo.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Text(
-              'OnlyGigz',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
+        child: SizedBox(
+          width: 220,
+          height: 220,
+          child: Image.asset(
+            'assets/musician_logo.jpeg',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );

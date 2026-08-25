@@ -90,30 +90,36 @@ class CountryCodePicker extends StatelessWidget {
     return GestureDetector(
       onTap: () => _showCountryPicker(context),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1F),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF2A2A2F)),
+          color: const Color(0xFF0A0A0F),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               selectedCountry.flag,
-              style: const TextStyle(fontSize: 20),
+              style: const TextStyle(fontSize: 18),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Text(
               selectedCountry.code,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
             ),
             const Icon(
               Icons.arrow_drop_down,
-              color: Color(0xFF666666),
+              color: Colors.white70,
             ),
           ],
         ),

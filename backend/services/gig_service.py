@@ -3,6 +3,33 @@ from google.cloud.firestore import SERVER_TIMESTAMP, Increment, Query, FieldFilt
 from backend.database import db
 from backend.models.gig_models import GigRequest, ApplicationRequest
 
+from datetime import datetime
+from backend.utils.text_utils import capitalize_words, capitalize_list
+
+def is_gig_expired(expiry_str: Optional[str]) -> bool:
+    if not expiry_str:
+        return False
+    try:
+        now = datetime.now()
+        if "/" in expiry_str:
+            parts = expiry_str.split("/")
+            if len(parts) == 3:
+                month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
+                exp_dt = datetime(year, month, day, 23, 59, 59)
+                return now > exp_dt
+        elif "-" in expiry_str:
+            parts = expiry_str.split("-")
+            if len(parts) == 3:
+                if len(parts[0]) == 4:
+                    year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+                else:
+                    month, day, year = int(parts[0]), int(parts[1]), int(parts[2])
+                exp_dt = datetime(year, month, day, 23, 59, 59)
+                return now > exp_dt
+    except Exception as e:
+        print(f"Error checking gig expiration for '{expiry_str}': {e}")
+    return False
+
 class GigService:
     @staticmethod
     def create_gig(request: GigRequest):
@@ -19,17 +46,18 @@ class GigService:
             print(f"Error fetching organizer details: {e}")
 
         gig_data = {
-            "title": request.title,
+            "title": capitalize_words(request.title),
             "description": request.description,
             "requirements": request.requirements,
-            "genres": request.genres,
+            "genres": capitalize_list(request.genres),
             "date": request.date,
             "time": request.time,
+            "expiryDate": request.expiryDate or request.date,
             "budget": request.budget,
-            "location": request.location,
+            "location": capitalize_words(request.location),
             "organizerId": request.organizerId,
             "organizer_id": request.organizerId, # For compatibility
-            "organizerName": organizer_name,
+            "organizerName": capitalize_words(organizer_name),
             "organizerImage": organizer_image,
             "imageUrl": request.imageUrl or organizer_image, # Fallback to org image
             "duration": request.duration,
@@ -46,7 +74,7 @@ class GigService:
             from backend.services.notification_service import NotificationService
             NotificationService.send_broadcast(
                 title="New Gig Posted! 🎵",
-                body=f"'{request.title}' in {request.location} is now accepting applications.",
+                body=f"'{gig_data['title']}' in {gig_data['location']} is now accepting applications.",
                 audience="All Users",
                 notif_type="gig_created",
                 data={"gigId": doc_ref.id}
@@ -73,7 +101,25 @@ class GigService:
         
         for doc in docs:
             d_dict = doc.to_dict() or {}
+            
+            # Expiration auto-cleanup check
+            exp_date = d_dict.get("expiryDate") or d_dict.get("date", "")
+            if status == "open" and is_gig_expired(exp_date):
+                try:
+                    db.collection("gigs").document(doc.id).update({"status": "expired"})
+                except Exception as ex:
+                    print(f"Failed to auto-expire gig {doc.id}: {ex}")
+                continue
+
             gig_data = {**d_dict, "id": doc.id}
+            if gig_data.get("title"):
+                gig_data["title"] = capitalize_words(gig_data["title"])
+            if gig_data.get("location"):
+                gig_data["location"] = capitalize_words(gig_data["location"])
+            if gig_data.get("genres"):
+                gig_data["genres"] = capitalize_list(gig_data["genres"])
+            if gig_data.get("organizerName"):
+                gig_data["organizerName"] = capitalize_words(gig_data["organizerName"])
             
             # Use stored counter if available, otherwise fallback to manual count
             if "applicantsCount" not in gig_data:
@@ -102,7 +148,16 @@ class GigService:
         if not doc.exists:
             return None
         d_dict = doc.to_dict() or {}
-        return {**d_dict, "id": doc.id}
+        gig_data = {**d_dict, "id": doc.id}
+        if gig_data.get("title"):
+            gig_data["title"] = capitalize_words(gig_data["title"])
+        if gig_data.get("location"):
+            gig_data["location"] = capitalize_words(gig_data["location"])
+        if gig_data.get("genres"):
+            gig_data["genres"] = capitalize_list(gig_data["genres"])
+        if gig_data.get("organizerName"):
+            gig_data["organizerName"] = capitalize_words(gig_data["organizerName"])
+        return gig_data
 
     @staticmethod
     def apply_to_gig(request: ApplicationRequest):

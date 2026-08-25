@@ -6,7 +6,6 @@ import '../../widgets/status_filter_chips.dart';
 import '../../models/application_model.dart';
 import '../../services/auth_service.dart';
 import 'application_detail_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ApplicationsScreen extends StatefulWidget {
   const ApplicationsScreen({super.key});

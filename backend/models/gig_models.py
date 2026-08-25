@@ -14,6 +14,7 @@ class GigRequest(BaseModel):
     imageUrl: Optional[str] = None
     duration: Optional[str] = None
     isUrgent: bool = False
+    expiryDate: Optional[str] = None
 
 class ApplicationRequest(BaseModel):
     gigId: str

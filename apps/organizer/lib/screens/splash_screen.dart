@@ -54,40 +54,19 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: const Color(0xFFA1CD06),
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: ScaleTransition(
             scale: _scaleAnim,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  'assets/Logo.png',
-                  width: 120,
-                  height: 120,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'OnlyGigz',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Connect. Book. Perform.',
-                  style: TextStyle(
-                    color: Color(0xFF888888),
-                    fontSize: 14,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
+            child: SizedBox(
+              width: 220,
+              height: 220,
+              child: Image.asset(
+                'assets/organizer_logo.jpeg',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),

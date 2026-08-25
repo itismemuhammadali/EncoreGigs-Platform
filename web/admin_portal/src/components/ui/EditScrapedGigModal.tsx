@@ -8,9 +8,18 @@ interface EditScrapedGigModalProps {
   onClose: () => void;
   gigData: any | null;
   onSave: (updatedGig: any) => void;
+  onApprove?: (gigId: string) => void;
 }
 
-export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditScrapedGigModalProps) {
+function capitalizeWords(str: string): string {
+  if (!str) return str;
+  return str.replace(/\b\w+/g, (w) => {
+    if (w.length <= 3 && w === w.toUpperCase()) return w;
+    return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+  });
+}
+
+export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave, onApprove }: EditScrapedGigModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     source: "",
@@ -26,16 +35,17 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
     isDuplicate: false,
     isSpam: false
   });
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     if (gigData) {
       setFormData({
-        title: gigData.title || "",
+        title: capitalizeWords(gigData.title || ""),
         source: gigData.source || "",
-        sourceUrl: gigData.sourceUrl || gigData.url || "",
+        sourceUrl: gigData.sourceUrl || gigData.source_url || gigData.url || gigData.link || "",
         classification: gigData.classification || "Source",
         budget: gigData.budget || "",
-        location: gigData.location || "",
+        location: capitalizeWords(gigData.location || ""),
         description: gigData.description || "",
         contactEmail: gigData.contactEmail || gigData.externalContactEmail || "",
         contactPhone: gigData.contactPhone || gigData.externalContactPhone || "",
@@ -48,6 +58,17 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
   }, [gigData]);
 
   if (!isOpen || !gigData) return null;
+
+  const handleApprove = async () => {
+    if (!onApprove || !gigData.id) return;
+    try {
+      setIsPublishing(true);
+      await onApprove(gigData.id);
+      onClose();
+    } finally {
+      setIsPublishing(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 overflow-y-auto py-10">
@@ -82,7 +103,7 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
                 Source URL: {formData.sourceUrl}
               </span>
               <a 
-                href={formData.sourceUrl} 
+                href={formData.sourceUrl.startsWith('http') ? formData.sourceUrl : `https://${formData.sourceUrl}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-bold text-[#b3ff00] hover:underline shrink-0 bg-[#b3ff00]/10 px-3 py-1.5 rounded border border-[#b3ff00]/20"
@@ -99,7 +120,7 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
               <input 
                 type="text"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, title: capitalizeWords(e.target.value) })}
                 className="w-full h-10 bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 text-white text-sm focus:outline-none focus:border-[#b3ff00]/50 transition-all"
               />
             </div>
@@ -133,7 +154,7 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
               <input 
                 type="text"
                 value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, location: capitalizeWords(e.target.value) })}
                 placeholder="e.g. Austin, TX"
                 className="w-full h-10 bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 text-white text-sm focus:outline-none focus:border-[#b3ff00]/50 transition-all"
               />
@@ -248,25 +269,38 @@ export function EditScrapedGigModal({ isOpen, onClose, gigData, onSave }: EditSc
           >
             Cancel
           </button>
-          <button 
-            onClick={() => onSave({
-              ...gigData,
-              title: formData.title,
-              source: formData.source,
-              sourceUrl: formData.sourceUrl,
-              classification: formData.classification,
-              budget: formData.budget,
-              location: formData.location,
-              description: formData.description,
-              contactEmail: formData.contactEmail,
-              contactPhone: formData.contactPhone,
-              date: formData.date,
-              flags: formData.isSpam ? "Spam" : formData.isDuplicate ? "Duplicate" : "None"
-            })}
-            className="bg-[#b3ff00] text-black px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10"
-          >
-            Save Changes
-          </button>
+          
+          <div className="flex items-center gap-3">
+            {onApprove && !gigData.publishedToApp && (
+              <button 
+                onClick={handleApprove}
+                disabled={isPublishing}
+                className="bg-[#1a1a2e] border border-[#b3ff00]/40 text-[#b3ff00] px-4 py-2.5 rounded-lg font-bold text-xs hover:bg-[#222240] transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isPublishing ? "Publishing..." : "✓ Approve & Publish to Feed"}
+              </button>
+            )}
+
+            <button 
+              onClick={() => onSave({
+                ...gigData,
+                title: formData.title,
+                source: formData.source,
+                sourceUrl: formData.sourceUrl,
+                classification: formData.classification,
+                budget: formData.budget,
+                location: formData.location,
+                description: formData.description,
+                contactEmail: formData.contactEmail,
+                contactPhone: formData.contactPhone,
+                date: formData.date,
+                flags: formData.isSpam ? "Spam" : formData.isDuplicate ? "Duplicate" : "None"
+              })}
+              className="bg-[#b3ff00] text-black px-6 py-2.5 rounded-lg font-bold text-xs hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10"
+            >
+              Save Changes
+            </button>
+          </div>
         </div>
       </div>
     </div>

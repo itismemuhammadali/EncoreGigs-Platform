@@ -77,17 +77,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header with settings icon
+                  // Header banner image with settings icon
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
                     decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
+                      color: const Color(0xFF0A0A0F),
+                      image: (profile.bannerImage != null && profile.bannerImage!.isNotEmpty)
+                          ? DecorationImage(
+                              image: NetworkImage(profile.bannerImage!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      border: (profile.bannerImage != null && profile.bannerImage!.isNotEmpty)
+                          ? Border(
+                              bottom: BorderSide(
+                                color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                            )
+                          : null,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -98,13 +107,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => const SettingsScreen()),
                             ),
-                            child: SvgPicture.asset(
-                              'assets/setting_icon.svg',
-                              width: 28,
-                              height: 28,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: SvgPicture.asset(
+                                'assets/setting_icon.svg',
+                                width: 24,
+                                height: 24,
+                                colorFilter: const ColorFilter.mode(
+                                  Colors.white,
+                                  BlendMode.srcIn,
+                                ),
                               ),
                             ),
                           ),

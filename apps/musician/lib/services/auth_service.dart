@@ -58,6 +58,17 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> withdrawApplication(String applicationId, String gigId) async {
+    try {
+      await _apiService.withdrawApplication(applicationId);
+      _appliedGigIds.remove(gigId);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error withdrawing application: $e');
+      rethrow;
+    }
+  }
+
   String _handleError(http.Response response, String defaultMessage) {
     try {
       final data = jsonDecode(response.body);
@@ -109,6 +120,39 @@ class AuthService extends ChangeNotifier {
         }
         return message;
       }
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> sendPasswordResetEmail(String email) async {
+    try {
+      final cleanEmail = email.trim();
+      final lowerEmail = cleanEmail.toLowerCase();
+
+      final query1 = await FirebaseFirestore.instance
+          .collection('musicians')
+          .where('email', isEqualTo: cleanEmail)
+          .limit(1)
+          .get();
+
+      bool exists = query1.docs.isNotEmpty;
+
+      if (!exists) {
+        final query2 = await FirebaseFirestore.instance
+            .collection('musicians')
+            .where('email', isEqualTo: lowerEmail)
+            .limit(1)
+            .get();
+        exists = query2.docs.isNotEmpty;
+      }
+
+      if (!exists) {
+        return 'No account found with this email address.';
+      }
+
+      await _auth.sendPasswordResetEmail(email: cleanEmail);
+      return null;
     } catch (e) {
       return e.toString();
     }
@@ -243,6 +287,17 @@ class AuthService extends ChangeNotifier {
     String? website,
     Map<String, dynamic>? portfolio,
     File? profileImage,
+    File? bannerImage,
+    String? primaryCity,
+    String? primaryState,
+    String? primaryZip,
+    String? secondaryCity,
+    String? secondaryState,
+    String? secondaryZip,
+    int? travelRadius,
+    String? primaryGenre,
+    List<String>? subgenres,
+    List<String>? tags,
   }) async {
     debugPrint('--- Musician Signup Started ---');
     try {
@@ -252,6 +307,15 @@ class AuthService extends ChangeNotifier {
         profileImageUrl = await uploadImage(
           profileImage,
           'profile_photos/${DateTime.now().millisecondsSinceEpoch}.jpg',
+        );
+      }
+
+      String? bannerImageUrl;
+      if (bannerImage != null) {
+        debugPrint('Uploading banner image...');
+        bannerImageUrl = await uploadImage(
+          bannerImage,
+          'profile_photos/banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
       }
 
@@ -295,6 +359,7 @@ class AuthService extends ChangeNotifier {
           'fullName': fullName,
           'bio': bio,
           'genres': genres,
+          'tags': tags ?? [],
           'instruments': instruments,
           'feeRange': feeRange,
           'yearsOfExperience': yearsOfExperience,
@@ -302,6 +367,16 @@ class AuthService extends ChangeNotifier {
           'website': website,
           'portfolio': portfolioUrls,
           'profileImageUrl': profileImageUrl,
+          'bannerImageUrl': bannerImageUrl,
+          'primaryCity': primaryCity,
+          'primaryState': primaryState,
+          'primaryZip': primaryZip,
+          'secondaryCity': secondaryCity,
+          'secondaryState': secondaryState,
+          'secondaryZip': secondaryZip,
+          'travelRadius': travelRadius,
+          'primaryGenre': primaryGenre,
+          'subgenres': subgenres,
         }),
       ).timeout(const Duration(seconds: 30));
 

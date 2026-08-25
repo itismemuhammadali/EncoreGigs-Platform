@@ -69,6 +69,21 @@ async def update_application_status(application_id: str, status: str = Query(...
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.delete("/applications/{application_id}")
+@router.post("/applications/{application_id}/withdraw")
+async def withdraw_application(application_id: str):
+    try:
+        app_ref = db.collection("applications").document(application_id)
+        doc = app_ref.get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Application not found")
+        app_ref.delete()
+        return {"message": "Application withdrawn successfully", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/reviews/{musician_id}")
 async def list_reviews(musician_id: str, limit: int = 5):
     try:

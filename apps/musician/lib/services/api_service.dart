@@ -392,4 +392,41 @@ class ApiService {
       throw Exception('Failed to sign contract: ${response.body}');
     }
   }
+
+  Future<void> deleteAccount(String uid) async {
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/auth/delete-account'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uid': uid}),
+    ));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete account: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> exportData(String uid) async {
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/auth/export-data'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'uid': uid}),
+    ));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      throw Exception('Failed to export data: ${response.body}');
+    }
+  }
+
+  Future<void> withdrawApplication(String applicationId) async {
+    final response = await httpWithFallback((baseUrl) => http.post(
+      Uri.parse('$baseUrl/gigs/applications/$applicationId/withdraw'),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to withdraw application: ${response.body}');
+    }
+  }
 }

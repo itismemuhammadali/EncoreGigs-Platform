@@ -353,7 +353,9 @@ class _GigDetailScreenState extends State<GigDetailScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              _organizerProfile?['name'] ?? _organizerProfile?['fullName'] ?? _organizerProfile?['orgName'] ?? gig.organizer ?? 'Organizer',
+                                              gig.isScraped
+                                                  ? 'Gig Lead'
+                                                  : (_organizerProfile?['name'] ?? _organizerProfile?['fullName'] ?? _organizerProfile?['orgName'] ?? gig.organizer ?? 'Organizer'),
                                               style: const TextStyle(
                                                 color: Colors.white,
                                                 fontSize: 15,
@@ -362,20 +364,22 @@ class _GigDetailScreenState extends State<GigDetailScreen> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              _organizerProfile?['type'] ?? 'Event Organizer',
+                                              gig.isScraped ? 'Verified External Opportunity' : (_organizerProfile?['type'] ?? 'Event Organizer'),
                                               style: const TextStyle(
                                                 color: Color(0xFFA1F301),
                                                 fontSize: 12,
                                               ),
                                             ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '$_gigsPosted gigs posted',
-                                              style: const TextStyle(
-                                                color: Color(0xFF999999),
-                                                fontSize: 13,
+                                            if (!gig.isScraped) ...[
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '$_gigsPosted gigs posted',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF999999),
+                                                  fontSize: 13,
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ],
                                         ),
                                       ),

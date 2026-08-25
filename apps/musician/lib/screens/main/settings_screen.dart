@@ -5,8 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:onlygigz_musician/screens/main/edit_profile_screen.dart';
 import 'package:onlygigz_musician/screens/main/change_password_screen.dart';
 import 'package:onlygigz_musician/screens/main/notifications_screen.dart';
-import 'package:onlygigz_musician/screens/main/privacy_policy_screen.dart';
-import 'package:onlygigz_musician/screens/main/terms_of_service_screen.dart';
 import 'package:onlygigz_musician/screens/main/help_center_screen.dart';
 import 'package:onlygigz_musician/screens/main/dispute_management_screen.dart';
 import 'package:onlygigz_musician/screens/main/wallet_overview_screen.dart';
@@ -14,6 +12,9 @@ import 'package:onlygigz_musician/screens/main/payment_method_screen.dart';
 import 'package:onlygigz_musician/screens/main/privacy_settings_screen.dart';
 import 'package:onlygigz_musician/screens/main/data_privacy_screen.dart';
 import 'package:onlygigz_musician/screens/main/two_factor_authentication_screen.dart';
+import 'package:onlygigz_musician/screens/main/terms_of_service_screen.dart';
+import 'package:onlygigz_musician/screens/main/privacy_policy_screen.dart';
+import 'package:onlygigz_musician/screens/main/dmca_policy_screen.dart';
 import 'package:onlygigz_musician/screens/main/my_contracts_screen.dart';
 import 'package:onlygigz_musician/models/profile_model.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
@@ -256,10 +257,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HelpCenterScreen()))),
                           _buildItem(icon: Icons.gavel_outlined, title: 'Dispute Management', subtitle: 'Report and track gig issues',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DisputeManagementScreen()))),
-                          _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Terms of Service', subtitle: '',
-                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()))),
-                          _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Privacy Policy', subtitle: '',
+                          _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Terms of Service', subtitle: 'Official platform terms of service',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.termsOfService)))),
+                          _buildItem(svgIcon: 'assets/application_icon.svg', title: 'Privacy Policy', subtitle: 'Data privacy & security guidelines',
                               iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
+                          _buildItem(icon: Icons.description_outlined, title: 'Terms & Conditions', subtitle: 'Platform terms & conditions',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.termsAndConditions)))),
+                          _buildItem(icon: Icons.payments_outlined, title: 'Pricing & Fees Policy', subtitle: 'Platform commissions & payout rules',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.pricingAndFees)))),
+                          _buildItem(icon: Icons.gavel_outlined, title: 'DMCA & Copyright Policy', subtitle: 'Takedown policy & copyright agent',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DmcaPolicyScreen()))),
+                          _buildItem(icon: Icons.info_outline, title: 'About Us', subtitle: 'Our mission and platform vision',
+                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TermsOfServiceScreen(docType: PolicyDocType.aboutUs)))),
                         ]),
                         const SizedBox(height: 40),
 

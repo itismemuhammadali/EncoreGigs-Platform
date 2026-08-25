@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import 'two_factor_verification_screen.dart';
+import 'forgot_password_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -97,6 +98,16 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+  void _handleForgotPassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ForgotPasswordScreen(
+          initialEmail: _emailController.text.trim(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,7 +159,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   height: 100,
                   width: 100,
                   child: Image.asset(
-                    'assets/Logo.png',
+                    'assets/musician_logo.jpeg',
                     fit: BoxFit.contain,
                   ),
                 ),
@@ -284,7 +295,22 @@ class _SignInScreenState extends State<SignInScreen> {
                     fillColor: Colors.transparent,
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: _handleForgotPassword,
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: Color(0xFFA2F301),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 GestureDetector(
                   onTap: _isLoading ? null : _handleSignIn,
                   child: Container(

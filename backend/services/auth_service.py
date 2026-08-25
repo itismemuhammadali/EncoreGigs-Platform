@@ -137,13 +137,22 @@ class AuthService:
         
         if request.contact is not None: update_data["contact"] = request.contact
         if request.location is not None: update_data["location"] = request.location
+        if request.primaryCity is not None: update_data["primaryCity"] = request.primaryCity
+        if request.primaryState is not None: update_data["primaryState"] = request.primaryState
+        if request.primaryZip is not None: update_data["primaryZip"] = request.primaryZip
+        if request.secondaryCity is not None: update_data["secondaryCity"] = request.secondaryCity
+        if request.secondaryState is not None: update_data["secondaryState"] = request.secondaryState
+        if request.secondaryZip is not None: update_data["secondaryZip"] = request.secondaryZip
+        if request.travelRadius is not None: update_data["travelRadius"] = request.travelRadius
         if request.bio is not None: update_data["bio"] = request.bio
         if request.profileImageUrl is not None: update_data["profileImageUrl"] = request.profileImageUrl
+        if request.bannerImageUrl is not None: update_data["bannerImageUrl"] = request.bannerImageUrl
         
         # Role specific fields
         if role == "musician":
             if request.instruments is not None: update_data["instruments"] = request.instruments
             if request.genres is not None: update_data["genres"] = request.genres
+            if request.tags is not None: update_data["tags"] = request.tags
             if request.feeRange is not None: update_data["feeRange"] = request.feeRange
             if request.maxFeeRange is not None: update_data["maxFeeRange"] = request.maxFeeRange
             if request.yearsOfExperience is not None: update_data["yearsOfExperience"] = request.yearsOfExperience

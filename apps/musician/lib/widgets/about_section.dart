@@ -155,6 +155,48 @@ class AboutSection extends StatelessWidget {
               ),
             ],
           ),
+          if (profile.tags.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Vibe & Style Tags',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: profile.tags.map((tag) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1F),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFFA1F301).withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '#$tag',
+                    style: const TextStyle(
+                      color: Color(0xFFA1F301),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
       ),
     );

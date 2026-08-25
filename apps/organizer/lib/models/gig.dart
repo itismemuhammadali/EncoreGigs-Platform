@@ -2,6 +2,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants.dart';
 
+String capitalizeWords(String text) {
+  if (text.isEmpty) return text;
+  const abbrevs = {'tx', 'la', 'ny', 'ca', 'fl', 'ga', 'nc', 'sc', 'va', 'dc', 'usa', 'uk'};
+  return text.splitMapJoin(
+    RegExp(r'\b[a-zA-Z]+\b'),
+    onMatch: (m) {
+      final w = m.group(0)!;
+      if (abbrevs.contains(w.toLowerCase())) {
+        return w.toUpperCase();
+      }
+      return w[0].toUpperCase() + w.substring(1);
+    },
+    onNonMatch: (n) => n,
+  );
+}
+
 class GigModel {
   final String gigId;
   final String title;
@@ -10,6 +26,7 @@ class GigModel {
   final List<String> genres;
   final String date;
   final String time;
+  final String? expiryDate;
   final String? duration;
   final String budget;
   final String location;
@@ -29,6 +46,7 @@ class GigModel {
     required this.genres,
     required this.date,
     required this.time,
+    this.expiryDate,
     this.duration,
     required this.budget,
     required this.location,
@@ -51,15 +69,16 @@ class GigModel {
 
     return GigModel(
       gigId: id,
-      title: snapshot['title'] ?? '',
+      title: capitalizeWords(snapshot['title'] ?? ''),
       description: snapshot['description'] ?? '',
       requirements: List<String>.from(snapshot['requirements'] ?? []),
-      genres: List<String>.from(snapshot['genres'] ?? []),
+      genres: List<String>.from(snapshot['genres'] ?? []).map(capitalizeWords).toList(),
       date: snapshot['date'] ?? '',
       time: snapshot['time'] ?? '',
+      expiryDate: snapshot['expiryDate'],
       duration: snapshot['duration'],
       budget: snapshot['budget'] ?? '',
-      location: snapshot['location'] ?? '',
+      location: capitalizeWords(snapshot['location'] ?? ''),
       organizerId: snapshot['organizerId'] ?? '',
       status: snapshot['status'] ?? 'open',
       createdAt: parseDateTime(snapshot['createdAt']),

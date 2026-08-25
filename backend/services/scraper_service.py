@@ -187,18 +187,21 @@ class ScraperService:
                 if emails_found:
                     contact_email = emails_found[0]
 
+            from backend.utils.text_utils import capitalize_words, capitalize_list
+
             gig_data = {
-                "title": data.get("title", ""),
+                "title": capitalize_words(data.get("title", "")),
                 "description": data.get("description", ""),
                 "requirements": data.get("requirements", []) if isinstance(data.get("requirements"), list) else [],
-                "genres": data.get("genres", []) if isinstance(data.get("genres"), list) else [],
+                "genres": capitalize_list(data.get("genres", []) if isinstance(data.get("genres"), list) else []),
                 "date": data.get("date", ""),
                 "time": data.get("time", ""),
+                "expiryDate": data.get("expiryDate") or data.get("date", ""),
                 "budget": data.get("budget", ""),
-                "location": data.get("location", ""),
+                "location": capitalize_words(data.get("location", "")),
                 "organizerId": "scraped",
                 "organizer_id": "scraped",
-                "organizerName": organizer_data.get("name", data.get("sourceType", "Scraped")),
+                "organizerName": "Gig Lead",
                 "organizerImage": organizer_data.get("profile_image_url", ""),
                 "contactEmail": contact_email,
                 "organizerEmail": contact_email,
