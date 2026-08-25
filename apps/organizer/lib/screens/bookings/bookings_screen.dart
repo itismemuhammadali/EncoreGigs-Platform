@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'widgets/bookings_filter_tabs.dart';
 import 'widgets/booking_card.dart';
 import '../notifications/notifications_screen.dart';
+import '../calendar/organizer_calendar_screen.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../constants.dart';
@@ -73,16 +74,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-                          );
-                          _fetchUnreadCount();
-                        },
-                        child: Stack(
-                          children: [
-                            Container(
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const OrganizerCalendarScreen()),
+                              );
+                            },
+                            child: Container(
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
@@ -91,24 +91,49 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                 border: Border.all(
                                     color: const Color(0x4DA2F301), width: 1.5),
                               ),
-                              child: const Icon(Icons.notifications_outlined,
+                              child: const Icon(Icons.calendar_month_outlined,
                                   color: Colors.white, size: 22),
                             ),
-                            if (_unreadCount > 0)
-                              Positioned(
-                                right: 8,
-                                top: 8,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
+                          ),
+                          const SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                              );
+                              _fetchUnreadCount();
+                            },
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A1A1F),
                                     shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: const Color(0x4DA2F301), width: 1.5),
                                   ),
+                                  child: const Icon(Icons.notifications_outlined,
+                                      color: Colors.white, size: 22),
                                 ),
-                              ),
-                          ],
-                        ),
+                                if (_unreadCount > 0)
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 from backend.services.gig_service import GigService
 from backend.models.gig_models import GigRequest, ApplicationRequest
-from typing import Optional, List
+from backend.database import db
+from typing import Optional, List, Any
 
 router = APIRouter(prefix="/gigs", tags=["gigs"])
 
@@ -74,7 +75,7 @@ async def update_application_status(application_id: str, status: str = Query(...
 async def withdraw_application(application_id: str):
     try:
         app_ref = db.collection("applications").document(application_id)
-        doc = app_ref.get()
+        doc: Any = app_ref.get()
         if not doc.exists:
             raise HTTPException(status_code=404, detail="Application not found")
         app_ref.delete()

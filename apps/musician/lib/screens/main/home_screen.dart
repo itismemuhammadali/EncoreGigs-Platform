@@ -6,6 +6,7 @@ import 'package:onlygigz_musician/services/api_service.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
 import 'package:onlygigz_musician/models/gig_model.dart';
 import 'notifications_screen.dart';
+import '../calendar/musician_calendar_screen.dart';
 import 'gig_detail_screen.dart';
 import '../../widgets/bottom_navigation_bar.dart';
 import '../../widgets/gig_card.dart';
@@ -120,16 +121,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ],
                         ),
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(builder: (context) => const NotificationsScreen()),
-                            );
-                            _fetchUnreadCount();
-                          },
-                          child: Stack(
-                            children: [
-                              Container(
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const MusicianCalendarScreen()),
+                                );
+                              },
+                              child: Container(
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
@@ -141,27 +141,58 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                                 child: const Center(
                                   child: Icon(
-                                    Icons.notifications_outlined,
+                                    Icons.calendar_month_outlined,
                                     color: Colors.white,
                                     size: 20,
                                   ),
                                 ),
                               ),
-                              if (_unreadNotificationCount > 0)
-                                Positioned(
-                                  top: 2,
-                                  right: 2,
-                                  child: Container(
-                                    width: 10,
-                                    height: 10,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+                                );
+                                _fetchUnreadCount();
+                              },
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.notifications_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
+                                  if (_unreadNotificationCount > 0)
+                                    Positioned(
+                                      top: 2,
+                                      right: 2,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

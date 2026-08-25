@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/auth_service.dart';
+import '../../services/calendar_service.dart';
 import '../../models/gig.dart';
 import 'gig_posted_screen.dart';
 
@@ -384,6 +385,22 @@ class _PostGigScreenState extends State<PostGigScreen> {
 
       if (mounted) {
         if (error == null) {
+          final updatedGig = GigModel(
+            gigId: widget.gigToEdit!.gigId,
+            title: _titleController.text.trim(),
+            description: autoDescription.toString(),
+            requirements: _requirements,
+            genres: _selectedGenres.toList(),
+            date: _dateController.text.trim(),
+            time: _timeController.text.trim(),
+            budget: _budgetController.text.trim(),
+            location: _locationController.text.trim(),
+            organizerId: authService.user?.uid ?? '',
+            imageUrl: finalImageUrl,
+            isUrgent: _isUrgent,
+          );
+          CalendarService().syncGigToCalendar(gig: updatedGig, status: 'POSTED');
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Gig updated successfully')),
           );
@@ -417,6 +434,23 @@ class _PostGigScreenState extends State<PostGigScreen> {
 
     if (mounted) {
       if (error == null) {
+        // Sync new gig to calendar
+        final newGig = GigModel(
+          gigId: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: _titleController.text.trim(),
+          description: autoDescription.toString(),
+          requirements: _requirements,
+          genres: _selectedGenres.toList(),
+          date: _dateController.text.trim(),
+          time: _timeController.text.trim(),
+          budget: _budgetController.text.trim(),
+          location: _locationController.text.trim(),
+          organizerId: authService.user?.uid ?? '',
+          imageUrl: finalImageUrl,
+          isUrgent: _isUrgent,
+        );
+        CalendarService().syncGigToCalendar(gig: newGig, status: 'POSTED');
+
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (_) => GigPostedScreen(returnToGigs: widget.returnToGigs),

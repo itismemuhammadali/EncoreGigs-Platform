@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../services/api_service.dart';
 import '../../notifications/notifications_screen.dart';
+import '../../calendar/organizer_calendar_screen.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -54,14 +55,13 @@ class _HomeHeaderState extends State<HomeHeader> {
             ),
           ],
         ),
-        Stack(
+        Row(
           children: [
             GestureDetector(
-              onTap: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrganizerCalendarScreen()),
                 );
-                _fetchUnreadCount();
               },
               child: Container(
                 width: 44,
@@ -72,25 +72,52 @@ class _HomeHeaderState extends State<HomeHeader> {
                   border: Border.all(color: const Color(0x4DA2F301), width: 1.5),
                 ),
                 child: const Icon(
-                  Icons.notifications_outlined,
+                  Icons.calendar_month_outlined,
                   color: Colors.white,
                   size: 22,
                 ),
               ),
             ),
-            if (_unreadCount > 0)
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+            const SizedBox(width: 10),
+            Stack(
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    );
+                    _fetchUnreadCount();
+                  },
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0x4DA2F301), width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                 ),
-              ),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ],

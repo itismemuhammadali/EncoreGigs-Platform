@@ -1,33 +1,34 @@
-from firebase_admin import auth, firestore
+from firebase_admin import auth
+from google.cloud.firestore import SERVER_TIMESTAMP
 from backend.database import db
 from backend.models.auth_models import ProfileUpdateRequest, OrganizationUpdateRequest, PasswordUpdateRequest, UserStatusRequest
 from backend.models.musician_models import PortfolioUpdateRequest
 from backend.services.security_service import SecurityService
-from typing import Optional
+from typing import Optional, Any, Dict
 
 class AuthService:
     @staticmethod
     def get_profile(uid: str):
         # Check admins collection
-        user_doc = db.collection("admins").document(uid).get()
-        if user_doc.exists:
-            doc_data = user_doc.to_dict()
+        admin_doc: Any = db.collection("admins").document(uid).get()
+        if admin_doc.exists:
+            doc_data = admin_doc.to_dict() or {}
             role = doc_data.get("role", "super_admin")
-            return doc_data | {"id": user_doc.id, "role": role}
+            return doc_data | {"id": admin_doc.id, "role": role}
 
         # Check organizers collection
-        user_doc = db.collection("organizers").document(uid).get()
-        if user_doc.exists:
-            return user_doc.to_dict() | {"id": user_doc.id, "role": "organizer"}
+        org_doc: Any = db.collection("organizers").document(uid).get()
+        if org_doc.exists:
+            return (org_doc.to_dict() or {}) | {"id": org_doc.id, "role": "organizer"}
         
         # Check musicians collection
-        user_doc = db.collection("musicians").document(uid).get()
-        if user_doc.exists:
-            profile_data = user_doc.to_dict()
+        musician_doc: Any = db.collection("musicians").document(uid).get()
+        if musician_doc.exists:
+            profile_data = musician_doc.to_dict() or {}
             
             # Calculate gigs completed from bookings
             try:
-                bookings_count = db.collection("bookings")\
+                bookings_count: Any = db.collection("bookings")\
                     .where("musicianId", "==", uid)\
                     .where("status", "==", "completed")\
                     .get()
@@ -36,31 +37,31 @@ class AuthService:
                 print(f"Error calculating gigsCompleted: {e}")
                 profile_data["gigsCompleted"] = profile_data.get("gigsCompleted", 0)
                 
-            return profile_data | {"id": user_doc.id, "role": "musician"}
+            return profile_data | {"id": musician_doc.id, "role": "musician"}
             
         return None
 
     @staticmethod
     def list_musicians():
-        docs = db.collection("musicians").get()
-        musicians = [doc.to_dict() | {"id": doc.id, "role": "musician"} for doc in docs]
+        docs: Any = db.collection("musicians").get()
+        musicians = [(doc.to_dict() or {}) | {"id": doc.id, "role": "musician"} for doc in docs]
         musicians.sort(key=lambda m: m.get("isFeatured") == True, reverse=True)
         return musicians
 
     @staticmethod
     def list_organizers():
-        docs = db.collection("organizers").get()
-        return [doc.to_dict() | {"id": doc.id, "role": "organizer"} for doc in docs]
+        docs: Any = db.collection("organizers").get()
+        return [(doc.to_dict() or {}) | {"id": doc.id, "role": "organizer"} for doc in docs]
 
     @staticmethod
     def update_portfolio(request: PortfolioUpdateRequest):
         user_ref = db.collection("musicians").document(request.uid)
-        user_doc = user_ref.get()
+        user_doc: Any = user_ref.get()
         
         if not user_doc.exists:
             return False
             
-        data = user_doc.to_dict()
+        data = user_doc.to_dict() or {}
         portfolio = data.get("portfolio", {})
         
         # Mapping frontend type to backend field keys
@@ -74,8 +75,8 @@ class AuthService:
             return False
 
         items = portfolio.get(field_key, [])
-        item_data = request.item.dict()
-        item_data["createdAt"] = firestore.SERVER_TIMESTAMP if request.action == "add" else None
+        item_data = request.item.model_dump()
+        item_data["createdAt"] = SERVER_TIMESTAMP if request.action == "add" else None
         
         if request.action == "add":
             items.append(item_data)
@@ -98,23 +99,23 @@ class AuthService:
     @staticmethod
     def update_profile(request: ProfileUpdateRequest):
         user_ref = db.collection("organizers").document(request.uid)
-        user_doc = user_ref.get()
+        user_doc: Any = user_ref.get()
         role = "organizer"
         
         if not user_doc.exists:
             user_ref = db.collection("musicians").document(request.uid)
-            user_doc = user_ref.get()
+            user_doc = user_ref.get()  # type: ignore
             role = "musician"
 
         if not user_doc.exists:
             user_ref = db.collection("admins").document(request.uid)
-            user_doc = user_ref.get()
+            user_doc = user_ref.get()  # type: ignore
             role = "admin"
             
         if not user_doc.exists:
             return False
             
-        update_data = {
+        update_data: Dict[str, Any] = {
             "email": request.email,
         }
 
@@ -125,7 +126,7 @@ class AuthService:
         # Determine the full name
         if request.firstName is not None or request.lastName is not None:
             # Use provided or existing values
-            data = user_doc.to_dict()
+            data = user_doc.to_dict() or {}
             f_name = request.firstName if request.firstName is not None else data.get("firstName", "")
             l_name = request.lastName if request.lastName is not None else data.get("lastName", "")
             full_name = f"{f_name} {l_name}".strip()
@@ -168,7 +169,7 @@ class AuthService:
     @staticmethod
     def update_organization(request: OrganizationUpdateRequest):
         user_ref = db.collection("organizers").document(request.uid)
-        user_doc = user_ref.get()
+        user_doc: Any = user_ref.get()
         
         if not user_doc.exists:
             return False
@@ -212,7 +213,8 @@ class AuthService:
             # Check all collections
             for collection in ["musicians", "organizers", "admins"]:
                 user_ref = db.collection(collection).document(request.uid)
-                if user_ref.get().exists:
+                user_doc: Any = user_ref.get()
+                if user_doc.exists:
                     user_ref.update({"status": request.status})
                     action = "User suspended" if request.status == "suspended" else "User activated"
                     SecurityService.create_log(action, request.email)

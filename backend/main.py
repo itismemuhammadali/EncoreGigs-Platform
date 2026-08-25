@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import auth, gigs, bookings, chat, reviews, security, reports, scraper, disputes, notifications, admin_notifications, featured, support
+from backend.routers import auth, gigs, bookings, chat, reviews, security, reports, scraper, disputes, notifications, admin_notifications, featured, support, calendar
 from backend.payments.router import router as payments_router
 import uvicorn
 import os
@@ -43,6 +43,7 @@ app.include_router(notifications.router)
 app.include_router(admin_notifications.router)
 app.include_router(featured.router)
 app.include_router(support.router)
+app.include_router(calendar.router)
 app.include_router(payments_router)
 
 @app.get("/")
