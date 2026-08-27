@@ -46,23 +46,30 @@ export default function DashboardOverview() {
         setAnalytics(data);
 
         // Find specific stats from mainStats array
-        const getStatValue = (label: string) => data.mainStats.find((s: any) => s.label === label);
+        const mainStatsArray = Array.isArray(data?.mainStats) ? data.mainStats : [];
+        const getStatValue = (label: string) => mainStatsArray.find((s: any) => s.label === label);
         
         const totalUsers = getStatValue("Total Users");
         const totalGigs = getStatValue("Total Gigs Posted");
         const totalRevenue = getStatValue("Total Revenue");
         const bookingSuccess = getStatValue("Booking Success");
 
-        // Get latest month data for musicians/organizers breakdown
-        const latestGrowth = data.growthData[data.growthData.length - 1];
-        const scrapedMetric = data.scraperMetrics.find((m: any) => m.label === "Gigs Imported");
+        // Get latest month data safely for musicians/organizers breakdown
+        const growthArray = Array.isArray(data?.growthData) ? data.growthData : [];
+        const latestGrowth = growthArray.length > 0 ? growthArray[growthArray.length - 1] : { musicians: 0, organizers: 0 };
+        
+        const scraperMetricsArray = Array.isArray(data?.scraperMetrics) ? data.scraperMetrics : [];
+        const scrapedMetric = scraperMetricsArray.find((m: any) => m.label === "Gigs Imported");
+
+        const revenueArray = Array.isArray(data?.revenueData) ? data.revenueData : [];
+        const latestRevenueData = revenueArray.length > 0 ? revenueArray[revenueArray.length - 1] : { bookings: 0 };
 
         setStats([
-          { label: "Total Musicians", value: latestGrowth.musicians.toLocaleString(), change: "+0% from last month", isTrend: true, icon: Music },
-          { label: "Total Organizers", value: latestGrowth.organizers.toLocaleString(), change: "+0% from last month", isTrend: true, icon: Users },
+          { label: "Total Musicians", value: (latestGrowth?.musicians ?? 0).toLocaleString(), change: "+0% from last month", isTrend: true, icon: Music },
+          { label: "Total Organizers", value: (latestGrowth?.organizers ?? 0).toLocaleString(), change: "+0% from last month", isTrend: true, icon: Users },
           { label: "Total Active Gigs", value: totalGigs?.value || "0", change: totalGigs?.growth || "0%", isTrend: true, icon: Briefcase },
           { label: "Scraped Gigs Count", value: scrapedMetric?.value || "0", change: scrapedMetric?.subtext || "0%", isTrend: false, icon: Database },
-          { label: "Active Bookings", value: data.revenueData[data.revenueData.length - 1].bookings.toString(), change: "Live", isTrend: true, icon: Calendar },
+          { label: "Active Bookings", value: (latestRevenueData?.bookings ?? 0).toString(), change: "Live", isTrend: true, icon: Calendar },
           { label: "Escrow Funds", value: "$0", change: "Total locked", isTrend: false, icon: DollarSign },
           { label: "Open Disputes", value: "0", change: "None active", isTrend: true, icon: ShieldAlert },
           { label: "Monthly Revenue", value: totalRevenue?.value || "$0", change: totalRevenue?.growth || "0%", isTrend: true, icon: DollarSign },
@@ -118,9 +125,11 @@ export default function DashboardOverview() {
           </div>
           <div className="h-auto w-full relative overflow-x-auto custom-scrollbar">
             {analytics && (() => {
-              const musicianGrowth = analytics.growthData.map((d: any) => d.musicians);
-              const organizerGrowth = analytics.growthData.map((d: any) => d.organizers);
-              const months = analytics.growthData.map((d: any) => d.month);
+              const growthList = Array.isArray(analytics?.growthData) ? analytics.growthData : [];
+              if (growthList.length === 0) return null;
+              const musicianGrowth = growthList.map((d: any) => d.musicians || 0);
+              const organizerGrowth = growthList.map((d: any) => d.organizers || 0);
+              const months = growthList.map((d: any) => d.month || "");
               
               const maxVal = Math.max(...musicianGrowth, ...organizerGrowth, 100) * 1.2;
               const chartHeight = 280;
@@ -206,9 +215,11 @@ export default function DashboardOverview() {
           <h3 className="text-white font-bold text-[18px] mb-8">Gig Source Distribution</h3>
           <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px] overflow-x-auto custom-scrollbar">
             {analytics && (() => {
-              const latestTrends = analytics.gigTrends[analytics.gigTrends.length - 1];
-              const scrapedCount = latestTrends.scraped;
-              const manualCount = latestTrends.manual;
+              const gigTrendsList = Array.isArray(analytics?.gigTrends) ? analytics.gigTrends : [];
+              if (gigTrendsList.length === 0) return null;
+              const latestTrends = gigTrendsList[gigTrendsList.length - 1];
+              const scrapedCount = latestTrends?.scraped ?? 0;
+              const manualCount = latestTrends?.manual ?? 0;
               const total = (scrapedCount + manualCount) || 1; 
               const manualPercent = Math.round((manualCount / total) * 100);
               const scrapedPercent = 100 - manualPercent;
@@ -251,9 +262,11 @@ export default function DashboardOverview() {
         </div>
         <div className="h-auto w-full relative overflow-x-auto custom-scrollbar">
           {analytics && (() => {
-            const revenueData = analytics.revenueData.map((d: any) => d.revenue);
-            const escrowData = analytics.revenueData.map((d: any) => d.revenue * 0.6); // Mock escrow as 60% of rev for now
-            const months = analytics.revenueData.map((d: any) => d.month);
+            const revenueList = Array.isArray(analytics?.revenueData) ? analytics.revenueData : [];
+            if (revenueList.length === 0) return null;
+            const revenueData = revenueList.map((d: any) => d.revenue || 0);
+            const escrowData = revenueList.map((d: any) => (d.revenue || 0) * 0.6); // Mock escrow as 60% of rev for now
+            const months = revenueList.map((d: any) => d.month || "");
             const maxVal = Math.max(...revenueData, 1000) * 1.2;
             const chartHeight = 280;
             const offsetLeft = 50;
