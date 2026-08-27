@@ -60,33 +60,25 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
         const sourceLower = sourceId.toLowerCase();
         const baseId = baselineIds[sourceLower];
 
-        // 1. Look for a NEW run created after baseline
+        // 1. Look for a NEW run created during this run session (different ID from baseline)
         const newRun = runs.find((r: any) => {
           return r.source?.toLowerCase() === sourceLower && r.id !== baseId;
         });
 
-        // 2. Fallback to the most recent run for this source in database
-        const targetRun = newRun || runs.find((r: any) => r.source?.toLowerCase() === sourceLower);
-
-        if (targetRun) {
-          if (targetRun.status === "success" || targetRun.status === "failed") {
-            completedCount++;
-          }
-          return {
-            source: sourceId,
-            imported: targetRun.imported || 0,
-            duplicates: targetRun.duplicates || 0,
-            errors: targetRun.errors || 0,
-            status: targetRun.status || "success"
-          };
+        // 2. Only count as completed if THIS session's new run has finished (success/failed)
+        if (newRun && (newRun.status === "success" || newRun.status === "failed")) {
+          completedCount++;
         }
+
+        // 3. Target run is the new session run if available, or fallback to latest completed run
+        const targetRun = newRun || runs.find((r: any) => r.source?.toLowerCase() === sourceLower && r.status !== "running");
 
         return {
           source: sourceId,
-          imported: 0,
-          duplicates: 0,
-          errors: 0,
-          status: "running"
+          imported: targetRun?.imported || 0,
+          duplicates: targetRun?.duplicates || 0,
+          errors: targetRun?.errors || 0,
+          status: newRun?.status || targetRun?.status || "running"
         };
       });
 
@@ -119,15 +111,15 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
 
     setIsPolling(true);
 
-    // 3. Poll for run completion
-    for (let i = 0; i < 20; i++) {
-      const currentProgress = Math.min((i + 1) * 5, 95);
+    // 3. Poll for run completion (up to 40 seconds)
+    for (let i = 0; i < 25; i++) {
+      const currentProgress = Math.min((i + 1) * 4, 95);
       selectedSources.forEach(source => {
         setProgress(prev => ({ ...prev, [source]: currentProgress }));
       });
 
       const allDone = await fetchResults(initialRunIds.current);
-      if (allDone && i >= 3) {
+      if (allDone) {
         break;
       }
       await new Promise(r => setTimeout(r, 1500));
@@ -140,8 +132,12 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
     setIsPolling(false);
     setStep("saving");
 
-    await new Promise(r => setTimeout(r, 2000));
-    await fetchResults(initialRunIds.current);
+    // 4. Final check during saving step to ensure all results settle
+    for (let j = 0; j < 5; j++) {
+      const allDone = await fetchResults(initialRunIds.current);
+      if (allDone) break;
+      await new Promise(r => setTimeout(r, 1500));
+    }
 
     // Trigger parent real-time data sync
     if (onRefreshData) onRefreshData();
