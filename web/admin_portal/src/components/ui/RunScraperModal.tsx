@@ -22,9 +22,10 @@ interface RunScraperModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm?: (sources: string[]) => void;
+  onRefreshData?: () => void;
 }
 
-export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalProps) {
+export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: RunScraperModalProps) {
   const [step, setStep] = useState<"select" | "running" | "saving" | "results">("select");
   const [selectedSources, setSelectedSources] = useState<string[]>(["craigslist", "eventbrite", "facebook", "gigsalad"]);
   const [progress, setProgress] = useState<Record<string, number>>({});
@@ -114,7 +115,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     initialRunIds.current = baseline;
 
     // 2. Trigger scraper
-    if (onConfirm) onConfirm(selectedSources);
+    if (onConfirm) await onConfirm(selectedSources);
 
     setIsPolling(true);
 
@@ -139,8 +140,12 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     setIsPolling(false);
     setStep("saving");
 
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 2000));
     await fetchResults(initialRunIds.current);
+
+    // Trigger parent real-time data sync
+    if (onRefreshData) onRefreshData();
+
     setStep("results");
   };
 

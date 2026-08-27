@@ -150,9 +150,6 @@ export default function ScraperModule() {
     try {
       await apiRequest("/scraper/run", { method: "POST" });
       showToast("Scraper started successfully");
-      // Don't close immediately so user can see the simulation in the modal
-      // fetchData after a delay to get new results
-      setTimeout(fetchData, 5000);
     } catch (error) {
       showToast("Failed to start scraper", "error");
     }
@@ -523,6 +520,7 @@ export default function ScraperModule() {
           fetchData(); // Refresh the main dashboard when closing the modal
         }}
         onConfirm={handleRunScraper}
+        onRefreshData={fetchData}
       />
     </div>
   );
