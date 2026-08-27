@@ -160,7 +160,7 @@ async def update_scraper_cookies(request: UpdateCookiesRequest):
 async def get_scraper_config():
     try:
         from backend.database import db
-        doc = db.collection("system_config").document("scraper").get()
+        doc: Any = db.collection("system_config").document("scraper").get()
         if doc.exists:
             data = doc.to_dict() or {}
             return {
@@ -190,7 +190,7 @@ async def get_scraper_config():
 async def update_scraper_config(request: dict):
     try:
         from backend.database import db
-        from firebase_admin import firestore
+        from google.cloud.firestore import SERVER_TIMESTAMP
         schedule_frequency = request.get("scheduleFrequency", "Daily")
         duplicate_threshold = int(request.get("duplicateThreshold", 85))
         active_platforms = request.get("activePlatforms", {
@@ -207,7 +207,7 @@ async def update_scraper_config(request: dict):
             "scheduleFrequency": schedule_frequency,
             "duplicateThreshold": duplicate_threshold,
             "activePlatforms": active_platforms,
-            "updatedAt": firestore.SERVER_TIMESTAMP
+            "updatedAt": SERVER_TIMESTAMP
         }
         db.collection("system_config").document("scraper").set(config_data, merge=True)
         return {
