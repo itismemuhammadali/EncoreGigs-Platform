@@ -31,6 +31,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
   const [realResults, setRealResults] = useState<any[]>([]);
   const [isPolling, setIsPolling] = useState(false);
   
+  const initialRunIds = useRef<Record<string, string>>({});
   const runStartTime = useRef<number>(0);
 
   useEffect(() => {
@@ -48,44 +49,34 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     );
   };
 
-  const fetchResults = async () => {
+  const fetchResults = async (baselineIds: Record<string, string>) => {
     try {
       const rawRuns = await apiRequest("/scraper/runs?limit=50");
       const runs = Array.isArray(rawRuns) ? rawRuns : [];
-      const searchCutoff = runStartTime.current ? runStartTime.current - 15000 : Date.now() - 30000;
-
       let completedCount = 0;
 
       const latestPerSource = selectedSources.map(sourceId => {
-        // Look for run triggered during this run session
+        const sourceLower = sourceId.toLowerCase();
+        const baseId = baselineIds[sourceLower];
+
+        // 1. Look for a NEW run created after baseline
         const newRun = runs.find((r: any) => {
-          const runTime = r.timestamp ? new Date(r.timestamp).getTime() : 0;
-          return r.source?.toLowerCase() === sourceId.toLowerCase() && runTime >= searchCutoff;
+          return r.source?.toLowerCase() === sourceLower && r.id !== baseId;
         });
 
-        if (newRun) {
-          if (newRun.status === "success" || newRun.status === "failed") {
+        // 2. Fallback to the most recent run for this source in database
+        const targetRun = newRun || runs.find((r: any) => r.source?.toLowerCase() === sourceLower);
+
+        if (targetRun) {
+          if (targetRun.status === "success" || targetRun.status === "failed") {
             completedCount++;
           }
           return {
             source: sourceId,
-            imported: newRun.imported || 0,
-            duplicates: newRun.duplicates || 0,
-            errors: newRun.errors || 0,
-            status: newRun.status || "success"
-          };
-        }
-
-        // Fallback to recent runs from database for this source
-        const recentRun = runs.find((r: any) => r.source?.toLowerCase() === sourceId.toLowerCase());
-        if (recentRun && (recentRun.imported > 0 || recentRun.errors > 0)) {
-          completedCount++;
-          return {
-            source: sourceId,
-            imported: recentRun.imported || 0,
-            duplicates: recentRun.duplicates || 0,
-            errors: recentRun.errors || 0,
-            status: recentRun.status || "success"
+            imported: targetRun.imported || 0,
+            duplicates: targetRun.duplicates || 0,
+            errors: targetRun.errors || 0,
+            status: targetRun.status || "success"
           };
         }
 
@@ -97,7 +88,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
           status: "running"
         };
       });
-      
+
       setRealResults(latestPerSource);
       return completedCount >= selectedSources.length;
     } catch (error) {
@@ -105,41 +96,52 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     }
   };
 
-  const handleRun = () => {
+  const handleRun = async () => {
     runStartTime.current = Date.now();
-    if (onConfirm) onConfirm(selectedSources);
     setStep("running");
-    
-    const runProcess = async () => {
-      setIsPolling(true);
-      
-      // Poll for up to 30 seconds for all scrapers to log output
-      for (let i = 0; i < 20; i++) {
-        const currentProgress = Math.min((i + 1) * 5, 95);
-        selectedSources.forEach(source => {
-          setProgress(prev => ({ ...prev, [source]: currentProgress }));
-        });
 
-        const allDone = await fetchResults();
-        if (allDone && i >= 4) {
-          break;
-        }
-        await new Promise(r => setTimeout(r, 1500));
+    // 1. Snapshot initial latest run IDs per source before triggering
+    const baseline: Record<string, string> = {};
+    try {
+      const rawRuns = await apiRequest("/scraper/runs?limit=50");
+      if (Array.isArray(rawRuns)) {
+        selectedSources.forEach(src => {
+          const found = rawRuns.find((r: any) => r.source?.toLowerCase() === src.toLowerCase());
+          if (found) baseline[src.toLowerCase()] = found.id;
+        });
       }
-      
+    } catch (e) {}
+    initialRunIds.current = baseline;
+
+    // 2. Trigger scraper
+    if (onConfirm) onConfirm(selectedSources);
+
+    setIsPolling(true);
+
+    // 3. Poll for run completion
+    for (let i = 0; i < 20; i++) {
+      const currentProgress = Math.min((i + 1) * 5, 95);
       selectedSources.forEach(source => {
-        setProgress(prev => ({ ...prev, [source]: 100 }));
+        setProgress(prev => ({ ...prev, [source]: currentProgress }));
       });
 
-      setIsPolling(false);
-      setStep("saving");
-      
-      await new Promise(r => setTimeout(r, 1000));
-      await fetchResults();
-      setStep("results");
-    };
-    
-    runProcess();
+      const allDone = await fetchResults(initialRunIds.current);
+      if (allDone && i >= 3) {
+        break;
+      }
+      await new Promise(r => setTimeout(r, 1500));
+    }
+
+    selectedSources.forEach(source => {
+      setProgress(prev => ({ ...prev, [source]: 100 }));
+    });
+
+    setIsPolling(false);
+    setStep("saving");
+
+    await new Promise(r => setTimeout(r, 1000));
+    await fetchResults(initialRunIds.current);
+    setStep("results");
   };
 
   if (!isOpen) return null;
