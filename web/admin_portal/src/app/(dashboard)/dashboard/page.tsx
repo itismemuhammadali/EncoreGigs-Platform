@@ -274,12 +274,15 @@ export default function DashboardOverview() {
             const valueToY = (val: number) => chartHeight - (val / maxVal * chartHeight);
             
             const getAreaPath = (data: number[]) => {
+              if (!data || data.length === 0) return "";
               const points = data.map((val, i) => `${offsetLeft + (i * 160)} ${valueToY(val)}`).join(' L ');
               return `M ${offsetLeft} ${chartHeight} L ${points} L ${offsetLeft + (data.length - 1) * 160} ${chartHeight} Z`;
             };
             
-            const getLinePath = (data: number[]) => 
-              data.map((val, i) => `${i === 0 ? 'M' : 'L'} ${offsetLeft + (i * 160)} ${valueToY(val)}`).join(' ');
+            const getLinePath = (data: number[]) => {
+              if (!data || data.length === 0) return "";
+              return data.map((val, i) => `${i === 0 ? 'M' : 'L'} ${offsetLeft + (i * 160)} ${valueToY(val)}`).join(' ');
+            };
 
             return (
               <div className="h-[320px] min-w-[850px] relative">
