@@ -52,27 +52,40 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     try {
       const rawRuns = await apiRequest("/scraper/runs?limit=50");
       const runs = Array.isArray(rawRuns) ? rawRuns : [];
-      const searchCutoff = runStartTime.current - 10000; // Only match runs started during or after user clicked 'Run'
+      const searchCutoff = runStartTime.current ? runStartTime.current - 15000 : Date.now() - 30000;
 
-      let hasNewRunCompleted = false;
+      let completedCount = 0;
 
       const latestPerSource = selectedSources.map(sourceId => {
-        // Only check for a new run started during this specific session
+        // Look for run triggered during this run session
         const newRun = runs.find((r: any) => {
-          const runTime = new Date(r.timestamp).getTime();
-          return r.source.toLowerCase() === sourceId.toLowerCase() && runTime >= searchCutoff;
+          const runTime = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+          return r.source?.toLowerCase() === sourceId.toLowerCase() && runTime >= searchCutoff;
         });
 
         if (newRun) {
           if (newRun.status === "success" || newRun.status === "failed") {
-            hasNewRunCompleted = true;
+            completedCount++;
           }
           return {
             source: sourceId,
             imported: newRun.imported || 0,
             duplicates: newRun.duplicates || 0,
             errors: newRun.errors || 0,
-            status: newRun.status || "running"
+            status: newRun.status || "success"
+          };
+        }
+
+        // Fallback to recent runs from database for this source
+        const recentRun = runs.find((r: any) => r.source?.toLowerCase() === sourceId.toLowerCase());
+        if (recentRun && (recentRun.imported > 0 || recentRun.errors > 0)) {
+          completedCount++;
+          return {
+            source: sourceId,
+            imported: recentRun.imported || 0,
+            duplicates: recentRun.duplicates || 0,
+            errors: recentRun.errors || 0,
+            status: recentRun.status || "success"
           };
         }
 
@@ -86,7 +99,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
       });
       
       setRealResults(latestPerSource);
-      return hasNewRunCompleted;
+      return completedCount >= selectedSources.length;
     } catch (error) {
       return false;
     }
@@ -98,28 +111,30 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
     setStep("running");
     
     const runProcess = async () => {
-      // 1. Progress Animation
-      for (const source of selectedSources) {
-        let p = 0;
-        while (p <= 100) {
-          setProgress(prev => ({ ...prev, [source]: p }));
-          p += 50;
-          await new Promise(r => setTimeout(r, 200));
-        }
-      }
-      
-      // 2. Poll for newly logged runs from python scraper background task
       setIsPolling(true);
-      for (let i = 0; i < 30; i++) { // Poll up to 60 seconds
-        const isDone = await fetchResults();
-        if (isDone) break;
-        await new Promise(r => setTimeout(r, 2000));
+      
+      // Poll for up to 30 seconds for all scrapers to log output
+      for (let i = 0; i < 20; i++) {
+        const currentProgress = Math.min((i + 1) * 5, 95);
+        selectedSources.forEach(source => {
+          setProgress(prev => ({ ...prev, [source]: currentProgress }));
+        });
+
+        const allDone = await fetchResults();
+        if (allDone && i >= 4) {
+          break;
+        }
+        await new Promise(r => setTimeout(r, 1500));
       }
       
+      selectedSources.forEach(source => {
+        setProgress(prev => ({ ...prev, [source]: 100 }));
+      });
+
       setIsPolling(false);
       setStep("saving");
       
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 1000));
       await fetchResults();
       setStep("results");
     };
