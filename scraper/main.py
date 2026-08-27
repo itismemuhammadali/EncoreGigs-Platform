@@ -16,6 +16,7 @@ try:
     from scraper.sources.craigslist_scraper import CraigslistScraper
     from scraper.sources.eventbrite_scraper import EventbriteScraper
     from scraper.sources.facebook_scraper import FacebookScraper
+    from scraper.sources.gigsalad_scraper import GigSaladScraper
     from scraper.utils.database import DatabaseManager
 except ImportError as e:
     print(f"IMPORT ERROR: {e}", flush=True)
@@ -30,6 +31,7 @@ class ScraperManager:
                 CraigslistScraper(city="austin"),
                 EventbriteScraper(location="austin"),
                 FacebookScraper(target_groups=fb_groups),
+                GigSaladScraper(location="austin"),
             ]
             print(f"ScraperManager initialized with {len(self.scrapers)} scrapers (Facebook target groups: {len(fb_groups)}).", flush=True)
         except Exception as e:

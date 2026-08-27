@@ -41,10 +41,10 @@ async def get_imported_gigs(
 @router.post("/run")
 async def run_scraper():
     try:
-        success = ScraperService.run_scraper()
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to trigger scraper")
-        return {"message": "Scraper triggered successfully"}
+        res = ScraperService.run_scraper()
+        if not res.get("success"):
+            raise HTTPException(status_code=500, detail="Failed to run scraper")
+        return res
     except HTTPException:
         raise
     except Exception as e:

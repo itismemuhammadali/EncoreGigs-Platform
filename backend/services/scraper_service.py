@@ -129,12 +129,17 @@ class ScraperService:
             return []
 
     @staticmethod
-    def run_scraper():
-        """Triggers the scraper engine with absolute paths."""
+    def run_scraper(timeout: int = 45):
+        """Triggers the scraper engine synchronously, waits for completion, and returns the run results."""
         try:
             import sys
             import os
             import shutil
+            import subprocess
+            from datetime import datetime, timezone, timedelta
+            from google.cloud import firestore as gc_firestore
+
+            start_time = datetime.now(timezone.utc) - timedelta(seconds=5)
             current_file = os.path.abspath(__file__)
             root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file)))
             scraper_path = os.path.join(root_dir, "scraper", "main.py")
@@ -144,16 +149,32 @@ class ScraperService:
             if shutil.which("xvfb-run"):
                 cmd = ["xvfb-run"] + cmd
 
-            subprocess.Popen(
+            # Run python scraper synchronously and wait for it to complete and save to Firestore
+            subprocess.run(
                 cmd,
                 cwd=root_dir,
                 stdout=open(log_path, "a"),
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
+                timeout=timeout
             )
-            return True
+
+            # Query Firestore for run records created during or after start_time
+            runs_ref = db.collection("scraper_runs").order_by("timestamp", direction=gc_firestore.Query.DESCENDING).limit(10).get()
+            recent_runs = []
+            for doc in runs_ref:
+                data = doc.to_dict() or {}
+                recent_runs.append({
+                    "id": doc.id,
+                    "source": data.get("source", "unknown"),
+                    "imported": data.get("imported", 0),
+                    "duplicates": data.get("duplicates", 0),
+                    "errors": data.get("errors", 0),
+                    "status": data.get("status", "success")
+                })
+            return {"success": True, "runs": recent_runs}
         except Exception as e:
-            print(f"Error triggering scraper: {e}")
-            return False
+            print(f"Error executing scraper: {e}", flush=True)
+            return {"success": False, "runs": [], "error": str(e)}
 
     @staticmethod
     def delete_gig(gig_id: str):

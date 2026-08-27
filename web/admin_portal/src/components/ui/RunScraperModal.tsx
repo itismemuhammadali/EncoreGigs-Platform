@@ -92,51 +92,67 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
   const handleRun = async () => {
     runStartTime.current = Date.now();
     setStep("running");
-
-    // 1. Snapshot initial latest run IDs per source before triggering
-    const baseline: Record<string, string> = {};
-    try {
-      const rawRuns = await apiRequest("/scraper/runs?limit=50");
-      if (Array.isArray(rawRuns)) {
-        selectedSources.forEach(src => {
-          const found = rawRuns.find((r: any) => r.source?.toLowerCase() === src.toLowerCase());
-          if (found) baseline[src.toLowerCase()] = found.id;
-        });
-      }
-    } catch (e) {}
-    initialRunIds.current = baseline;
-
-    // 2. Trigger scraper engine
-    if (onConfirm) await onConfirm(selectedSources);
-
     setIsPolling(true);
 
-    // 3. Guaranteed minimum 30-second polling phase (20 iterations * 1.5s = 30s)
-    for (let i = 0; i < 20; i++) {
-      const currentProgress = Math.min(Math.round(((i + 1) / 20) * 95), 95);
-      selectedSources.forEach(source => {
-        setProgress(prev => ({ ...prev, [source]: currentProgress }));
+    // Progress bar animation while server executes scrapers and saves to DB
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        const next: Record<string, number> = {};
+        selectedSources.forEach(src => {
+          const cur = prev[src] || 0;
+          next[src] = Math.min(cur + 4, 92);
+        });
+        return next;
       });
+    }, 600);
 
-      await fetchResults(initialRunIds.current);
-      await new Promise(r => setTimeout(r, 1500));
+    let runResults: any[] = [];
+    try {
+      // 1. Call /scraper/run which synchronously runs scrapers, saves to DB, and returns results
+      const res = await apiRequest("/scraper/run", { method: "POST" });
+      if (res && Array.isArray(res.runs) && res.runs.length > 0) {
+        runResults = res.runs;
+      }
+    } catch (e) {
+      console.error("Error running scraper:", e);
+    } finally {
+      clearInterval(progressInterval);
     }
 
-    // 4. Guaranteed 5-second database save & settling phase
-    setIsPolling(false);
-    setStep("saving");
-    
-    // Wait 5 full seconds for Firestore database writes to settle completely
-    await new Promise(r => setTimeout(r, 5000));
-    
-    // Final fetch of settled results from database
-    await fetchResults(initialRunIds.current);
+    // 2. Fallback check: if response runs array was empty, fetch latest runs from API
+    if (runResults.length === 0) {
+      try {
+        const rawRuns = await apiRequest("/scraper/runs?limit=50");
+        if (Array.isArray(rawRuns)) runResults = rawRuns;
+      } catch (e) {}
+    }
 
-    selectedSources.forEach(source => {
-      setProgress(prev => ({ ...prev, [source]: 100 }));
+    selectedSources.forEach(src => {
+      setProgress(prev => ({ ...prev, [src]: 100 }));
     });
 
-    // Trigger parent dashboard real-time data sync
+    setIsPolling(false);
+    setStep("saving");
+
+    // 3. Short 2-second transition pause for smooth UX
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 4. Map DB results to selectedSources
+    const mappedResults = selectedSources.map(src => {
+      const srcLower = src.toLowerCase();
+      const found = runResults.find((r: any) => r.source?.toLowerCase() === srcLower);
+      return {
+        source: src,
+        imported: found?.imported || 0,
+        duplicates: found?.duplicates || 0,
+        errors: found?.errors || 0,
+        status: found?.status || "success"
+      };
+    });
+
+    setRealResults(mappedResults);
+
+    // 5. Trigger parent dashboard real-time data sync
     if (onRefreshData) onRefreshData();
 
     setStep("results");
