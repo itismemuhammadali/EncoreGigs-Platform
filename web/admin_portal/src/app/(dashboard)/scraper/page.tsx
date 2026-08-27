@@ -103,12 +103,19 @@ export default function ScraperModule() {
         "AlertTriangle": AlertTriangle
       };
 
-      setStats(statsData.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Database })));
-      setRecentRuns(runsData);
-      setImportedGigs(gigsData);
+      const safeStats = Array.isArray(statsData) ? statsData : [];
+      const safeRuns = Array.isArray(runsData) ? runsData : [];
+      const safeGigs = Array.isArray(gigsData) ? gigsData : [];
+
+      setStats(safeStats.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Database })));
+      setRecentRuns(safeRuns);
+      setImportedGigs(safeGigs);
     } catch (error) {
       console.error("Failed to fetch scraper data:", error);
       showToast("Failed to load scraper data", "error");
+      setStats([]);
+      setRecentRuns([]);
+      setImportedGigs([]);
     } finally {
       setIsLoading(false);
     }

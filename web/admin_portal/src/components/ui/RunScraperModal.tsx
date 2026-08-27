@@ -50,7 +50,8 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
 
   const fetchResults = async () => {
     try {
-      const runs = await apiRequest("/scraper/runs?limit=50");
+      const rawRuns = await apiRequest("/scraper/runs?limit=50");
+      const runs = Array.isArray(rawRuns) ? rawRuns : [];
       const searchCutoff = runStartTime.current - 10000; // Only match runs started during or after user clicked 'Run'
 
       let hasNewRunCompleted = false;
