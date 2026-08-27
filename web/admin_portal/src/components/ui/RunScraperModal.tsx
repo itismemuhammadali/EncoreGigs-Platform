@@ -260,15 +260,15 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-[#0b0b0b] border border-[#232323] p-6 rounded-[8px] text-center">
                   <p className="text-[#A2F301] text-3xl font-bold">{totalImported}</p>
-                  <p className="text-[#9CA3AF] text-xs uppercase mt-2 font-bold tracking-widest">Total Gigs</p>
+                  <p className="text-[#9CA3AF] text-xs uppercase mt-2 font-bold tracking-widest">New Gigs Added</p>
                 </div>
                 <div className="bg-[#0b0b0b] border border-[#232323] p-6 rounded-[8px] text-center">
                   <p className="text-[#F59E0B] text-3xl font-bold">{totalDuplicates}</p>
                   <p className="text-[#9CA3AF] text-xs uppercase mt-2 font-bold tracking-widest">Duplicates Filtered</p>
                 </div>
                 <div className="bg-[#0b0b0b] border border-[#232323] p-6 rounded-[8px] text-center">
-                  <p className="text-[#EF4444] text-3xl font-bold">{totalSpam}</p>
-                  <p className="text-[#9CA3AF] text-xs uppercase mt-2 font-bold tracking-widest">Spam Filtered</p>
+                  <p className="text-[#3B82F6] text-3xl font-bold">{totalImported + totalDuplicates}</p>
+                  <p className="text-[#9CA3AF] text-xs uppercase mt-2 font-bold tracking-widest">Total Scanned</p>
                 </div>
                 <div className="bg-[#0b0b0b] border border-[#232323] p-6 rounded-[8px] text-center">
                   <p className="text-[#EF4444] text-3xl font-bold">{totalErrors}</p>
@@ -283,10 +283,13 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
                     <div key={i} className="flex items-center justify-between p-4 border border-[#173225] rounded-[8px] bg-[#071612]">
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="text-[#10B981]" />
-                        <span className="text-white font-medium">{r.source}</span>
+                        <span className="text-white font-medium capitalize">{r.source}</span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-[#9CA3AF] text-sm">{r.imported || 0} gigs</div>
+                        <div className="text-[#9CA3AF] text-sm">
+                          <span className="text-[#A2F301] font-bold">{r.imported || 0} new</span>
+                          {r.duplicates > 0 && <span className="text-[#F59E0B] ml-2">({r.duplicates} duplicates)</span>}
+                        </div>
                         <div className="text-[#EF4444] text-sm font-bold">{r.errors || 0} errors</div>
                       </div>
                     </div>

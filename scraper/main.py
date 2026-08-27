@@ -39,6 +39,7 @@ class ScraperManager:
     def run_scraper_task(self, scraper, run_id):
         start_time = time.time()
         found_count = 0
+        imported_count = 0
         duplicates_count = 0
         errors_count = 0
         status = "success"
@@ -52,7 +53,9 @@ class ScraperManager:
             for gig in gigs:
                 try:
                     result = self.db_manager.save_gig(gig)
-                    if result == 2:
+                    if result == 1:
+                        imported_count += 1
+                    elif result == 2:
                         duplicates_count += 1
                     elif result == 0:
                         errors_count += 1
@@ -70,14 +73,14 @@ class ScraperManager:
         try:
             self.db_manager.log_run(
                 source=scraper.source_name,
-                imported=found_count,
+                imported=imported_count,
                 duplicates=duplicates_count,
                 errors=errors_count,
                 duration=duration,
                 status=status,
                 run_id=run_id
             )
-            print(f"Finished {scraper.source_name} (Status: {status}, Found: {found_count}, Duration: {duration:.2f}s)", flush=True)
+            print(f"Finished {scraper.source_name} (Status: {status}, Found: {found_count}, Imported: {imported_count}, Duplicates: {duplicates_count}, Duration: {duration:.2f}s)", flush=True)
         except Exception as e:
             print(f"Error updating log for {scraper.source_name}: {e}", flush=True)
 
