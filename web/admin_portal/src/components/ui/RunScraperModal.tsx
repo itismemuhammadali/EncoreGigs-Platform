@@ -51,37 +51,27 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
   const fetchResults = async () => {
     try {
       const runs = await apiRequest("/scraper/runs?limit=50");
-      const searchCutoff = runStartTime.current - (15 * 60 * 1000); 
+      const searchCutoff = runStartTime.current - 10000; // Only match runs started during or after user clicked 'Run'
 
       let hasNewRunCompleted = false;
 
       const latestPerSource = selectedSources.map(sourceId => {
-        // 1. Check for a new run started during this session
+        // Only check for a new run started during this specific session
         const newRun = runs.find((r: any) => {
           const runTime = new Date(r.timestamp).getTime();
-          return r.source.toLowerCase() === sourceId.toLowerCase() && runTime > searchCutoff;
+          return r.source.toLowerCase() === sourceId.toLowerCase() && runTime >= searchCutoff;
         });
 
-        if (newRun && (newRun.status === "success" || newRun.status === "failed")) {
-          hasNewRunCompleted = true;
+        if (newRun) {
+          if (newRun.status === "success" || newRun.status === "failed") {
+            hasNewRunCompleted = true;
+          }
           return {
             source: sourceId,
             imported: newRun.imported || 0,
             duplicates: newRun.duplicates || 0,
             errors: newRun.errors || 0,
-            status: newRun.status
-          };
-        }
-
-        // 2. Fallback: Use the most recent completed run in database for this source
-        const lastRun = runs.find((r: any) => r.source.toLowerCase() === sourceId.toLowerCase());
-        if (lastRun) {
-          return {
-            source: sourceId,
-            imported: lastRun.imported || 0,
-            duplicates: lastRun.duplicates || 0,
-            errors: lastRun.errors || 0,
-            status: newRun ? newRun.status : lastRun.status || "success"
+            status: newRun.status || "running"
           };
         }
 
@@ -90,7 +80,7 @@ export function RunScraperModal({ isOpen, onClose, onConfirm }: RunScraperModalP
           imported: 0,
           duplicates: 0,
           errors: 0,
-          status: "success"
+          status: "running"
         };
       });
       

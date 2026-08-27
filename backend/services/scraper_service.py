@@ -64,8 +64,16 @@ class ScraperService:
     def get_imported_gigs(limit: int = 2000, filter_type: str = "all"):
         """Fetch recently imported gigs from the scraped_gigs collection."""
         try:
-            query = db.collection("scraped_gigs").order_by("updatedAt", direction=gc_firestore.Query.DESCENDING)
-            docs = query.get() 
+            try:
+                query = db.collection("scraped_gigs").order_by("updatedAt", direction=gc_firestore.Query.DESCENDING)
+                docs = query.get()
+            except Exception as query_err:
+                print(f"Warning: order_by updatedAt failed ({query_err}), falling back to stream()", flush=True)
+                docs = list(db.collection("scraped_gigs").stream())
+                docs.sort(
+                    key=lambda d: d.to_dict().get("updatedAt") or d.to_dict().get("createdAt") or datetime.min.replace(tzinfo=timezone.utc),
+                    reverse=True
+                ) 
             
             gigs = []
             for doc in docs:
