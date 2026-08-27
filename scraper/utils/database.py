@@ -5,6 +5,7 @@ import os
 from scraper.models.gig import GigDetails
 import google.auth.credentials
 from datetime import datetime, timezone
+import re
 
 # 0. Mock Credential to bypass ADC check in emulator
 class MockCredential(google.auth.credentials.Credentials):
