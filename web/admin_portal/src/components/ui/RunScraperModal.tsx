@@ -106,40 +106,37 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
     } catch (e) {}
     initialRunIds.current = baseline;
 
-    // 2. Trigger scraper
+    // 2. Trigger scraper engine
     if (onConfirm) await onConfirm(selectedSources);
 
     setIsPolling(true);
 
-    // 3. Poll for run completion (up to 40 seconds)
-    for (let i = 0; i < 25; i++) {
-      const currentProgress = Math.min((i + 1) * 4, 95);
+    // 3. Guaranteed minimum 30-second polling phase (20 iterations * 1.5s = 30s)
+    for (let i = 0; i < 20; i++) {
+      const currentProgress = Math.min(Math.round(((i + 1) / 20) * 95), 95);
       selectedSources.forEach(source => {
         setProgress(prev => ({ ...prev, [source]: currentProgress }));
       });
 
-      const allDone = await fetchResults(initialRunIds.current);
-      if (allDone) {
-        break;
-      }
+      await fetchResults(initialRunIds.current);
       await new Promise(r => setTimeout(r, 1500));
     }
+
+    // 4. Guaranteed 5-second database save & settling phase
+    setIsPolling(false);
+    setStep("saving");
+    
+    // Wait 5 full seconds for Firestore database writes to settle completely
+    await new Promise(r => setTimeout(r, 5000));
+    
+    // Final fetch of settled results from database
+    await fetchResults(initialRunIds.current);
 
     selectedSources.forEach(source => {
       setProgress(prev => ({ ...prev, [source]: 100 }));
     });
 
-    setIsPolling(false);
-    setStep("saving");
-
-    // 4. Final check during saving step to ensure all results settle
-    for (let j = 0; j < 5; j++) {
-      const allDone = await fetchResults(initialRunIds.current);
-      if (allDone) break;
-      await new Promise(r => setTimeout(r, 1500));
-    }
-
-    // Trigger parent real-time data sync
+    // Trigger parent dashboard real-time data sync
     if (onRefreshData) onRefreshData();
 
     setStep("results");
