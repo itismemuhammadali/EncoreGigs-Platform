@@ -135,3 +135,148 @@ The OnlyGigz Team
             print(f"Subject: {subject}")
             print("Body:\n" + body)
             print("="*50)
+
+    @staticmethod
+    def _get_sendgrid_config():
+        return {
+            "api_key": os.getenv("SENDGRID_API_KEY") or os.getenv("TWILIO_SENDGRID_API_KEY"),
+            "from_email": os.getenv("SENDGRID_FROM_EMAIL") or os.getenv("SMTP_FROM_EMAIL", "noreply@onlygigz.com"),
+            "from_name": os.getenv("SENDGRID_FROM_NAME", "OnlyGigz Team")
+        }
+
+    @staticmethod
+    def send_sendgrid_email(
+        to_email: str,
+        subject: str,
+        html_content: str,
+        plain_text_content: Optional[str] = None,
+        to_name: Optional[str] = None
+    ) -> bool:
+        """
+        Sends an email using Twilio SendGrid v3 Mail Send REST API.
+        Returns True if successful, False otherwise.
+        """
+        config = EmailService._get_sendgrid_config()
+        api_key = config["api_key"]
+        
+        if not api_key:
+            print("EmailService [SendGrid]: No SENDGRID_API_KEY found in environment. Simulating delivery...")
+            print("=" * 50)
+            print(f"To: {to_email}")
+            print(f"Subject: {subject}")
+            print(f"HTML Content Snippet: {html_content[:200]}...")
+            print("=" * 50)
+            return True
+
+        url = "https://api.sendgrid.com/v3/mail/send"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "personalizations": [
+                {
+                    "to": [
+                        {
+                            "email": to_email,
+                            "name": to_name or to_email.split("@")[0]
+                        }
+                    ]
+                }
+            ],
+            "from": {
+                "email": config["from_email"],
+                "name": config["from_name"]
+            },
+            "subject": subject,
+            "content": [
+                {
+                    "type": "text/html",
+                    "value": html_content
+                }
+            ]
+        }
+
+        if plain_text_content:
+            payload["content"].insert(0, {
+                "type": "text/plain",
+                "value": plain_text_content
+            })
+
+        try:
+            import requests
+            response = requests.post(url, headers=headers, json=payload, timeout=10)
+            if response.status_code in [200, 201, 202]:
+                print(f"EmailService [SendGrid]: Successfully sent email to {to_email}")
+                return True
+            else:
+                print(f"EmailService [SendGrid]: Failed ({response.status_code}) - {response.text}")
+                return False
+        except Exception as e:
+            print(f"EmailService [SendGrid]: Error sending email - {e}")
+            return False
+
+    @staticmethod
+    def send_account_approved_email(to_email: str, user_name: str = "Valued User") -> bool:
+        """
+        Sends the 'Your Account Has Been Approved' email notification via Twilio SendGrid.
+        """
+        subject = "Your OnlyGigz Account Has Been Approved! 🎉"
+        
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
+    .header {{ background-color: #111827; padding: 32px 24px; text-align: center; }}
+    .header h1 {{ color: #a3e635; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }}
+    .content {{ padding: 32px 24px; color: #374151; line-height: 1.6; font-size: 16px; }}
+    .content h2 {{ color: #111827; margin-top: 0; font-size: 20px; }}
+    .badge {{ display: inline-block; background-color: #dcfce7; color: #166534; padding: 6px 14px; border-radius: 9999px; font-weight: 600; font-size: 14px; margin-bottom: 20px; }}
+    .cta-button {{ display: inline-block; background-color: #a3e635; color: #111827; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 8px; margin-top: 24px; text-align: center; }}
+    .footer {{ background-color: #f9fafb; padding: 20px 24px; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #e5e7eb; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>OnlyGigz</h1>
+    </div>
+    <div class="content">
+      <div class="badge">✓ Account Approved</div>
+      <h2>Hello {user_name},</h2>
+      <p>Great news! Your <strong>OnlyGigz</strong> account has been officially reviewed and approved by our team.</p>
+      <p>You now have full access to log in, browse musician gigs, connect with venues and organizers, and manage your bookings seamlessly.</p>
+      <p style="text-align: center;">
+        <a href="https://onlygigz.com" class="cta-button">Log In to Your Account</a>
+      </p>
+      <p style="margin-top: 32px; font-size: 14px; color: #6b7280;">If you have any questions or need assistance getting started, feel free to reply directly to this email.</p>
+    </div>
+    <div class="footer">
+      &copy; OnlyGigz. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>"""
+
+        plain_text = f"""Hello {user_name},
+
+Great news! Your OnlyGigz account has been officially reviewed and approved by our team.
+
+You now have full access to log in, browse musician gigs, connect with venues and organizers, and manage your bookings seamlessly.
+
+Log in here: https://onlygigz.com
+
+Best regards,
+The OnlyGigz Team"""
+
+        return EmailService.send_sendgrid_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            plain_text_content=plain_text,
+            to_name=user_name
+        )

@@ -112,3 +112,8 @@ class CreateAdminMemberRequest(BaseModel):
     email: EmailStr
     password: str
     role: str  # 'super_admin', 'admin', or 'support'
+
+class SendApprovalEmailRequest(BaseModel):
+    email: EmailStr
+    name: Optional[str] = "User"
+

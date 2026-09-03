@@ -17,6 +17,7 @@ from backend.services.auth_service import AuthService
 from backend.services.storage_service import StorageService
 from backend.services.security_service import SecurityService
 from backend.services.admin_notification_service import AdminNotificationService
+from backend.services.email_service import EmailService
 from backend.models.auth_models import (
     SignUpRequest,
     SignInRequest,
@@ -33,6 +34,7 @@ from backend.models.auth_models import (
     SavePhoneNumberRequest,
     SendEmailLink2FARequest,
     CreateAdminMemberRequest,
+    SendApprovalEmailRequest,
 )
 from backend.models.musician_models import MusicianSignUpRequest, PortfolioUpdateRequest
 
@@ -975,3 +977,23 @@ async def export_data(request: ExportDataRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/send-approval-email")
+async def send_approval_email(request: SendApprovalEmailRequest):
+    try:
+        success = EmailService.send_account_approved_email(
+            to_email=request.email,
+            user_name=request.name or "User"
+        )
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to send approval email via SendGrid")
+        return {
+            "success": True,
+            "message": f"Account approval email successfully sent to {request.email}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
