@@ -1,7 +1,7 @@
 import os
 import smtplib
 from email.message import EmailMessage
-from typing import Dict
+from typing import Dict, Optional
 
 class EmailService:
     @staticmethod
