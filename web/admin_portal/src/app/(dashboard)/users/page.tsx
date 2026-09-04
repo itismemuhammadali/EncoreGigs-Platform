@@ -21,7 +21,7 @@ interface Musician {
   id: string;
   fullName: string;
   email: string;
-  status: "active" | "inactive" | "suspended" | "pending";
+  status: "active" | "inactive" | "suspended" | "pending" | "approved" | "rejected" | "pending_approval" | "denied" | string;
   bookings?: number;
   rating?: number;
   joinedAt?: string;
@@ -32,7 +32,7 @@ interface Organizer {
   id: string;
   name: string;
   email: string;
-  status: "active" | "suspended" | "pending";
+  status: "active" | "suspended" | "pending" | "approved" | "rejected" | "pending_approval" | "denied" | string;
   totalGigs?: number;
   totalSpent?: string;
   joinedAt?: string;
@@ -75,47 +75,46 @@ export default function UserManagement() {
     setNotification({ show: true, message });
   };
 
-  const handleStatusToggle = async (id: string, currentStatus: string, type: "musician" | "organizer") => {
-    // Note: Backend currently doesn't have a direct status toggle endpoint, but we can update profile
-    const newStatus = currentStatus === "active" ? "inactive" : "active";
+  const handleStatusUpdate = async (id: string, newStatus: string, type: "musician" | "organizer", email: string) => {
     try {
-      // For now, let's assume we can update profile status
-      // In a real scenario, we'd have a specific admin endpoint for this
-      showNotification(`Updating status for ${type}...`);
+      showNotification(`Updating ${type} status to ${newStatus}...`);
+      await apiRequest("/auth/user/status", {
+        method: "POST",
+        body: JSON.stringify({ uid: id, status: newStatus, email })
+      });
       
-      // Local update for immediate feedback
       if (type === "musician") {
         setMusicians(prev => prev.map(m => m.id === id ? { ...m, status: newStatus as any } : m));
       } else {
         setOrganizers(prev => prev.map(o => o.id === id ? { ...o, status: newStatus as any } : o));
       }
       
-      showNotification(`User ${newStatus === "active" ? "activated" : "deactivated"} successfully`);
+      const actionText = newStatus === "approved" || newStatus === "active" ? "Approved & Email Sent" : newStatus === "rejected" || newStatus === "denied" ? "Rejected & Email Sent" : "Updated";
+      showNotification(`User status ${actionText} successfully`);
     } catch (err: any) {
       showNotification("Failed to update status: " + err.message);
     }
   };
 
-  const handleSuspendConfirm = () => {
+  const handleSuspendConfirm = async () => {
     if (suspendModal.userId && suspendModal.userType) {
-      if (suspendModal.userType === "musician") {
-        setMusicians(prev => prev.map(m => m.id === suspendModal.userId ? { ...m, status: "suspended" } : m));
-      } else {
-        setOrganizers(prev => prev.map(o => o.id === suspendModal.userId ? { ...o, status: "suspended" } : o));
-      }
-      showNotification("User suspended successfully");
+      const user = suspendModal.userType === "musician" 
+        ? musicians.find(m => m.id === suspendModal.userId)
+        : organizers.find(o => o.id === suspendModal.userId);
+      const email = user?.email || "";
+      await handleStatusUpdate(suspendModal.userId, "suspended", suspendModal.userType, email);
       setSuspendModal({ show: false, userId: null, userType: null });
     }
   };
 
   const filteredMusicians = musicians.filter(m => 
-    m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    m.email.toLowerCase().includes(searchQuery.toLowerCase())
+    m.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    m.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredOrganizers = organizers.filter(o => 
-    o.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    o.email.toLowerCase().includes(searchQuery.toLowerCase())
+    o.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    o.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const formatDate = (date: any) => {
@@ -135,7 +134,7 @@ export default function UserManagement() {
         {/* --- HEADER --- */}
         <div>
           <h1 className="text-2xl sm:text-[32px] font-bold text-white mb-2">User Management</h1>
-          <p className="text-[#a1a1aa] text-sm sm:text-[16px]">Manage musicians, organizers, and user accounts</p>
+          <p className="text-[#a1a1aa] text-sm sm:text-[16px]">Manage musicians, organizers, approvals, and user accounts</p>
         </div>
 
         {/* --- TABS --- */}
@@ -221,10 +220,11 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-5">
                           <span className={`px-3 py-1 rounded-full text-[12px] font-bold ${
-                            musician.status === 'active' ? 'bg-[#10b981]/10 text-[#10b981]' :
+                            musician.status === 'active' || musician.status === 'approved' ? 'bg-[#10b981]/10 text-[#10b981]' :
+                            musician.status === 'pending' || musician.status === 'pending_approval' ? 'bg-[#f59e0b]/10 text-[#f59e0b]' :
                             'bg-[#ef4444]/10 text-[#ef4444]'
                           }`}>
-                            {musician.status}
+                            {musician.status === 'pending' || musician.status === 'pending_approval' ? 'Pending Approval' : musician.status}
                           </span>
                         </td>
                         <td className="px-6 py-5 text-white text-[14px] font-medium opacity-80">{musician.bookings || 0}</td>
@@ -236,17 +236,26 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-5 text-[#a1a1aa] text-[14px] font-medium">{formatDate(musician.joinedAt || musician.createdAt)}</td>
                         <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <button onClick={() => setViewModal({ show: true, userData: musician })} className="text-white/70 hover:text-white hover:scale-110 transition-all"><Eye className="w-[18px] h-[18px]" /></button>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => setViewModal({ show: true, userData: musician })} title="View Profile" className="text-white/70 hover:text-white hover:scale-110 transition-all"><Eye className="w-[18px] h-[18px]" /></button>
                             
                             <button 
-                              onClick={() => handleStatusToggle(musician.id, musician.status, "musician")} 
-                              className={`hover:scale-110 transition-all ${musician.status === 'active' ? 'text-[#f59e0b] hover:text-[#f59e0b]/80' : 'text-[#10b981] hover:text-[#10b981]/80'}`}
+                              onClick={() => handleStatusUpdate(musician.id, "approved", "musician", musician.email)} 
+                              title="Approve User & Send Email"
+                              className="text-[#10b981] hover:text-[#10b981]/80 hover:scale-110 transition-all"
                             >
-                              {musician.status === 'active' ? <UserX className="w-[18px] h-[18px]" /> : <UserCheck className="w-[18px] h-[18px]" />}
+                              <UserCheck className="w-[18px] h-[18px]" />
                             </button>
 
-                            <button onClick={() => setSuspendModal({ show: true, userId: musician.id, userType: "musician" })} className="text-[#ef4444] hover:text-[#ef4444]/80 hover:scale-110 transition-all"><Ban className="w-[18px] h-[18px]" /></button>
+                            <button 
+                              onClick={() => handleStatusUpdate(musician.id, "rejected", "musician", musician.email)} 
+                              title="Reject User & Send Email"
+                              className="text-[#ef4444] hover:text-[#ef4444]/80 hover:scale-110 transition-all"
+                            >
+                              <UserX className="w-[18px] h-[18px]" />
+                            </button>
+
+                            <button onClick={() => setSuspendModal({ show: true, userId: musician.id, userType: "musician" })} title="Suspend User" className="text-[#f59e0b] hover:text-[#f59e0b]/80 hover:scale-110 transition-all"><Ban className="w-[18px] h-[18px]" /></button>
                           </div>
                         </td>
                       </tr>
@@ -268,9 +277,11 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-5">
                           <span className={`px-3 py-1 rounded-full text-[12px] font-bold ${
-                            organizer.status === 'active' ? 'bg-[#10b981]/10 text-[#10b981]' : 'bg-[#ef4444]/10 text-[#ef4444]'
+                            organizer.status === 'active' || organizer.status === 'approved' ? 'bg-[#10b981]/10 text-[#10b981]' :
+                            organizer.status === 'pending' || organizer.status === 'pending_approval' ? 'bg-[#f59e0b]/10 text-[#f59e0b]' :
+                            'bg-[#ef4444]/10 text-[#ef4444]'
                           }`}>
-                            {organizer.status}
+                            {organizer.status === 'pending' || organizer.status === 'pending_approval' ? 'Pending Approval' : organizer.status}
                           </span>
                         </td>
                         <td className="px-6 py-5 text-white text-[14px] font-medium opacity-80">{organizer.totalGigs || 0}</td>
@@ -279,17 +290,26 @@ export default function UserManagement() {
                         </td>
                         <td className="px-6 py-5 text-[#a1a1aa] text-[14px] font-medium">{formatDate(organizer.joinedAt || organizer.createdAt)}</td>
                         <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
-                            <button onClick={() => setViewModal({ show: true, userData: organizer })} className="text-white/70 hover:text-white hover:scale-110 transition-all"><Eye className="w-[18px] h-[18px]" /></button>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => setViewModal({ show: true, userData: organizer })} title="View Profile" className="text-white/70 hover:text-white hover:scale-110 transition-all"><Eye className="w-[18px] h-[18px]" /></button>
                             
                             <button 
-                              onClick={() => handleStatusToggle(organizer.id, organizer.status, "organizer")} 
-                              className={`hover:scale-110 transition-all ${organizer.status === 'active' ? 'text-[#f59e0b] hover:text-[#f59e0b]/80' : 'text-[#10b981] hover:text-[#10b981]/80'}`}
+                              onClick={() => handleStatusUpdate(organizer.id, "approved", "organizer", organizer.email)} 
+                              title="Approve User & Send Email"
+                              className="text-[#10b981] hover:text-[#10b981]/80 hover:scale-110 transition-all"
                             >
-                              {organizer.status === 'active' ? <UserX className="w-[18px] h-[18px]" /> : <UserCheck className="w-[18px] h-[18px]" />}
+                              <UserCheck className="w-[18px] h-[18px]" />
                             </button>
 
-                            <button onClick={() => setSuspendModal({ show: true, userId: organizer.id, userType: "organizer" })} className="text-[#ef4444] hover:text-[#ef4444]/80 hover:scale-110 transition-all"><Ban className="w-[18px] h-[18px]" /></button>
+                            <button 
+                              onClick={() => handleStatusUpdate(organizer.id, "rejected", "organizer", organizer.email)} 
+                              title="Reject User & Send Email"
+                              className="text-[#ef4444] hover:text-[#ef4444]/80 hover:scale-110 transition-all"
+                            >
+                              <UserX className="w-[18px] h-[18px]" />
+                            </button>
+
+                            <button onClick={() => setSuspendModal({ show: true, userId: organizer.id, userType: "organizer" })} title="Suspend User" className="text-[#f59e0b] hover:text-[#f59e0b]/80 hover:scale-110 transition-all"><Ban className="w-[18px] h-[18px]" /></button>
                           </div>
                         </td>
                       </tr>

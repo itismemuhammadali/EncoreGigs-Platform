@@ -39,7 +39,15 @@ class _SplashScreenState extends State<SplashScreen>
 
     final authService = Provider.of<AuthService>(context, listen: false);
     if (authService.user != null) {
-      Navigator.of(context).pushReplacementNamed('/home');
+      final status = await authService.getUserStatus(authService.user!.uid);
+      if (!mounted) return;
+      if (status == 'pending' || status == 'pending_approval') {
+        Navigator.of(context).pushReplacementNamed('/account_pending');
+      } else if (status == 'rejected' || status == 'denied') {
+        Navigator.of(context).pushReplacementNamed('/account_denied');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     } else {
       Navigator.of(context).pushReplacementNamed('/onboarding');
     }

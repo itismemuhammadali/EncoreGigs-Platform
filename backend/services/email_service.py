@@ -280,3 +280,67 @@ The OnlyGigz Team"""
             plain_text_content=plain_text,
             to_name=user_name
         )
+
+    @staticmethod
+    def send_account_denied_email(to_email: str, user_name: str = "Valued User") -> bool:
+        """
+        Sends the 'Account Review Status' rejection email notification via Twilio SendGrid.
+        """
+        subject = "OnlyGigz Account Review Status Update"
+        
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }}
+    .header {{ background-color: #111827; padding: 32px 24px; text-align: center; }}
+    .header h1 {{ color: #ef4444; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: 0.5px; }}
+    .content {{ padding: 32px 24px; color: #374151; line-height: 1.6; font-size: 16px; }}
+    .content h2 {{ color: #111827; margin-top: 0; font-size: 20px; }}
+    .badge {{ display: inline-block; background-color: #fee2e2; color: #991b1b; padding: 6px 14px; border-radius: 9999px; font-weight: 600; font-size: 14px; margin-bottom: 20px; }}
+    .cta-button {{ display: inline-block; background-color: #374151; color: #ffffff; font-weight: 600; text-decoration: none; padding: 12px 24px; border-radius: 8px; margin-top: 24px; text-align: center; }}
+    .footer {{ background-color: #f9fafb; padding: 20px 24px; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #e5e7eb; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>OnlyGigz</h1>
+    </div>
+    <div class="content">
+      <div class="badge">Account Review Status</div>
+      <h2>Hello {user_name},</h2>
+      <p>Thank you for your interest in joining <strong>OnlyGigz</strong>.</p>
+      <p>After reviewing your submitted profile details, our team was unable to approve your account application at this time.</p>
+      <p>If you believe this was an error, or if you would like to provide additional details or verification to re-evaluate your application, please feel free to reply directly to this email or contact support at support@onlygigz.com.</p>
+      <p style="text-align: center;">
+        <a href="mailto:support@onlygigz.com" class="cta-button">Contact Support</a>
+      </p>
+    </div>
+    <div class="footer">
+      &copy; OnlyGigz. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>"""
+
+        plain_text = f"""Hello {user_name},
+
+Thank you for your interest in joining OnlyGigz.
+
+After reviewing your submitted profile details, our team was unable to approve your account application at this time.
+
+If you believe this was an error, or if you would like to provide additional details or verification to re-evaluate your application, please reply directly to this email or contact support at support@onlygigz.com.
+
+Best regards,
+The OnlyGigz Team"""
+
+        return EmailService.send_sendgrid_email(
+            to_email=to_email,
+            subject=subject,
+            html_content=html_content,
+            plain_text_content=plain_text,
+            to_name=user_name
+        )

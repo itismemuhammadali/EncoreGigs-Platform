@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -20,7 +23,16 @@ class _SplashScreenState extends State<SplashScreen> {
     if (mounted) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        Navigator.of(context).pushReplacementNamed('/home');
+        final authService = Provider.of<AuthService>(context, listen: false);
+        final status = await authService.getUserStatus(user.uid);
+        if (!mounted) return;
+        if (status == 'pending' || status == 'pending_approval') {
+          Navigator.of(context).pushReplacementNamed('/account_pending');
+        } else if (status == 'rejected' || status == 'denied') {
+          Navigator.of(context).pushReplacementNamed('/account_denied');
+        } else {
+          Navigator.of(context).pushReplacementNamed('/home');
+        }
       } else {
         Navigator.of(context).pushReplacementNamed('/onboarding');
       }

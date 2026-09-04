@@ -872,4 +872,24 @@ class AuthService extends ChangeNotifier {
       return e.toString();
     }
   }
+
+  Future<String> getUserStatus([String? uid]) async {
+    final targetUid = uid ?? _auth.currentUser?.uid;
+    if (targetUid == null) return 'unauthenticated';
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('musicians').doc(targetUid).get();
+      if (!doc.exists) return 'not_found';
+      final status = (doc.data()?['status'] as String?)?.toLowerCase();
+      if (status != null && status.isNotEmpty) {
+        return status;
+      }
+      final isProfileCompleted = doc.data()?['isProfileCompleted'] as bool? ?? false;
+      return isProfileCompleted ? 'pending' : 'incomplete';
+    } catch (e) {
+      debugPrint('Error fetching user status: $e');
+      return 'approved';
+    }
+  }
 }
+

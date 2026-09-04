@@ -17,6 +17,7 @@ import 'screens/auth/create_account/step1_account_details.dart';
 import 'screens/auth/create_account/step2_organizer_info.dart';
 import 'screens/auth/create_account/step3_verification.dart';
 import 'screens/auth/create_account/account_pending_screen.dart';
+import 'screens/auth/create_account/account_denied_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/profile/contract_signed_screen.dart';
 import 'screens/profile/my_contracts_screen.dart';
@@ -152,6 +153,8 @@ class MyApp extends StatelessWidget {
           '/signup/step2': (context) => const Step2OrganizerInfo(),
           '/signup/step3': (context) => const Step3Verification(),
           '/signup/pending': (context) => const AccountPendingScreen(),
+          '/account_pending': (context) => const AccountPendingScreen(),
+          '/account_denied': (context) => const AccountDeniedScreen(),
           '/home': (context) => const HomeScreen(),
           '/contract-signed': (context) => const ContractSignedScreen(),
           '/profile': (context) => const HomeScreen(),

@@ -60,6 +60,16 @@ class _SignInScreenState extends State<SignInScreen> {
             );
             return;
           }
+
+          final userStatus = await authService.getUserStatus(user.uid);
+          if (!mounted) return;
+          if (userStatus == 'pending' || userStatus == 'pending_approval') {
+            Navigator.of(context).pushReplacementNamed('/account_pending');
+            return;
+          } else if (userStatus == 'rejected' || userStatus == 'denied') {
+            Navigator.of(context).pushReplacementNamed('/account_denied');
+            return;
+          }
         }
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
@@ -80,6 +90,18 @@ class _SignInScreenState extends State<SignInScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (result == null) {
+        final user = authService.currentUser;
+        if (user != null) {
+          final userStatus = await authService.getUserStatus(user.uid);
+          if (!mounted) return;
+          if (userStatus == 'pending' || userStatus == 'pending_approval') {
+            Navigator.of(context).pushReplacementNamed('/account_pending');
+            return;
+          } else if (userStatus == 'rejected' || userStatus == 'denied') {
+            Navigator.of(context).pushReplacementNamed('/account_denied');
+            return;
+          }
+        }
         Navigator.of(context).pushReplacementNamed('/home');
       } else if (result == 'new_user') {
         Navigator.of(context).pushReplacementNamed('/signup/step1');

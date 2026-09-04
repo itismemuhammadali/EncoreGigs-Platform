@@ -117,9 +117,9 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       if (!mounted) return;
 
       if (error == null) {
-        debugPrint('Signup successful, navigating to home...');
+        debugPrint('Signup successful, navigating to account pending review screen...');
         if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          Navigator.of(context).pushNamedAndRemoveUntil('/account_pending', (route) => false);
         }
       } else {
         setState(() => _isLoading = false);

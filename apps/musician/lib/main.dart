@@ -14,6 +14,8 @@ import 'package:onlygigz_musician/screens/splash_screen.dart';
 import 'package:onlygigz_musician/screens/onboarding/onboarding_screen.dart';
 import 'package:onlygigz_musician/screens/auth/create_account_screen.dart';
 import 'package:onlygigz_musician/screens/auth/sign_in_screen.dart';
+import 'package:onlygigz_musician/screens/auth/account_pending_screen.dart';
+import 'package:onlygigz_musician/screens/auth/account_denied_screen.dart';
 import 'package:onlygigz_musician/screens/main/home_screen.dart';
 import 'package:onlygigz_musician/screens/main/applications_screen.dart';
 import 'package:onlygigz_musician/screens/main/messages_screen.dart';
@@ -146,6 +148,8 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const SignInScreen(),
         '/signup': (context) => const CreateAccountScreen(),
         '/signin': (context) => const SignInScreen(),
+        '/account_pending': (context) => const AccountPendingScreen(),
+        '/account_denied': (context) => const AccountDeniedScreen(),
         '/home': (context) => const HomeScreen(),
         '/applications': (context) => const ApplicationsScreen(),
         '/messages': (context) => const MessagesScreen(),

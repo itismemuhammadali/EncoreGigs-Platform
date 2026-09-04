@@ -4,6 +4,7 @@ from backend.database import db
 from backend.models.auth_models import ProfileUpdateRequest, OrganizationUpdateRequest, PasswordUpdateRequest, UserStatusRequest
 from backend.models.musician_models import PortfolioUpdateRequest
 from backend.services.security_service import SecurityService
+from backend.services.email_service import EmailService
 from typing import Optional, Any, Dict
 
 class AuthService:
@@ -216,8 +217,19 @@ class AuthService:
                 user_doc: Any = user_ref.get()
                 if user_doc.exists:
                     user_ref.update({"status": request.status})
-                    action = "User suspended" if request.status == "suspended" else "User activated"
+                    action = f"User status set to {request.status}"
                     SecurityService.create_log(action, request.email)
+
+                    # Trigger Twilio SendGrid automated notification email
+                    user_data = user_doc.to_dict() or {}
+                    user_name = user_data.get("fullName") or user_data.get("name") or "User"
+                    user_email = user_data.get("email") or request.email
+
+                    if request.status in ["approved", "active"]:
+                        EmailService.send_account_approved_email(user_email, user_name)
+                    elif request.status in ["rejected", "denied", "suspended"]:
+                        EmailService.send_account_denied_email(user_email, user_name)
+
                     return True
             return False
         except Exception as e:

@@ -638,6 +638,8 @@ async def signin(request: SignInRequest):
         elif two_factor_method == "sms":
             two_factor_method_frontend = "sms"
         
+        user_status = profile.get("status", "pending_approval") if profile else "pending_approval"
+        
         return {
             "idToken": data["idToken"],
             "email": data["email"],
@@ -647,7 +649,8 @@ async def signin(request: SignInRequest):
             "profileImageUrl": profile_image,
             "is2FAEnabled": is_2fa_enabled,
             "phoneNumber": phone_number,
-            "twoFactorMethod": two_factor_method_frontend
+            "twoFactorMethod": two_factor_method_frontend,
+            "status": user_status
         }
     except HTTPException:
         raise
