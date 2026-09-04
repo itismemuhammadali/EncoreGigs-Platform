@@ -138,9 +138,28 @@ The OnlyGigz Team
 
     @staticmethod
     def _get_sendgrid_config():
+        api_key = os.getenv("SENDGRID_API_KEY") or os.getenv("TWILIO_SENDGRID_API_KEY")
+
+        if not api_key:
+            try:
+                from firebase_admin import firestore
+                db = firestore.client()
+                doc = db.collection("system_config").doc("email").get()
+                if doc.exists:
+                    data = doc.data() or {}
+                    api_key = data.get("sendgrid_api_key") or data.get("sendgridApiKey") or data.get("api_key")
+                
+                if not api_key:
+                    doc2 = db.collection("system_config").doc("sendgrid").get()
+                    if doc2.exists:
+                        data2 = doc2.data() or {}
+                        api_key = data2.get("sendgrid_api_key") or data2.get("sendgridApiKey") or data2.get("api_key")
+            except Exception as e:
+                print(f"EmailService: Firestore SendGrid key lookup note: {e}")
+
         return {
-            "api_key": os.getenv("SENDGRID_API_KEY") or os.getenv("TWILIO_SENDGRID_API_KEY"),
-            "from_email": os.getenv("SENDGRID_FROM_EMAIL") or os.getenv("SMTP_FROM_EMAIL", "noreply@onlygigz.com"),
+            "api_key": api_key,
+            "from_email": os.getenv("SENDGRID_FROM_EMAIL") or os.getenv("SMTP_FROM_EMAIL", "notifications@onlygigz.app"),
             "from_name": os.getenv("SENDGRID_FROM_NAME", "OnlyGigz Team")
         }
 

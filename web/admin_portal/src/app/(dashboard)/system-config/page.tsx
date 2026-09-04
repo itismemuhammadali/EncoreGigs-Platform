@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save } from "lucide-react";
+import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save, Mail } from "lucide-react";
 
 export default function SystemConfigPage() {
   const [sources, setSources] = useState<any[]>([]);
@@ -14,11 +14,65 @@ export default function SystemConfigPage() {
   const [savingCookies, setSavingCookies] = useState(false);
   const [cookiesMessage, setCookiesMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  const [sendgridKey, setSendgridKey] = useState("");
+  const [senderEmail, setSenderEmail] = useState("notifications@onlygigz.app");
+  const [sendgridStatus, setSendgridStatus] = useState<any>(null);
+  const [savingSendgrid, setSavingSendgrid] = useState(false);
+  const [sendgridMessage, setSendgridMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
   useEffect(() => {
     fetchSources();
+    fetchSendgridConfig();
   }, []);
+
+  const fetchSendgridConfig = async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/sendgrid-config`);
+      if (res.ok) {
+        const data = await res.json();
+        setSendgridStatus(data);
+        if (data.from_email) setSenderEmail(data.from_email);
+      }
+    } catch (err) {
+      console.error("Failed to fetch SendGrid config:", err);
+    }
+  };
+
+  const handleSaveSendgrid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sendgridKey.trim()) {
+      setSendgridMessage({ type: "error", text: "Please enter your Twilio SendGrid API Key (SG.xxxxxxxx...)" });
+      return;
+    }
+    setSavingSendgrid(true);
+    setSendgridMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/auth/sendgrid-config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sendgrid_api_key: sendgridKey.trim(),
+          from_email: senderEmail.trim() || "notifications@onlygigz.app",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setSendgridMessage({ type: "success", text: data.message || "Twilio SendGrid API Key saved successfully to Firebase!" });
+        setSendgridKey("");
+        fetchSendgridConfig();
+      } else {
+        const data = await res.json();
+        setSendgridMessage({ type: "error", text: data.detail || "Failed to save SendGrid key" });
+      }
+    } catch (err: any) {
+      setSendgridMessage({ type: "error", text: `Error: ${err.message}` });
+    } finally {
+      setSavingSendgrid(false);
+    }
+  };
 
   const fetchSources = async () => {
     try {
@@ -88,7 +142,6 @@ export default function SystemConfigPage() {
     setCookiesMessage(null);
 
     try {
-      // Basic client JSON validation
       JSON.parse(cookiesJson);
 
       const res = await fetch(`${API_URL}/scraper/cookies`, {
@@ -114,8 +167,82 @@ export default function SystemConfigPage() {
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">System Management & Scraper Config</h1>
-        <p className="text-zinc-400 mt-1">Manage Facebook scraping groups and session cookie authentication.</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">System Management & Services Config</h1>
+        <p className="text-zinc-400 mt-1">Manage SendGrid API Keys, Facebook scraper groups, and session cookie authentication.</p>
+      </div>
+
+      {/* Twilio SendGrid API Key Section */}
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-lime-500/10 rounded-lg text-lime-400">
+              <Mail className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Twilio SendGrid Email API Key</h2>
+              <p className="text-sm text-zinc-400">Store your SendGrid API key securely in Firebase to send account approval/denial emails automatically.</p>
+            </div>
+          </div>
+          {sendgridStatus && (
+            <span
+              className={`px-3 py-1 text-xs font-semibold rounded-full border ${
+                sendgridStatus.configured
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+              }`}
+            >
+              {sendgridStatus.configured ? `Configured (${sendgridStatus.masked_key})` : "Not Configured"}
+            </span>
+          )}
+        </div>
+
+        {sendgridMessage && (
+          <div
+            className={`p-4 rounded-lg flex items-center gap-3 ${
+              sendgridMessage.type === "success"
+                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                : "bg-red-500/10 text-red-400 border border-red-500/20"
+            }`}
+          >
+            {sendgridMessage.type === "success" ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            <span className="text-sm font-medium">{sendgridMessage.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveSendgrid} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Twilio SendGrid API Key</label>
+              <input
+                type="password"
+                placeholder="SG.xxxxxxxx..."
+                value={sendgridKey}
+                onChange={(e) => setSendgridKey(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-lime-500 font-mono text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5">Sender Email Address</label>
+              <input
+                type="email"
+                placeholder="notifications@onlygigz.app"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-lime-500 font-mono text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={savingSendgrid}
+              className="flex items-center gap-2 bg-lime-500 hover:bg-lime-400 text-black px-6 py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {savingSendgrid ? "Saving to Firebase..." : "Save SendGrid Key"}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Facebook Group Sources Section */}
