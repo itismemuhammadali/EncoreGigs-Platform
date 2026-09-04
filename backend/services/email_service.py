@@ -1,7 +1,7 @@
 import os
 import smtplib
 from email.message import EmailMessage
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 class EmailService:
     @staticmethod
@@ -143,16 +143,16 @@ The OnlyGigz Team
         if not api_key:
             try:
                 from firebase_admin import firestore
-                db = firestore.client()
-                doc = db.collection("system_config").document("email").get()
-                if doc.exists:
-                    data = doc.to_dict() if hasattr(doc, 'to_dict') else doc.data() or {}
+                db: Any = firestore.client()
+                doc: Any = db.collection("system_config").document("email").get()
+                if getattr(doc, "exists", False):
+                    data: Dict[str, Any] = (doc.to_dict() if hasattr(doc, "to_dict") else {}) or {}
                     api_key = data.get("sendgrid_api_key") or data.get("sendgridApiKey") or data.get("api_key")
                 
                 if not api_key:
-                    doc2 = db.collection("system_config").document("sendgrid").get()
-                    if doc2.exists:
-                        data2 = doc2.to_dict() if hasattr(doc2, 'to_dict') else doc2.data() or {}
+                    doc2: Any = db.collection("system_config").document("sendgrid").get()
+                    if getattr(doc2, "exists", False):
+                        data2: Dict[str, Any] = (doc2.to_dict() if hasattr(doc2, "to_dict") else {}) or {}
                         api_key = data2.get("sendgrid_api_key") or data2.get("sendgridApiKey") or data2.get("api_key")
             except Exception as e:
                 print(f"EmailService: Firestore SendGrid key lookup note: {e}")

@@ -1009,8 +1009,8 @@ class SendGridConfigUpdateRequest(BaseModel):
 @router.get("/sendgrid-config")
 async def get_sendgrid_config():
     try:
-        doc = db.collection("system_config").document("email").get()
-        data = doc.to_dict() if doc.exists else {}
+        doc: Any = db.collection("system_config").document("email").get()
+        data: Dict[str, Any] = (doc.to_dict() if getattr(doc, "exists", False) else {}) or {}
         key = data.get("sendgrid_api_key") or os.getenv("SENDGRID_API_KEY") or os.getenv("TWILIO_SENDGRID_API_KEY") or ""
         masked_key = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("Configured" if key else "Not Configured")
         return {
