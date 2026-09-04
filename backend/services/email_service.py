@@ -144,15 +144,15 @@ The OnlyGigz Team
             try:
                 from firebase_admin import firestore
                 db = firestore.client()
-                doc = db.collection("system_config").doc("email").get()
+                doc = db.collection("system_config").document("email").get()
                 if doc.exists:
-                    data = doc.data() or {}
+                    data = doc.to_dict() if hasattr(doc, 'to_dict') else doc.data() or {}
                     api_key = data.get("sendgrid_api_key") or data.get("sendgridApiKey") or data.get("api_key")
                 
                 if not api_key:
-                    doc2 = db.collection("system_config").doc("sendgrid").get()
+                    doc2 = db.collection("system_config").document("sendgrid").get()
                     if doc2.exists:
-                        data2 = doc2.data() or {}
+                        data2 = doc2.to_dict() if hasattr(doc2, 'to_dict') else doc2.data() or {}
                         api_key = data2.get("sendgrid_api_key") or data2.get("sendgridApiKey") or data2.get("api_key")
             except Exception as e:
                 print(f"EmailService: Firestore SendGrid key lookup note: {e}")

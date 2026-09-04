@@ -1009,7 +1009,7 @@ class SendGridConfigUpdateRequest(BaseModel):
 @router.get("/sendgrid-config")
 async def get_sendgrid_config():
     try:
-        doc = db.collection("system_config").doc("email").get()
+        doc = db.collection("system_config").document("email").get()
         data = doc.to_dict() if doc.exists else {}
         key = data.get("sendgrid_api_key") or os.getenv("SENDGRID_API_KEY") or os.getenv("TWILIO_SENDGRID_API_KEY") or ""
         masked_key = f"{key[:6]}...{key[-4:]}" if len(key) > 10 else ("Configured" if key else "Not Configured")
@@ -1025,7 +1025,7 @@ async def get_sendgrid_config():
 @router.post("/sendgrid-config")
 async def update_sendgrid_config(req: SendGridConfigUpdateRequest):
     try:
-        db.collection("system_config").doc("email").set({
+        db.collection("system_config").document("email").set({
             "sendgrid_api_key": req.sendgrid_api_key.strip(),
             "from_email": req.from_email.strip() if req.from_email else "notifications@onlygigz.app",
             "updatedAt": SERVER_TIMESTAMP
