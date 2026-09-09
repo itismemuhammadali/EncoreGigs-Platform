@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from backend.services.gig_service import GigService
 from backend.models.gig_models import GigRequest, ApplicationRequest
 from backend.database import db
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 
 router = APIRouter(prefix="/gigs", tags=["gigs"])
 
@@ -37,6 +37,47 @@ async def get_gig(gig_id: str):
         return gig
     except Exception as e:
         if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{gig_id}")
+async def delete_gig(gig_id: str):
+    try:
+        success = GigService.delete_gig(gig_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Gig not found")
+        return {"message": "Gig deleted successfully", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{gig_id}/status")
+@router.patch("/{gig_id}/status")
+async def update_gig_status(gig_id: str, status: Optional[str] = Query(None), body: Optional[Dict[str, Any]] = None):
+    try:
+        new_status = status or (body.get("status") if body else None)
+        if not new_status:
+            raise HTTPException(status_code=400, detail="Status is required")
+        success = GigService.update_gig_status(gig_id, new_status)
+        if not success:
+            raise HTTPException(status_code=404, detail="Gig not found")
+        return {"message": "Gig status updated successfully", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/{gig_id}")
+@router.patch("/{gig_id}")
+async def update_gig(gig_id: str, updates: Dict[str, Any]):
+    try:
+        success = GigService.update_gig(gig_id, updates)
+        if not success:
+            raise HTTPException(status_code=404, detail="Gig not found")
+        return {"message": "Gig updated successfully", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/apply")

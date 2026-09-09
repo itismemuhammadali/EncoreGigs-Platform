@@ -63,6 +63,8 @@ class GigService:
             "duration": request.duration,
             "isUrgent": request.isUrgent,
             "status": "open",
+            "type": "manual",
+            "isScraped": False,
             "applicantsCount": 0,
             "createdAt": SERVER_TIMESTAMP
         }
@@ -121,6 +123,17 @@ class GigService:
             if gig_data.get("organizerName"):
                 gig_data["organizerName"] = capitalize_words(gig_data["organizerName"])
             
+            # Determine whether gig is scraped or manual
+            is_scraped = bool(
+                d_dict.get("isScraped") is True or
+                d_dict.get("sourceType") or
+                d_dict.get("sourceUrl") or
+                d_dict.get("organizerId") == "scraped" or
+                d_dict.get("type") == "scraped"
+            )
+            gig_data["isScraped"] = is_scraped
+            gig_data["type"] = "scraped" if is_scraped else "manual"
+
             # Use stored counter if available, otherwise fallback to manual count
             if "applicantsCount" not in gig_data:
                 apps = db.collection("applications").where("gigId", "==", doc.id).get()
@@ -157,6 +170,16 @@ class GigService:
             gig_data["genres"] = capitalize_list(gig_data["genres"])
         if gig_data.get("organizerName"):
             gig_data["organizerName"] = capitalize_words(gig_data["organizerName"])
+        
+        is_scraped = bool(
+            d_dict.get("isScraped") is True or
+            d_dict.get("sourceType") or
+            d_dict.get("sourceUrl") or
+            d_dict.get("organizerId") == "scraped" or
+            d_dict.get("type") == "scraped"
+        )
+        gig_data["isScraped"] = is_scraped
+        gig_data["type"] = "scraped" if is_scraped else "manual"
         return gig_data
 
     @staticmethod
@@ -511,3 +534,69 @@ class GigService:
             "totalBookings": len(bookings), # Alias for UI
             "activeBookings": len(bookings)
         }
+
+    @staticmethod
+    def delete_gig(gig_id: str) -> bool:
+        """Permanently deletes a gig, associated applications, and resets scraped gig published status if applicable."""
+        try:
+            doc_ref = db.collection("gigs").document(gig_id)
+            doc: Any = doc_ref.get()
+            if not doc.exists:
+                return False
+
+            # Delete associated applications
+            try:
+                apps = db.collection("applications").where("gigId", "==", gig_id).get()
+                for app in apps:
+                    db.collection("applications").document(app.id).delete()
+            except Exception as e:
+                print(f"Error cleaning up applications for gig {gig_id}: {e}")
+
+            # Check if this gig was published from scraped_gigs and reset scraped_gigs
+            try:
+                scraped_docs = db.collection("scraped_gigs").where("publishedGigId", "==", gig_id).get()
+                for s_doc in scraped_docs:
+                    db.collection("scraped_gigs").document(s_doc.id).update({
+                        "publishedToApp": False,
+                        "publishedGigId": None
+                    })
+            except Exception as e:
+                print(f"Error resetting scraped_gigs for {gig_id}: {e}")
+
+            # Delete the gig document itself
+            doc_ref.delete()
+            return True
+        except Exception as e:
+            print(f"Error deleting gig {gig_id}: {e}")
+            return False
+
+    @staticmethod
+    def update_gig(gig_id: str, updates: dict) -> bool:
+        """Updates fields of a gig in the gigs collection."""
+        try:
+            doc_ref = db.collection("gigs").document(gig_id)
+            doc: Any = doc_ref.get()
+            if not doc.exists:
+                return False
+            # Filter out keys that shouldn't be overridden
+            filtered_updates = {k: v for k, v in updates.items() if k not in ["id", "uid", "createdAt"]}
+            if filtered_updates:
+                doc_ref.update(filtered_updates)
+            return True
+        except Exception as e:
+            print(f"Error updating gig {gig_id}: {e}")
+            return False
+
+    @staticmethod
+    def update_gig_status(gig_id: str, status: str) -> bool:
+        """Updates the status of a gig (e.g., 'open', 'flagged', 'rejected', 'expired')."""
+        try:
+            doc_ref = db.collection("gigs").document(gig_id)
+            doc: Any = doc_ref.get()
+            if not doc.exists:
+                return False
+            doc_ref.update({"status": status})
+            return True
+        except Exception as e:
+            print(f"Error updating status for gig {gig_id}: {e}")
+            return False

@@ -31,7 +31,7 @@ interface Gig {
   date: string;
   budget: string | number;
   applicants: number;
-  status: "active" | "pending" | "flagged";
+  status: "active" | "open" | "pending" | "flagged" | "expired" | "rejected";
   description?: string;
   requirements?: string;
   createdAt?: any;
@@ -54,17 +54,25 @@ export default function GigManagement() {
     setIsLoading(true);
     try {
       const data = await apiRequest("/gigs/list");
-      // Map backend data to frontend model if necessary
-      const mappedGigs = data.map((g: any) => ({
-        ...g,
-        id: g.id || g.uid,
-        type: g.type || "manual", // Default to manual if not specified
-        status: g.status || "active",
-        applicants: g.applicantsCount || 0,
-        budget: g.budget || g.fee || "N/A",
-        venue: g.location || g.venue || "N/A", // Map location to venue column per request
-        location: g.location || g.venue
-      }));
+      const mappedGigs = (Array.isArray(data) ? data : []).map((g: any) => {
+        const isScraped = Boolean(
+          g.isScraped === true ||
+          g.type === "scraped" ||
+          Boolean(g.sourceType) ||
+          Boolean(g.sourceUrl) ||
+          g.organizerId === "scraped"
+        );
+        return {
+          ...g,
+          id: g.id || g.uid,
+          type: (isScraped ? "scraped" : "manual") as "manual" | "scraped",
+          status: (g.status || "open") as any,
+          applicants: g.applicantsCount || 0,
+          budget: g.budget || g.fee || "N/A",
+          venue: g.location || g.venue || "N/A",
+          location: g.location || g.venue
+        };
+      });
       setGigs(mappedGigs);
     } catch (err: any) {
       showToast("Failed to fetch gigs: " + err.message);
@@ -84,11 +92,11 @@ export default function GigManagement() {
 
   const handleApprove = async (id: string) => {
     try {
-      // For now update locally
-      setGigs(prev => prev.map(g => g.id === id ? { ...g, status: "active" } : g));
+      await apiRequest(`/gigs/${id}/status?status=open`, {
+        method: "POST"
+      });
+      setGigs(prev => prev.map(g => g.id === id ? { ...g, status: "open" } : g));
       showToast("Gig approved successfully");
-      // Re-fetch to sync counts
-      fetchGigs();
     } catch (err: any) {
       showToast("Error: " + err.message);
     }
@@ -96,9 +104,11 @@ export default function GigManagement() {
 
   const handleFlag = async (id: string) => {
     try {
+      await apiRequest(`/gigs/${id}/status?status=flagged`, {
+        method: "POST"
+      });
       setGigs(prev => prev.map(g => g.id === id ? { ...g, status: "flagged" } : g));
       showToast("Gig flagged");
-      fetchGigs();
     } catch (err: any) {
       showToast("Error: " + err.message);
     }
@@ -107,12 +117,14 @@ export default function GigManagement() {
   const confirmDelete = async () => {
     if (deleteModal.gigId) {
       try {
+        await apiRequest(`/gigs/${deleteModal.gigId}`, {
+          method: "DELETE"
+        });
         setGigs(prev => prev.filter(g => g.id !== deleteModal.gigId));
         setDeleteModal({ show: false, gigId: null });
         showToast("Gig deleted successfully");
-        fetchGigs();
       } catch (err: any) {
-        showToast("Error: " + err.message);
+        showToast("Error deleting gig: " + err.message);
       }
     }
   };
@@ -120,10 +132,12 @@ export default function GigManagement() {
   const confirmReject = async () => {
     if (rejectModal.gigId) {
       try {
-        setGigs(prev => prev.filter(g => g.id !== rejectModal.gigId));
+        await apiRequest(`/gigs/${rejectModal.gigId}/status?status=rejected`, {
+          method: "POST"
+        });
+        setGigs(prev => prev.map(g => g.id === rejectModal.gigId ? { ...g, status: "rejected" } : g));
         setRejectModal({ show: false, gigId: null });
         showToast("Gig rejected successfully");
-        fetchGigs();
       } catch (err: any) {
         showToast("Error: " + err.message);
       }
@@ -133,6 +147,10 @@ export default function GigManagement() {
   const handleSaveEdit = async (formData: any) => {
     if (editModal.gig) {
       try {
+        await apiRequest(`/gigs/${editModal.gig.id}`, {
+          method: "PUT",
+          body: JSON.stringify(formData)
+        });
         setGigs(prev => prev.map(g => g.id === editModal.gig?.id ? { ...g, ...formData } : g));
         setEditModal({ show: false, gig: null });
         showToast("Gig updated successfully");
@@ -252,11 +270,14 @@ export default function GigManagement() {
                     <td className="px-6 py-5 text-[#b3ff00] text-[16px] font">{gig.budget}</td>
                     <td className="px-6 py-5 text-white text-[14px] font-medium">{gig.applicants}</td>
                     <td className="px-6 py-5">
-                      <span className={`px-3 py-1 rounded-full text-[12px] font-bold ${gig.status === 'active'
-                        ? 'bg-[#10b981]/10 text-[#10b981]'
-                        : gig.status === 'pending'
-                          ? 'bg-[#f59e0b]/10 text-[#f59e0b]'
-                          : 'bg-[#ef4444]/10 text-[#ef4444]'
+                      <span className={`px-3 py-1 rounded-full text-[12px] font-bold ${
+                        gig.status === 'active' || gig.status === 'open'
+                          ? 'bg-[#10b981]/10 text-[#10b981]'
+                          : gig.status === 'pending'
+                            ? 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                            : gig.status === 'expired'
+                              ? 'bg-white/5 text-[#a1a1aa]'
+                              : 'bg-[#ef4444]/10 text-[#ef4444]'
                         }`}>
                         {gig.status}
                       </span>

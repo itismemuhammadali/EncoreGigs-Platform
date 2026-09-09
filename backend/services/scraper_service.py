@@ -242,6 +242,7 @@ class ScraperService:
                 "status": "open",
                 "applicantsCount": 0,
                 "isScraped": True,
+                "type": "scraped",
                 "sourceUrl": data.get("sourceUrl", ""),
                 "sourceType": data.get("sourceType", ""),
                 "createdAt": gc_firestore.SERVER_TIMESTAMP
