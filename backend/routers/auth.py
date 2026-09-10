@@ -151,6 +151,11 @@ async def forgot_password(request: ForgotPasswordRequest):
                     raise HTTPException(status_code=400, detail="Organizer does not exist")
                 else:
                     raise HTTPException(status_code=400, detail="No account found with this email address.")
+            if err_msg in ("TOO_MANY_ATTEMPTS_TRY_LATER", "RESET_PASSWORD_EXCEED_LIMIT"):
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many reset emails sent. Please wait a few minutes before trying again."
+                )
             raise HTTPException(status_code=400, detail=err_msg)
             
         SecurityService.create_log("Password reset requested", clean_email)
@@ -677,6 +682,34 @@ async def create_user(request: CreateUserRequest):
     try:
         user = auth.create_user(email=request.email, password=request.password)
         return {"uid": user.uid, "email": user.email}
+    except auth.EmailAlreadyExistsError:
+        # User already exists in Firebase Auth — handle gracefully
+        existing = auth.get_user_by_email(request.email)
+        if existing.email_verified:
+            # Verified account: ask them to sign in instead
+            raise HTTPException(
+                status_code=409,
+                detail="An account with this email already exists. Please sign in instead."
+            )
+        else:
+            # Unverified account: sign them back in so they can re-receive the verification email
+            signin_data = _firebase_auth_request("accounts:signInWithPassword", {
+                "email": request.email,
+                "password": request.password,
+                "returnSecureToken": True,
+            })
+            if "error" in signin_data:
+                # Wrong password or other error — tell them account exists
+                raise HTTPException(
+                    status_code=409,
+                    detail="An account with this email already exists. Please sign in instead."
+                )
+            return {
+                "uid": existing.uid,
+                "email": existing.email,
+                "id_token": signin_data.get("idToken"),
+                "status": "existing_unverified"
+            }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

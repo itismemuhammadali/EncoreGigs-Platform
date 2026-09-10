@@ -745,17 +745,26 @@ class AuthService extends ChangeNotifier {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       ));
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        // Success — sign in with Firebase client SDK (works for both new and existing-unverified accounts)
         await _auth.signInWithEmailAndPassword(email: email, password: password);
         return null;
       }
+
+      if (response.statusCode == 409) {
+        // Account already exists and is verified — friendly message
+        final data = jsonDecode(response.body);
+        return data['detail']?.toString() ?? 'An account with this email already exists. Please sign in instead.';
+      }
+
       final data = jsonDecode(response.body);
       return data['detail']?.toString() ?? 'Failed to create account';
     } catch (e) {
       return e.toString();
     }
   }
+
 
   Future<String?> createDispute({
     required String bookingId,
