@@ -52,7 +52,10 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
 
   Future<void> _sendVerification() async {
     setState(() { _isSending = true; _error = null; });
-    final error = await widget.onSendVerification(widget.email);
+    var error = await widget.onSendVerification(widget.email);
+    if (error != null && (error.contains('TOO_MANY_ATTEMPTS') || error.contains('too-many-requests'))) {
+      error = 'Too many verification emails sent. Please wait a few minutes before trying again.';
+    }
     if (mounted) {
       setState(() { _isSending = false; _error = error; _emailSent = error == null; });
     }

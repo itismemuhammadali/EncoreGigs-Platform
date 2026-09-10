@@ -723,6 +723,11 @@ async def send_verification_email(request: SendVerificationRequest):
         })
         if "error" in data:
             err_msg = data["error"].get("message", "Failed to send verification email") if isinstance(data["error"], dict) else str(data["error"])
+            if err_msg in ("TOO_MANY_ATTEMPTS_TRY_LATER", "RESET_PASSWORD_EXCEED_LIMIT"):
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many verification emails sent. Please wait a few minutes before trying again."
+                )
             raise HTTPException(status_code=400, detail=err_msg)
         return {"message": "Verification email sent"}
     except HTTPException:

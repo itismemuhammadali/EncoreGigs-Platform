@@ -606,6 +606,22 @@ class AuthService extends ChangeNotifier {
     try {
       final user = _auth.currentUser;
       if (user == null) return 'No user signed in';
+
+      // Send directly from the user's device via Firebase Client SDK.
+      // This ensures requests come from the user's own device IP rather than
+      // our shared VPS server IP, preventing false "TOO_MANY_ATTEMPTS" errors for fresh users.
+      try {
+        await user.sendEmailVerification();
+        return null;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'too-many-requests' || e.message?.contains('TOO_MANY_ATTEMPTS') == true) {
+          return 'Too many verification emails sent. Please wait a few minutes before trying again.';
+        }
+        // Fall back to backend if needed
+      } catch (_) {
+        // Fall back to backend if needed
+      }
+
       final idToken = await user.getIdToken();
       final response = await http.post(
         Uri.parse('$_backendUrl/auth/send-verification-email'),
@@ -614,7 +630,11 @@ class AuthService extends ChangeNotifier {
       );
       if (response.statusCode == 200) return null;
       final data = jsonDecode(response.body);
-      return data['detail']?.toString() ?? 'Failed to send verification email';
+      final detail = data['detail']?.toString() ?? 'Failed to send verification email';
+      if (detail.contains('TOO_MANY_ATTEMPTS') || detail.contains('too-many-requests')) {
+        return 'Too many verification emails sent. Please wait a few minutes before trying again.';
+      }
+      return detail;
     } catch (e) {
       return e.toString();
     }
@@ -622,12 +642,21 @@ class AuthService extends ChangeNotifier {
 
   Future<bool> checkEmailVerification() async {
     try {
-      final uid = _auth.currentUser?.uid;
-      if (uid == null) return false;
+      final user = _auth.currentUser;
+      if (user == null) return false;
+
+      // Check client-side first
+      try {
+        await user.reload();
+        if (_auth.currentUser?.emailVerified == true) {
+          return true;
+        }
+      } catch (_) {}
+
       final response = await http.post(
         Uri.parse('$_backendUrl/auth/check-email-verification'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'uid': uid}),
+        body: jsonEncode({'uid': user.uid}),
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
