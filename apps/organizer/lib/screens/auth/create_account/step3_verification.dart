@@ -22,16 +22,16 @@ class _Step3VerificationState extends State<Step3Verification> {
   }
 
   Future<void> _handleComplete() async {
-    if (!_acceptedTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept the Terms & Conditions')),
-      );
-      return;
-    }
+    final missing = <String>[];
+    if (_bioController.text.trim().isEmpty) missing.add('Bio');
+    if (!_acceptedTerms) missing.add('Accept Terms & Conditions');
 
-    if (_bioController.text.isEmpty) {
+    if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please provide a brief bio')),
+        SnackBar(
+          content: Text('Please complete: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }

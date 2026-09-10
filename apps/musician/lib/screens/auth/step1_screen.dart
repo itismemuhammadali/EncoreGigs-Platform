@@ -331,6 +331,30 @@ class _Step1ScreenState extends State<Step1Screen> {
     });
   }
 
+  void _handleNext() {
+    final missing = <String>[];
+    if (_nameController.text.trim().isEmpty) missing.add('Full Name');
+    if (_bioController.text.trim().isEmpty) missing.add('Bio');
+    final primaryGenre = widget.profileData['primaryGenre'] as String? ?? '';
+    if (primaryGenre.isEmpty) missing.add('Primary Genre');
+    final instruments = List<String>.from(widget.profileData['instruments'] ?? []);
+    if (instruments.isEmpty) missing.add('at least one Instrument');
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please fill in: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    widget.profileData['fullName'] = _nameController.text.trim();
+    widget.profileData['bio'] = _bioController.text.trim();
+    widget.onNext();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -843,7 +867,7 @@ class _Step1ScreenState extends State<Step1Screen> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: widget.onNext,
+              onPressed: _handleNext,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFA1F301),
                 padding: const EdgeInsets.symmetric(vertical: 16),

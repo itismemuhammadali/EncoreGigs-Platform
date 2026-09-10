@@ -74,7 +74,17 @@ class AuthService extends ChangeNotifier {
       final data = jsonDecode(response.body);
       final detail = data['detail'];
       if (detail is List) {
-        return detail.map((e) => e['msg'] ?? e.toString()).join(', ');
+        final missing = detail.map((e) {
+          if (e is Map) {
+            final loc = e['loc'] as List?;
+            final field = loc != null && loc.isNotEmpty ? loc.last.toString() : '';
+            final msg = e['msg']?.toString() ?? '';
+            if (field.isNotEmpty && field != 'body') return '$field ($msg)';
+            return msg;
+          }
+          return e.toString();
+        }).where((s) => s.isNotEmpty).join(', ');
+        if (missing.isNotEmpty) return 'Please check the following fields: $missing';
       }
       return detail?.toString() ?? defaultMessage;
     } catch (_) {

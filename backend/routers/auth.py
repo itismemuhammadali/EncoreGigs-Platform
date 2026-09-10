@@ -506,6 +506,23 @@ async def delete_admin_member(uid: str):
 @router.post("/signup/musician")
 async def signup_musician(request: MusicianSignUpRequest):
     try:
+        missing = []
+        if not request.fullName or not request.fullName.strip():
+            missing.append("Full Name")
+        if not request.email or not str(request.email).strip():
+            missing.append("Email")
+        if not request.bio or not request.bio.strip():
+            missing.append("Bio")
+        if not request.genres:
+            missing.append("Primary Genre")
+        if not request.instruments:
+            missing.append("Instruments")
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Please fill in all required fields: {', '.join(missing)}"
+            )
+
         try:
             existing_user = auth.get_user_by_email(request.email)
             user = auth.update_user(existing_user.uid, display_name=request.fullName)
@@ -552,6 +569,8 @@ async def signup_musician(request: MusicianSignUpRequest):
         AdminNotificationService.check_milestones()
         
         return {"message": "Musician created successfully", "uid": user.uid}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -559,6 +578,27 @@ async def signup_musician(request: MusicianSignUpRequest):
 @router.post("/signup")
 async def signup(request: SignUpRequest):
     try:
+        missing = []
+        if not request.name or not request.name.strip():
+            missing.append("Name")
+        if not request.orgName or not request.orgName.strip():
+            missing.append("Organization Name")
+        if not request.email or not str(request.email).strip():
+            missing.append("Email")
+        if not request.type or not request.type.strip():
+            missing.append("Organizer Type")
+        if not request.contact or not request.contact.strip():
+            missing.append("Contact Phone")
+        if not request.location or not request.location.strip():
+            missing.append("Location")
+        if not request.bio or not request.bio.strip():
+            missing.append("Bio")
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Please fill in all required fields: {', '.join(missing)}"
+            )
+
         try:
             existing_user = auth.get_user_by_email(request.email)
             user = auth.update_user(existing_user.uid, display_name=request.name)

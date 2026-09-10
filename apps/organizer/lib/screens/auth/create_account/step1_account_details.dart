@@ -31,12 +31,19 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
   }
 
   void _handleNext() async {
-    if (_nameController.text.isEmpty ||
-        _organizationController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    final missing = <String>[];
+    if (_nameController.text.trim().isEmpty) missing.add('Full Name');
+    if (_organizationController.text.trim().isEmpty) missing.add('Organization Name');
+    if (_emailController.text.trim().isEmpty) missing.add('Email');
+    if (_passwordController.text.isEmpty) missing.add('Password');
+    if (_confirmPasswordController.text.isEmpty) missing.add('Confirm Password');
+
+    if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        SnackBar(
+          content: Text('Please fill in: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }

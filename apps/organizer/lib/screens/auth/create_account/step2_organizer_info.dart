@@ -32,11 +32,17 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
   }
 
   void _handleNext() {
-    if (_selectedType == null ||
-        _contactController.text.isEmpty ||
-        _locationController.text.isEmpty) {
+    final missing = <String>[];
+    if (_selectedType == null || _selectedType!.isEmpty) missing.add('Organizer Type');
+    if (_contactController.text.trim().isEmpty) missing.add('Phone Number');
+    if (_locationController.text.trim().isEmpty) missing.add('Location');
+
+    if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        SnackBar(
+          content: Text('Please fill in: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }

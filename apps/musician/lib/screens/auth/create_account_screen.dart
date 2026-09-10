@@ -37,11 +37,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   void _handleContinue() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty ||
-        _confirmPasswordController.text.isEmpty) {
+    final missing = <String>[];
+    if (_emailController.text.trim().isEmpty) missing.add('Email');
+    if (_passwordController.text.isEmpty) missing.add('Password');
+    if (_confirmPasswordController.text.isEmpty) missing.add('Confirm Password');
+
+    if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
+        SnackBar(
+          content: Text('Please fill in: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
       return;
     }

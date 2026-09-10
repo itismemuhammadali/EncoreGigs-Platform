@@ -101,6 +101,26 @@ class _Step2ScreenState extends State<Step2Screen> {
     }
   }
 
+  void _handleNext() {
+    final missing = <String>[];
+    if (_primaryCityController.text.trim().isEmpty) missing.add('Primary City');
+    if (_primaryStateController.text.trim().isEmpty) missing.add('Primary State');
+    if (_primaryZipController.text.trim().isEmpty) missing.add('Primary Zip Code');
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please fill in: ${missing.join(', ')}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    _updateLocationData();
+    widget.onNext();
+  }
+
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -412,7 +432,7 @@ class _Step2ScreenState extends State<Step2Screen> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: widget.onNext,
+              onPressed: _handleNext,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFA1F301),
                 padding: const EdgeInsets.symmetric(vertical: 16),
