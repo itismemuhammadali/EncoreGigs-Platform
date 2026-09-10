@@ -50,11 +50,26 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
     });
   }
 
+  static String _formatErrorMessage(String text) {
+    final upper = text.toUpperCase();
+    if (upper.contains('TOO_MANY_ATTEMPTS') ||
+        upper.contains('TOO-MANY-REQUESTS') ||
+        upper.contains('TOO_MANY_REQUESTS') ||
+        upper.contains('TOO MANY ATTEMPTS')) {
+      return 'Too many attempts. Please wait a few minutes before trying again.';
+    }
+    // Strip common bracketed prefixes like [firebase_auth/too-many-requests]
+    String cleaned = text.replaceAll(RegExp(r'\[.*?\]'), '').trim();
+    if (cleaned.isEmpty) cleaned = text;
+    // Strip any raw underscores so technical error codes look clean
+    return cleaned.replaceAll('_', ' ');
+  }
+
   Future<void> _sendVerification() async {
     setState(() { _isSending = true; _error = null; });
     var error = await widget.onSendVerification(widget.email);
-    if (error != null && (error.contains('TOO_MANY_ATTEMPTS') || error.contains('too-many-requests'))) {
-      error = 'Too many verification emails sent. Please wait a few minutes before trying again.';
+    if (error != null) {
+      error = _formatErrorMessage(error);
     }
     if (mounted) {
       setState(() { _isSending = false; _error = error; _emailSent = error == null; });
@@ -124,7 +139,7 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
                   color: Colors.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12), textAlign: TextAlign.center),
+                child: Text(_formatErrorMessage(_error!), style: const TextStyle(color: Colors.redAccent, fontSize: 12), textAlign: TextAlign.center),
               ),
             ],
             const SizedBox(height: 20),

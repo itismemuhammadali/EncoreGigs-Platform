@@ -151,12 +151,12 @@ async def forgot_password(request: ForgotPasswordRequest):
                     raise HTTPException(status_code=400, detail="Organizer does not exist")
                 else:
                     raise HTTPException(status_code=400, detail="No account found with this email address.")
-            if err_msg in ("TOO_MANY_ATTEMPTS_TRY_LATER", "RESET_PASSWORD_EXCEED_LIMIT"):
+            if "TOO_MANY_ATTEMPTS" in err_msg or "RESET_PASSWORD_EXCEED_LIMIT" in err_msg:
                 raise HTTPException(
                     status_code=429,
-                    detail="Too many reset emails sent. Please wait a few minutes before trying again."
+                    detail="Too many attempts. Please wait a few minutes before trying again."
                 )
-            raise HTTPException(status_code=400, detail=err_msg)
+            raise HTTPException(status_code=400, detail=err_msg.replace("_", " "))
             
         SecurityService.create_log("Password reset requested", clean_email)
         return {"message": "Reset email sent successfully"}
@@ -675,7 +675,16 @@ async def signin(request: SignInRequest):
         if "error" in data:
             SecurityService.create_log("Failed login attempt", request.email, status="failed")
             err_msg = data["error"].get("message", "Sign in failed") if isinstance(data["error"], dict) else str(data["error"])
-            raise HTTPException(status_code=401, detail=err_msg)
+            if "TOO_MANY_ATTEMPTS" in err_msg:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Too many attempts. Please wait a few minutes before trying again."
+                )
+            if "INVALID_PASSWORD" in err_msg or "INVALID_LOGIN_CREDENTIALS" in err_msg:
+                raise HTTPException(status_code=401, detail="Invalid email or password.")
+            if "EMAIL_NOT_FOUND" in err_msg:
+                raise HTTPException(status_code=401, detail="No account found with this email address.")
+            raise HTTPException(status_code=401, detail=err_msg.replace("_", " "))
         
         uid = data["localId"]
         profile = AuthService.get_profile(uid)
@@ -751,7 +760,7 @@ async def create_user(request: CreateUserRequest):
                 "status": "existing_unverified"
             }
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e).replace("_", " "))
 
 
 @router.post("/send-verification-email")
@@ -763,12 +772,12 @@ async def send_verification_email(request: SendVerificationRequest):
         })
         if "error" in data:
             err_msg = data["error"].get("message", "Failed to send verification email") if isinstance(data["error"], dict) else str(data["error"])
-            if err_msg in ("TOO_MANY_ATTEMPTS_TRY_LATER", "RESET_PASSWORD_EXCEED_LIMIT"):
+            if "TOO_MANY_ATTEMPTS" in err_msg or "RESET_PASSWORD_EXCEED_LIMIT" in err_msg:
                 raise HTTPException(
                     status_code=429,
-                    detail="Too many verification emails sent. Please wait a few minutes before trying again."
+                    detail="Too many attempts. Please wait a few minutes before trying again."
                 )
-            raise HTTPException(status_code=400, detail=err_msg)
+            raise HTTPException(status_code=400, detail=err_msg.replace("_", " "))
         return {"message": "Verification email sent"}
     except HTTPException:
         raise

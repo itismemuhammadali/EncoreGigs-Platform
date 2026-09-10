@@ -58,6 +58,31 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  String _cleanErrorMessage(String message) {
+    final upper = message.toUpperCase();
+    if (upper.contains('TOO_MANY_ATTEMPTS') ||
+        upper.contains('TOO-MANY-REQUESTS') ||
+        upper.contains('TOO_MANY_REQUESTS') ||
+        upper.contains('TOO MANY ATTEMPTS')) {
+      return 'Too many attempts. Please wait a few minutes before trying again.';
+    }
+    if (upper.contains('EMAIL_NOT_FOUND')) {
+      return 'No account found with this email address.';
+    }
+    if (upper.contains('INVALID_PASSWORD') || upper.contains('INVALID_LOGIN_CREDENTIALS')) {
+      return 'Invalid email or password.';
+    }
+    if (upper.contains('EMAIL_EXISTS')) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+    if (upper.contains('USER_DISABLED')) {
+      return 'This account has been disabled. Please contact support.';
+    }
+    String cleaned = message.replaceAll(RegExp(r'\[.*?\]'), '').trim();
+    if (cleaned.isEmpty) cleaned = message;
+    return cleaned.replaceAll('_', ' ');
+  }
+
   String _handleError(http.Response response, String defaultMessage) {
     try {
       final data = jsonDecode(response.body);
@@ -75,9 +100,10 @@ class AuthService extends ChangeNotifier {
         }).where((s) => s.isNotEmpty).join(', ');
         if (missing.isNotEmpty) return 'Please check the following fields: $missing';
       }
-      return detail?.toString() ?? defaultMessage;
+      final msg = detail?.toString() ?? defaultMessage;
+      return _cleanErrorMessage(msg);
     } catch (_) {
-      return defaultMessage;
+      return _cleanErrorMessage(defaultMessage);
     }
   }
 
@@ -112,15 +138,10 @@ class AuthService extends ChangeNotifier {
         return null;
       } else {
         String message = _handleError(response, 'Sign in failed');
-        if (message.contains('EMAIL_NOT_FOUND')) {
-          message = 'User not found. Please sign up.';
-        } else if (message.contains('INVALID_PASSWORD')) {
-          message = 'Invalid password.';
-        }
-        return message;
+        return _cleanErrorMessage(message);
       }
     } catch (e) {
-      return e.toString();
+      return _cleanErrorMessage(e.toString());
     }
   }
 
@@ -142,12 +163,13 @@ class AuthService extends ChangeNotifier {
 
       try {
         final data = jsonDecode(response.body);
-        return data['detail']?.toString() ?? 'Organizer does not exist';
+        final detail = data['detail']?.toString() ?? 'Organizer does not exist';
+        return _cleanErrorMessage(detail);
       } catch (_) {
         return 'Organizer does not exist';
       }
     } catch (e) {
-      return e.toString();
+      return _cleanErrorMessage(e.toString());
     }
   }
 
@@ -624,8 +646,12 @@ class AuthService extends ChangeNotifier {
         await user.sendEmailVerification();
         return null;
       } on FirebaseAuthException catch (e) {
-        if (e.code == 'too-many-requests' || e.message?.contains('TOO_MANY_ATTEMPTS') == true) {
-          return 'Too many verification emails sent. Please wait a few minutes before trying again.';
+        final upper = (e.message ?? e.code).toUpperCase();
+        if (e.code == 'too-many-requests' ||
+            upper.contains('TOO_MANY_ATTEMPTS') ||
+            upper.contains('TOO_MANY_REQUESTS') ||
+            upper.contains('TOO MANY ATTEMPTS')) {
+          return 'Too many attempts. Please wait a few minutes before trying again.';
         }
         // Fall back to backend if needed
       } catch (_) {
@@ -641,12 +667,9 @@ class AuthService extends ChangeNotifier {
       if (response.statusCode == 200) return null;
       final data = jsonDecode(response.body);
       final detail = data['detail']?.toString() ?? 'Failed to send verification email';
-      if (detail.contains('TOO_MANY_ATTEMPTS') || detail.contains('too-many-requests')) {
-        return 'Too many verification emails sent. Please wait a few minutes before trying again.';
-      }
-      return detail;
+      return _cleanErrorMessage(detail);
     } catch (e) {
-      return e.toString();
+      return _cleanErrorMessage(e.toString());
     }
   }
 
@@ -787,20 +810,28 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         // Success — sign in with Firebase client SDK (works for both new and existing-unverified accounts)
-        await _auth.signInWithEmailAndPassword(email: email, password: password);
+        try {
+          await _auth.signInWithEmailAndPassword(email: email, password: password);
+        } on FirebaseAuthException catch (e) {
+          return _cleanErrorMessage(e.message ?? e.code);
+        } catch (e) {
+          return _cleanErrorMessage(e.toString());
+        }
         return null;
       }
 
       if (response.statusCode == 409) {
         // Account already exists and is verified — friendly message
         final data = jsonDecode(response.body);
-        return data['detail']?.toString() ?? 'An account with this email already exists. Please sign in instead.';
+        final detail = data['detail']?.toString() ?? 'An account with this email already exists. Please sign in instead.';
+        return _cleanErrorMessage(detail);
       }
 
       final data = jsonDecode(response.body);
-      return data['detail']?.toString() ?? 'Failed to create account';
+      final detail = data['detail']?.toString() ?? 'Failed to create account';
+      return _cleanErrorMessage(detail);
     } catch (e) {
-      return e.toString();
+      return _cleanErrorMessage(e.toString());
     }
   }
 
