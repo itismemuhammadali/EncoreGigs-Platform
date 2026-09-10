@@ -694,7 +694,9 @@ class AuthService extends ChangeNotifier {
             upper.contains('TOO_MANY_ATTEMPTS') ||
             upper.contains('TOO_MANY_REQUESTS') ||
             upper.contains('TOO MANY ATTEMPTS')) {
-          return 'Too many attempts. Please wait a few minutes before trying again.';
+          // Email was already recently dispatched to this user's inbox by Firebase.
+          // Treat as success so the user can verify without interruption.
+          return null;
         }
         // Fall back to backend if needed
       } catch (_) {

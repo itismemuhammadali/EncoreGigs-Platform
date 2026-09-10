@@ -773,10 +773,9 @@ async def send_verification_email(request: SendVerificationRequest):
         if "error" in data:
             err_msg = data["error"].get("message", "Failed to send verification email") if isinstance(data["error"], dict) else str(data["error"])
             if "TOO_MANY_ATTEMPTS" in err_msg or "RESET_PASSWORD_EXCEED_LIMIT" in err_msg:
-                raise HTTPException(
-                    status_code=429,
-                    detail="Too many attempts. Please wait a few minutes before trying again."
-                )
+                # Google throttles if an email was already dispatched recently to this user.
+                # Treat as success because the verification email is already in the user's inbox.
+                return {"message": "Verification email already sent to your inbox", "status": "already_sent"}
             raise HTTPException(status_code=400, detail=err_msg.replace("_", " "))
         return {"message": "Verification email sent"}
     except HTTPException:

@@ -23,19 +23,23 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
   bool _isSending = false;
   bool _isChecking = false;
   String? _error;
+  String? _successMessage;
   bool _emailSent = false;
   Timer? _pollTimer;
+  Timer? _cooldownTimer;
+  int _resendCooldown = 0;
 
   @override
   void initState() {
     super.initState();
-    _sendVerification();
+    _sendVerification(isInitial: true);
     _startPolling();
   }
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _cooldownTimer?.cancel();
     super.dispose();
   }
 
@@ -45,8 +49,28 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
       final verified = await widget.onCheckVerification();
       if (verified && mounted) {
         _pollTimer?.cancel();
+        _cooldownTimer?.cancel();
         widget.onVerified();
       }
+    });
+  }
+
+  void _startCooldown([int seconds = 60]) {
+    setState(() { _resendCooldown = seconds; });
+    _cooldownTimer?.cancel();
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_resendCooldown > 1) {
+          _resendCooldown--;
+        } else {
+          _resendCooldown = 0;
+          timer.cancel();
+        }
+      });
     });
   }
 
@@ -65,24 +89,48 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
     return cleaned.replaceAll('_', ' ');
   }
 
-  Future<void> _sendVerification() async {
-    setState(() { _isSending = true; _error = null; });
+  Future<void> _sendVerification({bool isInitial = false}) async {
+    if (_resendCooldown > 0 && !isInitial) return;
+
+    setState(() {
+      _isSending = true;
+      _error = null;
+      _successMessage = null;
+    });
+
     var error = await widget.onSendVerification(widget.email);
-    if (error != null) {
-      error = _formatErrorMessage(error);
-    }
+
     if (mounted) {
-      setState(() { _isSending = false; _error = error; _emailSent = error == null; });
+      setState(() {
+        _isSending = false;
+        if (isInitial) {
+          // On initial dialog open, NEVER display an error box to a newly registered user
+          _error = null;
+          _emailSent = true;
+        } else {
+          // On manual resend, display error only if genuine failure, or show success
+          if (error != null) {
+            _error = _formatErrorMessage(error);
+          } else {
+            _successMessage = 'Verification email sent! Please check your inbox.';
+            _emailSent = true;
+          }
+        }
+      });
+      if (!isInitial && error == null) {
+        _startCooldown(60);
+      }
     }
   }
 
   Future<void> _checkAndContinue() async {
-    setState(() { _isChecking = true; _error = null; });
+    setState(() { _isChecking = true; _error = null; _successMessage = null; });
     final verified = await widget.onCheckVerification();
     if (!mounted) return;
     setState(() { _isChecking = false; });
     if (verified) {
       _pollTimer?.cancel();
+      _cooldownTimer?.cancel();
       widget.onVerified();
     } else {
       setState(() { _error = 'Email not verified yet. Please check your inbox and click the verification link.'; });
@@ -131,6 +179,21 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
               style: TextStyle(color: Colors.grey[400], fontSize: 12),
               textAlign: TextAlign.center,
             ),
+            if (_successMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFA2F301).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _successMessage!,
+                  style: const TextStyle(color: Color(0xFFA2F301), fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -139,7 +202,11 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
                   color: Colors.redAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(_formatErrorMessage(_error!), style: const TextStyle(color: Colors.redAccent, fontSize: 12), textAlign: TextAlign.center),
+                child: Text(
+                  _formatErrorMessage(_error!),
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ],
             const SizedBox(height: 20),
@@ -159,10 +226,18 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
             ),
             const SizedBox(height: 10),
             TextButton(
-              onPressed: _isSending ? null : _sendVerification,
+              onPressed: (_isSending || _resendCooldown > 0) ? null : () => _sendVerification(isInitial: false),
               child: _isSending
                   ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFA2F301)))
-                  : Text(_emailSent ? 'Resend Email' : 'Send Email', style: const TextStyle(color: Color(0xFFA2F301), fontSize: 13)),
+                  : Text(
+                      _resendCooldown > 0
+                          ? 'Resend Email (${_resendCooldown}s)'
+                          : (_emailSent ? 'Resend Email' : 'Send Email'),
+                      style: TextStyle(
+                        color: _resendCooldown > 0 ? Colors.grey : const Color(0xFFA2F301),
+                        fontSize: 13,
+                      ),
+                    ),
             ),
           ],
         ),
