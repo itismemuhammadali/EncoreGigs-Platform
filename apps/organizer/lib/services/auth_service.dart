@@ -117,31 +117,25 @@ class AuthService extends ChangeNotifier {
   Future<String?> sendPasswordResetEmail(String email) async {
     try {
       final cleanEmail = email.trim();
-      final lowerEmail = cleanEmail.toLowerCase();
+      final response = await httpWithFallback((baseUrl) => http.post(
+        Uri.parse('$baseUrl/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': cleanEmail,
+          'role': 'organizer',
+        }),
+      ));
 
-      final query1 = await FirebaseFirestore.instance
-          .collection('organizers')
-          .where('email', isEqualTo: cleanEmail)
-          .limit(1)
-          .get();
-
-      bool exists = query1.docs.isNotEmpty;
-
-      if (!exists) {
-        final query2 = await FirebaseFirestore.instance
-            .collection('organizers')
-            .where('email', isEqualTo: lowerEmail)
-            .limit(1)
-            .get();
-        exists = query2.docs.isNotEmpty;
+      if (response.statusCode == 200) {
+        return null;
       }
 
-      if (!exists) {
-        return 'No account found with this email address.';
+      try {
+        final data = jsonDecode(response.body);
+        return data['detail']?.toString() ?? 'Organizer does not exist';
+      } catch (_) {
+        return 'Organizer does not exist';
       }
-
-      await _auth.sendPasswordResetEmail(email: cleanEmail);
-      return null;
     } catch (e) {
       return e.toString();
     }

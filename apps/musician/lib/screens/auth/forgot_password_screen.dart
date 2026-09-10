@@ -36,12 +36,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  void _showToast(String message, {bool isSuccess = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.mail_outline_rounded : Icons.info_outline_rounded,
+              color: isSuccess ? const Color(0xFF93C5FD) : const Color(0xFFCBD5E1),
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Color(0xFFF8FAFC),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF1E222D),
+        behavior: SnackBarBehavior.floating,
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isSuccess ? const Color(0x593B82F6) : const Color(0x5964748B),
+            width: 1,
+          ),
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
   Future<void> _handleSendResetLink({bool isResend = false}) async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your email address')),
-      );
+      _showToast('Please enter your email address');
       return;
     }
 
@@ -56,31 +96,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           _emailSent = true;
           _sentEmail = email;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isResend
-                  ? 'Password reset link resent to $email'
-                  : 'Password reset link sent to $email',
-              style: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            backgroundColor: const Color(0xFFA2F301),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        _showToast(
+          isResend
+              ? 'Password reset link resent to $email'
+              : 'Password reset link sent to $email',
+          isSuccess: true,
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        _showToast(error);
       }
     }
   }

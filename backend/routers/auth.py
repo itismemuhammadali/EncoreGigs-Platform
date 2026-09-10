@@ -116,21 +116,27 @@ async def upload_file(uid: str, file_type: str, file: UploadFile = File(...)):
 
 @router.post("/forgot-password")
 async def forgot_password(request: ForgotPasswordRequest):
+    clean_email = request.email.strip()
     if request.role:
         collection_name = (
             "musicians"
             if request.role == "musician"
             else ("organizers" if request.role == "organizer" else f"{request.role}s")
         )
-        docs = db.collection(collection_name).where("email", "==", request.email.lower()).limit(1).get()
+        docs = db.collection(collection_name).where("email", "==", clean_email.lower()).limit(1).get()
         if not docs:
-            docs = db.collection(collection_name).where("email", "==", request.email).limit(1).get()
+            docs = db.collection(collection_name).where("email", "==", clean_email).limit(1).get()
         if not docs:
-            raise HTTPException(status_code=400, detail="No account found with this email address.")
+            if request.role == "musician":
+                raise HTTPException(status_code=400, detail="Entertainer does not exist")
+            elif request.role == "organizer":
+                raise HTTPException(status_code=400, detail="Organizer does not exist")
+            else:
+                raise HTTPException(status_code=400, detail="No account found with this email address.")
 
     payload = {
         "requestType": "PASSWORD_RESET",
-        "email": request.email
+        "email": clean_email
     }
     
     try:
@@ -138,9 +144,16 @@ async def forgot_password(request: ForgotPasswordRequest):
         
         if "error" in data:
             err_msg = data["error"].get("message", "Failed to send password reset email") if isinstance(data["error"], dict) else str(data["error"])
+            if err_msg == "EMAIL_NOT_FOUND":
+                if request.role == "musician":
+                    raise HTTPException(status_code=400, detail="Entertainer does not exist")
+                elif request.role == "organizer":
+                    raise HTTPException(status_code=400, detail="Organizer does not exist")
+                else:
+                    raise HTTPException(status_code=400, detail="No account found with this email address.")
             raise HTTPException(status_code=400, detail=err_msg)
             
-        SecurityService.create_log("Password reset requested", request.email)
+        SecurityService.create_log("Password reset requested", clean_email)
         return {"message": "Reset email sent successfully"}
     except HTTPException:
         raise
