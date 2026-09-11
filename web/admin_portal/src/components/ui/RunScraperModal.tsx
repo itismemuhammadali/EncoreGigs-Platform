@@ -47,7 +47,10 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
 
   useEffect(() => {
     if (!isOpen) {
-      if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+      if (pollingTimerRef.current) {
+        clearInterval(pollingTimerRef.current);
+        pollingTimerRef.current = null;
+      }
       setStep("select");
       setProgress({});
       setRealResults([]);
@@ -100,69 +103,78 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
 
     const startTimestamp = runStartTime.current;
     let pollCount = 0;
-    const maxPolls = 60; // 60 * 1.5s = 90s safety timeout
+    const maxPolls = 120; // 120 * 1.5s = 180s safety timeout
 
     // 2. Poll /scraper/runs every 1.5 seconds for live status & counts
+    if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+
     pollingTimerRef.current = setInterval(async () => {
       pollCount++;
       try {
         const rawRuns = await apiRequest("/scraper/runs?limit=30");
         const runs: any[] = Array.isArray(rawRuns) ? rawRuns : [];
 
-        let allCompleted = true;
+        let allFinished = true;
 
-        setRealResults(prev => {
-          const updated = prev.map(item => {
-            const srcLower = item.source.toLowerCase();
+        const updatedResults: SourceResult[] = selectedSources.map(sourceId => {
+          const srcLower = sourceId.toLowerCase();
 
-            // Match by sessionId or by recent timestamp (created after run started)
-            const match = runs.find((r: any) => {
-              if (r.source?.toLowerCase() !== srcLower) return false;
-              if (activeSessionId && r.sessionId === activeSessionId) return true;
-              if (r.timestamp && r.timestamp !== "N/A") {
-                const runMs = new Date(r.timestamp).getTime();
-                return runMs >= (startTimestamp - 5000);
-              }
-              return false;
-            });
-
-            if (!match) {
-              allCompleted = false;
-              setProgress(p => ({
-                ...p,
-                [item.source]: Math.min((p[item.source] || 15) + 4, 90)
-              }));
-              return item;
+          // Match by sessionId or recent timestamp
+          const match = runs.find((r: any) => {
+            if (r.source?.toLowerCase() !== srcLower) return false;
+            if (activeSessionId && r.sessionId) {
+              return r.sessionId === activeSessionId;
             }
-
-            const matchStatus = match.status; // "running", "success", "failed"
-            const isDone = matchStatus === "success" || matchStatus === "failed";
-
-            if (!isDone) {
-              allCompleted = false;
+            if (r.timestamp && r.timestamp !== "N/A") {
+              const runMs = new Date(r.timestamp).getTime();
+              return runMs >= (startTimestamp - 3000);
             }
-
-            // Update progress bar
-            setProgress(p => ({
-              ...p,
-              [item.source]: isDone ? 100 : Math.min((p[item.source] || 15) + 6, 92)
-            }));
-
-            return {
-              source: item.source,
-              imported: match.imported ?? 0,
-              duplicates: match.duplicates ?? 0,
-              errors: match.errors ?? 0,
-              status: matchStatus,
-            };
+            return false;
           });
 
-          return updated;
+          if (!match) {
+            allFinished = false;
+            setProgress(p => ({
+              ...p,
+              [sourceId]: Math.min((p[sourceId] || 15) + 3, 85)
+            }));
+            return {
+              source: sourceId,
+              imported: 0,
+              duplicates: 0,
+              errors: 0,
+              status: "running" as const
+            };
+          }
+
+          const isTerminal = match.status === "success" || match.status === "failed";
+          if (!isTerminal) {
+            allFinished = false;
+          }
+
+          setProgress(p => ({
+            ...p,
+            [sourceId]: isTerminal ? 100 : Math.min((p[sourceId] || 15) + 5, 90)
+          }));
+
+          return {
+            source: sourceId,
+            imported: match.imported ?? 0,
+            duplicates: match.duplicates ?? 0,
+            errors: match.errors ?? 0,
+            status: match.status
+          };
         });
 
-        // 3. When all selected sources are finished (or safety timeout reached)
-        if (allCompleted || pollCount >= maxPolls) {
-          if (pollingTimerRef.current) clearInterval(pollingTimerRef.current);
+        // Set real results with the computed array
+        setRealResults(updatedResults);
+
+        // 3. Only complete when EVERY selected source has finished and at least 3 polls passed
+        if (allFinished && pollCount >= 3) {
+          if (pollingTimerRef.current) {
+            clearInterval(pollingTimerRef.current);
+            pollingTimerRef.current = null;
+          }
           setIsPolling(false);
 
           selectedSources.forEach(s => {
@@ -172,6 +184,15 @@ export function RunScraperModal({ isOpen, onClose, onConfirm, onRefreshData }: R
           setStep("saving");
           await new Promise(r => setTimeout(r, 1200));
 
+          if (onRefreshData) onRefreshData();
+          setStep("results");
+        } else if (pollCount >= maxPolls) {
+          // Safety timeout
+          if (pollingTimerRef.current) {
+            clearInterval(pollingTimerRef.current);
+            pollingTimerRef.current = null;
+          }
+          setIsPolling(false);
           if (onRefreshData) onRefreshData();
           setStep("results");
         }
