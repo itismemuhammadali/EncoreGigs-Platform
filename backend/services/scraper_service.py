@@ -70,10 +70,26 @@ class ScraperService:
             except Exception as query_err:
                 print(f"Warning: order_by updatedAt failed ({query_err}), falling back to stream()", flush=True)
                 docs = list(db.collection("scraped_gigs").stream())
-                docs.sort(
-                    key=lambda d: d.to_dict().get("updatedAt") or d.to_dict().get("createdAt") or datetime.min.replace(tzinfo=timezone.utc),
-                    reverse=True
-                ) 
+
+                def _get_sort_key(d):
+                    data = d.to_dict() if d else None
+                    if not data:
+                        return 0.0
+                    val = data.get("updatedAt") or data.get("createdAt")
+                    if isinstance(val, datetime):
+                        return val.timestamp()
+                    if hasattr(val, "timestamp"):
+                        return val.timestamp()
+                    if isinstance(val, (int, float)):
+                        return float(val)
+                    if isinstance(val, str):
+                        try:
+                            return datetime.fromisoformat(val.replace("Z", "+00:00")).timestamp()
+                        except Exception:
+                            return 0.0
+                    return 0.0
+
+                docs.sort(key=_get_sort_key, reverse=True) 
             
             gigs = []
             for doc in docs:
@@ -129,7 +145,7 @@ class ScraperService:
             return []
 
     @staticmethod
-    def run_scraper(timeout: int = 45):
+    def run_scraper(timeout: int = 360):
         """Triggers the scraper engine synchronously, waits for completion, and returns the run results."""
         try:
             import sys

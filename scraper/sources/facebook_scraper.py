@@ -81,7 +81,7 @@ class FacebookScraper(BaseScraper):
                         page = context.new_page()
                         page.add_init_script(STEALTH_JS)
 
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    page.goto(url, wait_until="commit", timeout=30000)
 
                     time.sleep(4)
 
