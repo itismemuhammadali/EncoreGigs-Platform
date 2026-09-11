@@ -38,10 +38,14 @@ async def get_imported_gigs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class RunScraperRequest(BaseModel):
+    sources: Optional[List[str]] = None
+
 @router.post("/run")
-async def run_scraper():
+async def run_scraper(request: Optional[RunScraperRequest] = None):
     try:
-        res = ScraperService.run_scraper()
+        sources = request.sources if request else None
+        res = ScraperService.run_scraper(sources=sources)
         if not res.get("success"):
             raise HTTPException(status_code=500, detail="Failed to run scraper")
         return res

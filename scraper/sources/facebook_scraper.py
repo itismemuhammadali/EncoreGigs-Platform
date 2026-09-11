@@ -73,6 +73,7 @@ class FacebookScraper(BaseScraper):
             page = context.new_page()
             page.add_init_script(STEALTH_JS)
 
+            consecutive_login_redirects = 0
             for group in self.target_groups:
                 url = self._normalize_group_url(group)
                 print(f"  Loading group: {url}...", flush=True)
@@ -86,8 +87,14 @@ class FacebookScraper(BaseScraper):
                     time.sleep(4)
 
                     if "login" in page.url.lower():
-                        print(f"  WARNING: Session expired for {group}.", flush=True)
+                        print(f"  WARNING: Session expired or login required for {group}.", flush=True)
+                        consecutive_login_redirects += 1
+                        if consecutive_login_redirects >= 2:
+                            print("  WARNING: Facebook session expired across multiple groups. Aborting remaining groups to prevent long run times. Please update Facebook cookies in System Config.", flush=True)
+                            break
                         continue
+
+                    consecutive_login_redirects = 0
 
                     for sel in [
                         "button:has-text('Decline optional cookies')",

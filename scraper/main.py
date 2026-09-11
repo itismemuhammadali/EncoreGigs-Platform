@@ -22,18 +22,29 @@ except ImportError as e:
     print(f"IMPORT ERROR: {e}", flush=True)
     sys.exit(1)
 
+import argparse
+
 class ScraperManager:
-    def __init__(self):
+    def __init__(self, sources: list = None, session_id: str = None):
         try:
+            self.session_id = session_id
             self.db_manager = DatabaseManager()
-            fb_groups = self.db_manager.get_facebook_sources()
-            self.scrapers = [
-                CraigslistScraper(city="austin"),
-                EventbriteScraper(location="austin"),
-                FacebookScraper(target_groups=fb_groups),
-                GigSaladScraper(location="austin"),
-            ]
-            print(f"ScraperManager initialized with {len(self.scrapers)} scrapers (Facebook target groups: {len(fb_groups)}).", flush=True)
+            
+            all_scrapers = []
+            selected = [s.strip().lower() for s in sources] if sources else []
+
+            if not selected or "craigslist" in selected:
+                all_scrapers.append(CraigslistScraper(city="austin"))
+            if not selected or "eventbrite" in selected:
+                all_scrapers.append(EventbriteScraper(location="austin"))
+            if not selected or "facebook" in selected:
+                fb_groups = self.db_manager.get_facebook_sources()
+                all_scrapers.append(FacebookScraper(target_groups=fb_groups))
+            if not selected or "gigsalad" in selected:
+                all_scrapers.append(GigSaladScraper(location="austin"))
+
+            self.scrapers = all_scrapers
+            print(f"ScraperManager initialized with {len(self.scrapers)} scrapers: {[s.source_name for s in self.scrapers]} (Session: {self.session_id}).", flush=True)
         except Exception as e:
             print(f"Error initializing ScraperManager: {e}", flush=True)
             raise
@@ -80,14 +91,15 @@ class ScraperManager:
                 errors=errors_count,
                 duration=duration,
                 status=status,
-                run_id=run_id
+                run_id=run_id,
+                session_id=self.session_id
             )
             print(f"Finished {scraper.source_name} (Status: {status}, Found: {found_count}, Imported: {imported_count}, Duplicates: {duplicates_count}, Duration: {duration:.2f}s)", flush=True)
         except Exception as e:
             print(f"Error updating log for {scraper.source_name}: {e}", flush=True)
 
     def run_all(self):
-        print(f"--- Starting Scraper Run at {datetime.now()} ---", flush=True)
+        print(f"--- Starting Scraper Run at {datetime.now()} (Session: {self.session_id}) ---", flush=True)
 
         run_ids = {}
         for scraper in self.scrapers:
@@ -95,11 +107,16 @@ class ScraperManager:
                 run_id = self.db_manager.log_run(
                     source=scraper.source_name,
                     imported=0, duplicates=0, errors=0,
-                    duration=0, status="running"
+                    duration=0, status="running",
+                    session_id=self.session_id
                 )
                 run_ids[scraper.source_name] = run_id
             except Exception as e:
                 print(f"Error pre-logging {scraper.source_name}: {e}", flush=True)
+
+        if not self.scrapers:
+            print("No scrapers selected to run.", flush=True)
+            return
 
         with ThreadPoolExecutor(max_workers=len(self.scrapers)) as executor:
             for scraper in self.scrapers:
@@ -108,8 +125,15 @@ class ScraperManager:
         print("--- Scraper Run Finished ---", flush=True)
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sources", type=str, help="Comma-separated list of sources (e.g. craigslist,facebook)")
+    parser.add_argument("--session-id", type=str, help="Session ID to tag this run")
+    args = parser.parse_args()
+
+    sources_list = [s.strip() for s in args.sources.split(",")] if args.sources else None
+
     try:
-        manager = ScraperManager()
+        manager = ScraperManager(sources=sources_list, session_id=args.session_id)
         manager.run_all()
     except Exception as e:
         print(f"CRITICAL SYSTEM ERROR: {e}", flush=True)

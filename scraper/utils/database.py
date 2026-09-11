@@ -126,7 +126,7 @@ DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
             print(f"Error saving to Firestore: {e}", flush=True)
             return 0
 
-    def log_run(self, source: str, imported: int, duplicates: int, errors: int, duration: float, status: str, run_id: str = None):
+    def log_run(self, source: str, imported: int, duplicates: int, errors: int, duration: float, status: str, run_id: str = None, session_id: str = None):
         """Logs a scraper run to Firestore. Updates if run_id is provided."""
         try:
             run_data = {
@@ -138,6 +138,8 @@ DF+8i6HTGHXYHNRDzOUWglTl6fwI6nD2XC0QYg+fzc1qw6iqKCh/
                 "duration": f"{int(duration // 60)}m {int(duration % 60)}s",
                 "status": status
             }
+            if session_id:
+                run_data["sessionId"] = session_id
             
             if run_id:
                 self.db.collection("scraper_runs").document(run_id).update(run_data)
