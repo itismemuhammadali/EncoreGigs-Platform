@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save, Mail, Upload, FileText, Download, Check, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save, Mail, Upload, FileText, Download, Check, X, ShieldAlert } from "lucide-react";
 
 export default function SystemConfigPage() {
+  const router = useRouter();
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+
   const [sources, setSources] = useState<any[]>([]);
   const [loadingSources, setLoadingSources] = useState(true);
   const [newUrl, setNewUrl] = useState("");
@@ -32,9 +36,27 @@ export default function SystemConfigPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
   useEffect(() => {
-    fetchSources();
-    fetchSendgridConfig();
-  }, []);
+    const token = localStorage.getItem("admin_token");
+    const userStr = localStorage.getItem("admin_user");
+    if (!token || !userStr) {
+      router.replace("/");
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userStr);
+      const role = (user.role || "").toLowerCase().trim();
+      if (role === "super_admin" || role === "superadmin") {
+        setIsSuperAdmin(true);
+        fetchSources();
+        fetchSendgridConfig();
+      } else {
+        setIsSuperAdmin(false);
+      }
+    } catch {
+      router.replace("/");
+    }
+  }, [router]);
 
   const fetchSendgridConfig = async () => {
     try {
@@ -318,6 +340,35 @@ export default function SystemConfigPage() {
       setSavingCookies(false);
     }
   };
+
+  if (isSuperAdmin === null) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-white">
+        <RefreshCw className="w-8 h-8 text-[#A1F301] animate-spin" />
+        <p className="text-[#999999] text-[14px]">Verifying administrator privileges...</p>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center max-w-lg mx-auto">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-500">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h2 className="text-white text-2xl font-bold mb-2">Access Restricted</h2>
+        <p className="text-[#999999] text-sm leading-relaxed mb-6">
+          This section contains sensitive system credentials, scrapers, and email relays. Access is strictly restricted to <b>Super Administrators</b>.
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="px-6 py-2.5 bg-[#A1F301] hover:bg-[#8ee600] text-black font-semibold text-sm rounded-lg transition-all"
+        >
+          Return to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
