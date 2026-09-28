@@ -178,7 +178,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           _buildItem(svgIcon: 'assets/profile_icon.svg', title: 'Edit Profile', subtitle: profile?.name ?? '',
                               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen()))),
                           _buildInfoItem(svgIcon: 'assets/email_icon.svg', title: 'Email', subtitle: profile?.email ?? currentUser?.email ?? ''),
-                          _buildInfoItem(svgIcon: 'assets/phone_icon.svg', title: 'Phone Number', subtitle: profile?.contact ?? ''),
+                          _buildItem(
+                            svgIcon: 'assets/phone_icon.svg',
+                            title: 'Phone Number',
+                            subtitle: (profile?.contact.trim().isNotEmpty == true)
+                                ? profile!.contact
+                                : ((currentUser?.phoneNumber?.trim().isNotEmpty == true)
+                                    ? currentUser!.phoneNumber!
+                                    : 'Not set'),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const EditProfileScreen())),
+                          ),
                           _buildItem(svgIcon: 'assets/lock_icon.svg', title: 'Change Password', subtitle: '',
                               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangePasswordScreen()))),
                         ]),
@@ -188,8 +197,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _buildSectionLabel('Notifications'),
                         const SizedBox(height: 12),
                         _buildGroup([
-                          _buildItem(icon: Icons.notifications_outlined, title: 'Notification Center', subtitle: '3 new',
-                              iconColor: const Color(0xFF06B6D4), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
+                          _buildItem(
+                            icon: Icons.notifications_outlined,
+                            title: 'Notification Center',
+                            subtitle: 'View notifications and alerts',
+                            iconColor: const Color(0xFF06B6D4),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+                          ),
                           _buildToggleItem(icon: Icons.notifications_outlined, title: 'Push Notifications',
                               value: pushNotifications, iconColor: const Color(0xFF06B6D4),
                               onChanged: (v) => setState(() => pushNotifications = v)),
@@ -210,12 +224,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             iconColor: const Color(0xFF8B5CF6),
                             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const WalletOverviewScreen())),
                           ),
-                          _buildItem(
-                            svgIcon: 'assets/payment_icon.svg',
-                            title: 'Payment Methods',
-                            subtitle: '2 cards',
-                            iconColor: const Color(0xFF8B5CF6),
-                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentMethodScreen())),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: currentUser != null
+                                ? FirebaseFirestore.instance
+                                    .collection('musicians')
+                                    .doc(currentUser.uid)
+                                    .collection('payment_methods')
+                                    .snapshots()
+                                : const Stream.empty(),
+                            builder: (context, pmSnapshot) {
+                              final userData = (snapshot.hasData && snapshot.data!.exists)
+                                  ? snapshot.data!.data() as Map<String, dynamic>
+                                  : null;
+                              final stripeConnectId = (userData?['stripe_connect_id'] as String?) ?? '';
+                              final hasBankAccount = stripeConnectId.isNotEmpty;
+                              final cardCount = pmSnapshot.hasData ? pmSnapshot.data!.docs.length : 0;
+
+                              String paymentSubtitle;
+                              if (cardCount > 0 && hasBankAccount) {
+                                paymentSubtitle = cardCount == 1
+                                    ? '1 card, Bank account added'
+                                    : '$cardCount cards, Bank account added';
+                              } else if (cardCount > 0) {
+                                paymentSubtitle = cardCount == 1 ? '1 card added' : '$cardCount cards added';
+                              } else if (hasBankAccount) {
+                                paymentSubtitle = 'Bank account added';
+                              } else {
+                                paymentSubtitle = '0 cards added';
+                              }
+
+                              return _buildItem(
+                                svgIcon: 'assets/payment_icon.svg',
+                                title: 'Payment Methods',
+                                subtitle: paymentSubtitle,
+                                iconColor: const Color(0xFF8B5CF6),
+                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaymentMethodScreen())),
+                              );
+                            },
                           ),
                         ]),
                         const SizedBox(height: 32),
@@ -314,9 +359,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Logout Button
                         GestureDetector(
                           onTap: () async {
+                            final navigator = Navigator.of(context);
                             await Provider.of<AuthService>(context, listen: false).signOut();
                             if (mounted) {
-                              Navigator.of(context).pushNamedAndRemoveUntil('/signin', (route) => false);
+                              navigator.pushNamedAndRemoveUntil('/signin', (route) => false);
                             }
                           },
                           child: Container(

@@ -15,6 +15,10 @@ class GigRequest(BaseModel):
     duration: Optional[str] = None
     isUrgent: bool = False
     expiryDate: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipCode: Optional[str] = None
 
 class ApplicationRequest(BaseModel):
     gigId: str
@@ -24,6 +28,8 @@ class ApplicationRequest(BaseModel):
     organizerName: Optional[str] = "Event Organizer"
     gigDate: Optional[str] = None
     gigTime: Optional[str] = None
+    location: Optional[str] = None
+    budget: Optional[str] = None
     duration: Optional[str] = None
     proposedRate: Optional[str] = None
     coverMessage: Optional[str] = None

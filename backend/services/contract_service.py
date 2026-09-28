@@ -1,4 +1,5 @@
 import io
+import os
 import hashlib
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
@@ -10,14 +11,32 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     HRFlowable,
+    Image as RLImage,
+    PageBreak,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
+def _get_logo_path() -> str | None:
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.abspath(os.path.join(curr_dir, ".."))
+    root_dir = os.path.abspath(os.path.join(curr_dir, "..", ".."))
+
+    candidates = [
+        os.path.join(backend_dir, "assets", "logo.png"),
+        os.path.join(root_dir, "web", "admin_portal", "public", "logo.png"),
+        os.path.join(root_dir, "public", "logo.png"),
+        os.path.join(backend_dir, "public", "logo.png"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return None
+
 def generate_gig_contract_pdf(booking: dict) -> bytes:
     """
     Generates a professional 18-section ONLYGIGZ DIGITAL PERFORMANCE AGREEMENT PDF
-    using ReportLab based on booking data and signatures.
+    using ReportLab based on booking data, branding logo, and signatures.
     """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -25,8 +44,8 @@ def generate_gig_contract_pdf(booking: dict) -> bytes:
         pagesize=letter,
         rightMargin=40,
         leftMargin=40,
-        topMargin=40,
-        bottomMargin=40,
+        topMargin=32,
+        bottomMargin=32,
     )
 
     styles = getSampleStyleSheet()
@@ -36,41 +55,41 @@ def generate_gig_contract_pdf(booking: dict) -> bytes:
         "ContractTitle",
         parent=styles["Heading1"],
         fontName="Helvetica-Bold",
-        fontSize=20,
-        leading=24,
+        fontSize=18,
+        leading=22,
         textColor=colors.HexColor("#2A1F2E"),
         alignment=TA_CENTER,
-        spaceAfter=4,
+        spaceAfter=3,
     )
 
     subtitle_style = ParagraphStyle(
         "ContractSubtitle",
         parent=styles["Normal"],
         fontName="Helvetica-Oblique",
-        fontSize=10,
-        leading=14,
+        fontSize=9.5,
+        leading=13,
         textColor=colors.HexColor("#6B5E70"),
         alignment=TA_CENTER,
-        spaceAfter=15,
+        spaceAfter=10,
     )
 
     section_heading = ParagraphStyle(
         "SectionHeading",
         parent=styles["Heading2"],
         fontName="Helvetica-Bold",
-        fontSize=12,
-        leading=16,
+        fontSize=11,
+        leading=15,
         textColor=colors.HexColor("#8B3A62"), # Brand accent color
-        spaceBefore=10,
-        spaceAfter=6,
+        spaceBefore=7,
+        spaceAfter=4,
     )
 
     body_style = ParagraphStyle(
         "ContractBody",
         parent=styles["Normal"],
         fontName="Helvetica",
-        fontSize=9.5,
-        leading=14,
+        fontSize=9,
+        leading=13,
         textColor=colors.HexColor("#2B2B2B"),
     )
 
@@ -92,10 +111,21 @@ def generate_gig_contract_pdf(booking: dict) -> bytes:
 
     story = []
 
-    # Title & Header
+    # Title & Header with OnlyGigz Branding Logo
+    logo_file = _get_logo_path()
+    if logo_file:
+        try:
+            # OnlyGigz logo (1024x647 aspect ratio)
+            logo_img = RLImage(logo_file, width=70, height=44.2)
+            logo_img.hAlign = "CENTER"
+            story.append(logo_img)
+            story.append(Spacer(1, 4))
+        except Exception as e:
+            print(f"Warning: could not add logo to contract PDF: {e}")
+
     story.append(Paragraph("ONLYGIGZ DIGITAL PERFORMANCE AGREEMENT", title_style))
     story.append(Paragraph("This agreement is auto-generated upon booking confirmation on OnlyGigz.", subtitle_style))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#E0D6E2"), spaceAfter=12))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#E0D6E2"), spaceAfter=10))
 
     # Helper function for section tables
     def make_table(data_matrix, col_widths=[140, 392]):
@@ -152,16 +182,26 @@ def generate_gig_contract_pdf(booking: dict) -> bytes:
     # 4. Payment Terms & Escrow
     story.append(Paragraph("4. Payment Terms & Escrow", section_heading))
     pay = booking.get("payment", {})
-    fee = pay.get("performance_fee", booking.get("price", 0))
-    dep = pay.get("deposit_amount", round(fee * 0.5, 2))
-    bal = pay.get("balance_due", round(fee - dep, 2))
+    try:
+        fee = float(pay.get("performance_fee", booking.get("price", 0)) or 0)
+    except (ValueError, TypeError):
+        fee = 0.0
+    try:
+        dep = float(pay.get("deposit_amount", round(fee * 0.5, 2)) or 0)
+    except (ValueError, TypeError):
+        dep = round(fee * 0.5, 2)
+    try:
+        bal = float(pay.get("balance_due", round(fee - dep, 2)) or 0)
+    except (ValueError, TypeError):
+        bal = round(fee - dep, 2)
+
     pay_data = [
         [Paragraph("Agreed Performance Fee", label_style), Paragraph(f"<b>${fee:,.2f} USD</b>", body_style)],
         [Paragraph("Deposit & Balance", label_style), Paragraph(f"Deposit (Escrowed): <b>${dep:,.2f}</b> | Remaining Balance: <b>${bal:,.2f}</b>", body_style)],
         [Paragraph("Escrow Status", label_style), Paragraph(f"Status: <b>{pay.get('escrow_status', 'FUNDS_HELD_IN_ESCROW')}</b> via Stripe Escrow<br/>Platform Fee: {pay.get('platform_fee', 'Covered')} | Payout released upon gig completion.", body_style)],
     ]
     story.append(make_table(pay_data))
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
     # 5. Cancellation Policy
     story.append(Paragraph("5. Cancellation Policy", section_heading))
@@ -172,7 +212,7 @@ def generate_gig_contract_pdf(booking: dict) -> bytes:
         [Paragraph("Force Majeure", label_style), Paragraph("Neither party shall be liable for cancellations due to severe weather, natural disasters, or government restrictions.", body_style)],
     ]
     story.append(make_table(canc_data))
-    story.append(Spacer(1, 8))
+    story.append(PageBreak())
 
     # 6-12. Venue, Production, Merch, Recording
     story.append(Paragraph("6. Venue & Technical Requirements", section_heading))

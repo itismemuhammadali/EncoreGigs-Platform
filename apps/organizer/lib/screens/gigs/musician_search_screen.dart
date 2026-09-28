@@ -155,8 +155,7 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .where('role', isEqualTo: 'musician')
+                    .collection('musicians')
                     .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
@@ -177,7 +176,16 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
                   final docs = snapshot.data?.docs ?? [];
                   final filteredDocs = docs.where((doc) {
                     final data = doc.data() as Map<String, dynamic>;
-                    final name = (data['fullName'] ?? data['name'] ?? '').toString().toLowerCase();
+
+                    // Respect Privacy Settings: Search Engine Indexing & Profile Visibility
+                    if (data['searchEngineIndexing'] == false || data['profileVisibility'] == false) {
+                      return false;
+                    }
+
+                    final name = (data['fullName'] ?? data['name'] ?? '').toString().trim();
+                    if (name.isEmpty) return false;
+
+                    final nameLower = name.toLowerCase();
                     final location = (data['location'] ?? '').toString().toLowerCase();
                     final instruments = (data['instruments'] is List)
                         ? (data['instruments'] as List).join(' ').toLowerCase()
@@ -189,7 +197,7 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
                     // Text search filter
                     if (_searchQuery.isNotEmpty) {
                       final q = _searchQuery.toLowerCase();
-                      final matches = name.contains(q) || location.contains(q) || instruments.contains(q);
+                      final matches = nameLower.contains(q) || location.contains(q) || instruments.contains(q);
                       if (!matches) return false;
                     }
 
@@ -201,6 +209,20 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
 
                     return true;
                   }).toList();
+
+                  // Sort by featured first, then rating descending
+                  filteredDocs.sort((a, b) {
+                    final dataA = a.data() as Map<String, dynamic>;
+                    final dataB = b.data() as Map<String, dynamic>;
+                    final bool isFeaturedA = dataA['isFeatured'] == true;
+                    final bool isFeaturedB = dataB['isFeatured'] == true;
+                    if (isFeaturedA != isFeaturedB) {
+                      return isFeaturedA ? -1 : 1;
+                    }
+                    final double ratingA = (dataA['averageRating'] ?? dataA['rating'] ?? 0.0).toDouble();
+                    final double ratingB = (dataB['averageRating'] ?? dataB['rating'] ?? 0.0).toDouble();
+                    return ratingB.compareTo(ratingA);
+                  });
 
                   if (filteredDocs.isEmpty) {
                     return const Center(
@@ -225,7 +247,7 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
                       final doc = filteredDocs[index];
                       final data = doc.data() as Map<String, dynamic>;
                       final name = data['fullName'] ?? data['name'] ?? 'Musician';
-                      final profileImage = data['profileImage'] ?? data['photoUrl'];
+                      final profileImage = data['profileImageUrl'] ?? data['profileImage'] ?? data['photoUrl'];
                       final location = data['location'] ?? 'Location N/A';
                       final instrumentsList = (data['instruments'] is List)
                           ? (data['instruments'] as List).join(', ')
@@ -233,6 +255,7 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
                       final genresList = (data['genres'] is List)
                           ? (data['genres'] as List).take(3).join(', ')
                           : '';
+                      final num ratingNum = data['averageRating'] ?? data['rating'] ?? 5.0;
 
                       return GestureDetector(
                         onTap: () {
@@ -304,9 +327,21 @@ class _MusicianSearchScreenState extends State<MusicianSearchScreen> {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
+                                        const Icon(Icons.star,
+                                            color: Color(0xFFA2F301), size: 12),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          ratingNum.toDouble().toStringAsFixed(1),
+                                          style: const TextStyle(
+                                            color: Color(0xFFA2F301),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
                                         const Icon(Icons.location_on_outlined,
                                             color: Color(0xFF666666), size: 12),
-                                        const SizedBox(width: 4),
+                                        const SizedBox(width: 2),
                                         Expanded(
                                           child: Text(
                                             location,

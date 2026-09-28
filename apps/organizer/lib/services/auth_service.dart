@@ -894,10 +894,11 @@ class AuthService extends ChangeNotifier {
       if (imageUrl == null) return 'Failed to upload image';
 
       // Update Firestore
-      await FirebaseFirestore.instance.collection('musicians').doc(uid).update({
+      await FirebaseFirestore.instance.collection('organizers').doc(uid).set({
         'profileImageUrl': imageUrl,
-      });
+      }, SetOptions(merge: true));
 
+      notifyListeners();
       return null;
     } catch (e) {
       debugPrint('Error updating profile picture: $e');
@@ -911,6 +912,10 @@ class AuthService extends ChangeNotifier {
     required String contact,
     required String location,
     required String bio,
+    String? address,
+    String? city,
+    String? state,
+    String? zipCode,
     String? profileImageUrl,
   }) async {
     try {
@@ -924,10 +929,15 @@ class AuthService extends ChangeNotifier {
           'contact': contact,
           'location': location,
           'bio': bio,
+          'address': address,
+          'city': city,
+          'state': state,
+          'zipCode': zipCode,
           'profileImageUrl': profileImageUrl,
         }),
       );
       if (response.statusCode == 200) {
+        notifyListeners();
         return null;
       }
       return _handleError(response, 'Failed to update profile');
@@ -1064,6 +1074,10 @@ class AuthService extends ChangeNotifier {
     String? imageUrl,
     required String duration,
     required bool isUrgent,
+    String? address,
+    String? city,
+    String? state,
+    String? zipCode,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return 'User not authenticated';
@@ -1080,6 +1094,10 @@ class AuthService extends ChangeNotifier {
         'expiryDate': expiryDate ?? date,
         'budget': budget,
         'location': location,
+        'address': address,
+        'city': city,
+        'state': state,
+        'zipCode': zipCode,
         'imageUrl': imageUrl,
         'duration': duration,
         'isUrgent': isUrgent,

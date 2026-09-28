@@ -13,7 +13,7 @@ class TwoFactorAuthenticationScreen extends StatefulWidget {
 class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationScreen> {
   bool is2FAEnabled = false;
   String? phoneNumber;
-  String twoFactorMethod = 'sms';
+  String? twoFactorMethod;
   bool _isLoading = true;
 
   @override
@@ -31,7 +31,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
         setState(() {
           is2FAEnabled = data['is2FAEnabled'] ?? false;
           phoneNumber = data['phoneNumber'];
-          twoFactorMethod = data['twoFactorMethod'] ?? 'sms';
+          twoFactorMethod = data['twoFactorMethod'] as String?;
           _isLoading = false;
         });
       }
@@ -40,7 +40,6 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
 
   Future<void> _selectMethod(String method) async {
     if (method == 'sms' && (phoneNumber == null || phoneNumber!.isEmpty)) {
-      setState(() => twoFactorMethod = 'sms');
       _showPhoneNumberDialog();
       return;
     }
@@ -65,9 +64,17 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
   }
 
   Future<void> _toggle2FA(bool value) async {
-    if (value && twoFactorMethod == 'sms' && (phoneNumber == null || phoneNumber!.isEmpty)) {
-      _showPhoneNumberDialog();
-      return;
+    if (value) {
+      if (twoFactorMethod == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select an authentication method (SMS or Email) first')),
+        );
+        return;
+      }
+      if (twoFactorMethod == 'sms' && (phoneNumber == null || phoneNumber!.isEmpty)) {
+        _showPhoneNumberDialog();
+        return;
+      }
     }
 
     final user = FirebaseAuth.instance.currentUser;
@@ -75,7 +82,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
       await FirebaseFirestore.instance.collection('organizers').doc(user.uid).set(
         {
           'is2FAEnabled': value,
-          'twoFactorMethod': twoFactorMethod,
+          if (twoFactorMethod != null) 'twoFactorMethod': twoFactorMethod,
         },
         SetOptions(merge: true),
       );
@@ -84,7 +91,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
           is2FAEnabled = value;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(value ? '2FA Enabled with ${twoFactorMethod.toUpperCase()}' : '2FA Disabled')),
+          SnackBar(content: Text(value ? '2FA Enabled with ${twoFactorMethod?.toUpperCase() ?? "Selected Method"}' : '2FA Disabled')),
         );
       }
     }
@@ -94,7 +101,7 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
     final controller = TextEditingController(text: phoneNumber);
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A24),
         title: const Text('Add Phone Number', style: TextStyle(color: Colors.white)),
         content: TextField(
@@ -110,29 +117,32 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () async {
               final user = FirebaseAuth.instance.currentUser;
               if (user != null && controller.text.isNotEmpty) {
+                final nav = Navigator.of(dialogContext);
+                final messenger = ScaffoldMessenger.of(context);
                 await FirebaseFirestore.instance.collection('organizers').doc(user.uid).set(
                   {
                     'phoneNumber': controller.text,
                     'is2FAEnabled': true,
-                    'twoFactorMethod': twoFactorMethod,
+                    'twoFactorMethod': 'sms',
                   },
                   SetOptions(merge: true),
                 );
                 if (mounted) {
                   setState(() {
                     phoneNumber = controller.text;
+                    twoFactorMethod = 'sms';
                     is2FAEnabled = true;
                   });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Phone number saved and 2FA Enabled with ${twoFactorMethod.toUpperCase()}')),
+                  nav.pop();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Phone number saved and 2FA Enabled with SMS')),
                   );
                 }
               }
@@ -143,7 +153,17 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
       ),
     );
   }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0A0A0F),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFA1F301)),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
       body: SafeArea(
@@ -271,8 +291,10 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                                     child: Text(
                                       twoFactorMethod == 'email'
                                           ? 'Active method: Email to ${FirebaseAuth.instance.currentUser?.email ?? "your email"}'
-                                          : 'Active method: SMS to ${phoneNumber ?? "your phone"}',
-                                      style: TextStyle(
+                                          : (twoFactorMethod == 'sms'
+                                              ? 'Active method: SMS to ${phoneNumber ?? "your phone"}'
+                                              : 'Active method: Enabled'),
+                                      style: const TextStyle(
                                         color: Color(0xFFA1F301),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
@@ -303,8 +325,8 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                             Container(
                               width: 40,
                               height: 40,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF59E0B),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFF59E0B),
                                 shape: BoxShape.circle,
                               ),
                               child: const Center(
@@ -401,17 +423,17 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                     ),
                     const SizedBox(height: 16),
                     // SMS Authentication
-                    GestureDetector(
-                      onTap: () => _selectMethod('sms'),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: twoFactorMethod == 'sms' ? const Color(0xFFA1F301) : const Color(0xFFA1F301).withValues(alpha: 0.3),
-                            width: twoFactorMethod == 'sms' ? 2 : 1.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: twoFactorMethod == 'sms' ? const Color(0xFFA1F301) : const Color(0xFFA1F301).withValues(alpha: 0.3),
+                          width: twoFactorMethod == 'sms' ? 2 : 1.5,
                         ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: GestureDetector(
+                        onTap: () => _selectMethod('sms'),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -419,13 +441,15 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                                color: twoFactorMethod == 'sms'
+                                    ? const Color(0xFFA1F301).withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Center(
                                 child: twoFactorMethod == 'sms'
                                     ? const Icon(Icons.check_circle, color: Color(0xFFA1F301), size: 24)
-                                    : const Icon(Icons.radio_button_unchecked, color: Color(0xFFA1F301), size: 24),
+                                    : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 24),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -490,17 +514,17 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                     ),
                     const SizedBox(height: 12),
                     // Email Authentication
-                    GestureDetector(
-                      onTap: () => _selectMethod('email'),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: twoFactorMethod == 'email' ? const Color(0xFF06B6D4) : const Color(0xFFA1F301).withValues(alpha: 0.3),
-                            width: twoFactorMethod == 'email' ? 2 : 1.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: twoFactorMethod == 'email' ? const Color(0xFF06B6D4) : const Color(0xFFA1F301).withValues(alpha: 0.3),
+                          width: twoFactorMethod == 'email' ? 2 : 1.5,
                         ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: GestureDetector(
+                        onTap: () => _selectMethod('email'),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -508,13 +532,15 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF06B6D4).withValues(alpha: 0.2),
+                                color: twoFactorMethod == 'email'
+                                    ? const Color(0xFF06B6D4).withValues(alpha: 0.2)
+                                    : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Center(
                                 child: twoFactorMethod == 'email'
                                     ? const Icon(Icons.check_circle, color: Color(0xFF06B6D4), size: 24)
-                                    : const Icon(Icons.radio_button_unchecked, color: Color(0xFF06B6D4), size: 24),
+                                    : const Icon(Icons.radio_button_unchecked, color: Colors.grey, size: 24),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -577,63 +603,6 @@ class _TwoFactorAuthenticationScreenState extends State<TwoFactorAuthenticationS
                         ),
                       ),
                     ),
-                    if (!is2FAEnabled) ...[
-                      const SizedBox(height: 12),
-                      // Backup Codes
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                            width: 1.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Backup Codes',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Generate backup codes to use when you can\'t access your phone or email. Store them securely.',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            GestureDetector(
-                              onTap: () {},
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFA1F301).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Center(
-                                  child: Text(
-                                    'Generate Backup Codes',
-                                    style: TextStyle(
-                                      color: Color(0xFFA1F301),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 32),
                     // Bottom Buttons
                     Row(

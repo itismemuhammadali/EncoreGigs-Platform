@@ -133,6 +133,19 @@ async def add_scraper_source(request: AddSourceRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class AddSourcesBatchRequest(BaseModel):
+    sources: list[dict]
+
+@router.post("/sources/batch")
+async def add_scraper_sources_batch(request: AddSourcesBatchRequest):
+    try:
+        result = ScraperService.add_sources_batch(request.sources)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/sources/{source_id}")
 async def delete_scraper_source(source_id: str):
     try:

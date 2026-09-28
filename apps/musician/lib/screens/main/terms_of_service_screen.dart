@@ -74,17 +74,17 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
   String get _webUrl {
     switch (widget.docType) {
       case PolicyDocType.termsOfService:
-        return 'https://onlygigz.app/terms-of-service';
+        return 'https://admin.onlygigz.app/terms-of-service.html';
       case PolicyDocType.privacyPolicy:
-        return 'https://onlygigz.app/privacy-policy';
+        return 'https://admin.onlygigz.app/privacy-policy.html';
       case PolicyDocType.termsAndConditions:
-        return 'https://onlygigz.app/terms-and-conditions';
+        return 'https://admin.onlygigz.app/terms-and-conditions.html';
       case PolicyDocType.pricingAndFees:
-        return 'https://onlygigz.app/pricing-and-fees';
+        return 'https://admin.onlygigz.app/pricing-and-fees.html';
       case PolicyDocType.dmcaPolicy:
-        return 'https://onlygigz.app/dmca-policy';
+        return 'https://admin.onlygigz.app/dmca-policy.html';
       case PolicyDocType.aboutUs:
-        return 'https://onlygigz.app/about-us';
+        return 'https://admin.onlygigz.app/about-us.html';
     }
   }
 
@@ -429,7 +429,7 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
       }
 
       // Handle Footer text centered at the bottom of the screen
-      if (b.startsWith('FOOTER:') || b.contains('St. Landry Parish, Louisiana')) {
+      if (b.startsWith('FOOTER:')) {
         final footerText = b.replaceAll('FOOTER:', '').trim();
         widgets.add(
           Padding(
@@ -451,10 +451,36 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
         continue;
       }
 
+      // Handle "Built to Get You Booked." (Centered, bold, compact top spacing, not a heading)
+      if (b.toLowerCase().replaceAll('.', '').trim() == 'built to get you booked') {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 16),
+            child: Center(
+              child: Text(
+                b,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFFA1F301),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+        );
+        continue;
+      }
+
       // Section Header detection
-      final isHeading = (RegExp(r'^\d+\.\s+').hasMatch(b) && b.length < 100 && !b.contains('\n')) ||
-          (b.toUpperCase() == b && b.length < 60 && !b.contains('.')) ||
+      final isHeading = (RegExp(r'^\d+[A-Za-z]?\.\s+').hasMatch(b) && b.length < 120 && !b.contains('\n')) ||
+          (b.toUpperCase() == b && b.length < 60 && !b.contains('.') && b.trim().length > 2) ||
           RegExp(r"^(Built From the Booking Problems We Lived|How It Started|What We'?re Building|Why OnlyGigz Is Different|Our Mission|Our Vision|Built for the People Who Make Live Entertainment Happen|Our Story|Who We Are|What We Do|Why OnlyGigz|Our Core Values)", caseSensitive: false).hasMatch(b);
+
+      // Subheading detection (e.g. 40.1 through 40.14 or Aggregate Liability Cap)
+      final isSubHeading = (RegExp(r'^\d+\.\d+\s+').hasMatch(b) && b.length < 100 && !b.contains('\n')) ||
+          b == 'Aggregate Liability Cap';
 
       if (isHeading) {
         widgets.add(
@@ -471,9 +497,24 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
             ),
           ),
         );
-      } else if (b.contains('•') || b.contains('●') || b.startsWith('-')) {
+      } else if (isSubHeading) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 18, bottom: 6),
+            child: Text(
+              b,
+              style: const TextStyle(
+                color: Color(0xFFA1F301),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        );
+      } else if (b.contains('•') || b.contains('●') || RegExp(r'^\s*[-•●]\s+', multiLine: true).hasMatch(b)) {
         // Separate intro text from bullet list if present
-        final bulletIdx = b.indexOf(RegExp(r'[•●\-]'));
+        final bulletIdx = b.indexOf(RegExp(r'[•●]'));
         String introPart = '';
         String bulletPart = b;
         if (bulletIdx > 0) {
@@ -497,8 +538,12 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
           );
         }
 
-        // Render bullet lines cleanly with bold title prefixes before colon
-        final lines = bulletPart.split(RegExp(r'[\n•●\-]')).where((l) => l.trim().isNotEmpty).toList();
+        // Render bullet lines cleanly without splitting on hyphens inside regular words
+        final lines = bulletPart
+            .split(RegExp(r'(?:\r?\n\s*[-•●]\s*|\s+[•●]\s*)'))
+            .map((l) => l.replaceFirst(RegExp(r'^[-•●]\s*'), '').trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
 
         widgets.add(
           Padding(
@@ -569,18 +614,44 @@ class _TermsOfServiceScreenState extends State<TermsOfServiceScreen> {
           ),
         );
       } else {
-        // Standard Body Paragraph
+        // Standard Body Paragraph with Markdown Bold Support (**text**)
+        Widget bodyWidget;
+        if (b.contains('**')) {
+          final spans = <TextSpan>[];
+          final parts = b.split('**');
+          for (int i = 0; i < parts.length; i++) {
+            if (parts[i].isEmpty) continue;
+            final isBoldPart = i % 2 == 1;
+            spans.add(
+              TextSpan(
+                text: parts[i],
+                style: TextStyle(
+                  color: isBoldPart ? Colors.white : Colors.grey[300],
+                  fontWeight: isBoldPart ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 14,
+                  height: 1.6,
+                ),
+              ),
+            );
+          }
+          bodyWidget = SelectableText.rich(
+            TextSpan(children: spans),
+          );
+        } else {
+          bodyWidget = SelectableText(
+            b,
+            style: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 14,
+              height: 1.6,
+            ),
+          );
+        }
+
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
-            child: SelectableText(
-              b,
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 14,
-                height: 1.6,
-              ),
-            ),
+            child: bodyWidget,
           ),
         );
       }

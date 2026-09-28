@@ -24,6 +24,8 @@ class ProfileUpdateRequest(BaseModel):
     name: Optional[str] = None
     email: str
     contact: Optional[str] = None
+    phoneNumber: Optional[str] = None
+    phone: Optional[str] = None
     location: Optional[str] = None
     primaryCity: Optional[str] = None
     primaryState: Optional[str] = None
@@ -41,6 +43,10 @@ class ProfileUpdateRequest(BaseModel):
     feeRange: Optional[float] = None
     maxFeeRange: Optional[float] = None
     yearsOfExperience: Optional[int] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zipCode: Optional[str] = None
     orgName: Optional[str] = None
     type: Optional[str] = None
 

@@ -126,30 +126,49 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       onTap: () async {
                         final Uri emailUri = Uri(
                           scheme: 'mailto',
-                          path: 'support@onlygigz.com',
+                          path: 'admin@onlygigz.app',
                           queryParameters: {'subject': 'OnlyGigz Support Request'},
                         );
-                        if (await canLaunchUrl(emailUri)) {
-                          await launchUrl(emailUri);
+                        try {
+                          await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+                        } catch (_) {
+                          if (await canLaunchUrl(emailUri)) {
+                            await launchUrl(emailUri);
+                          }
                         }
                       },
                       child: _buildContactItem(
                         svgIcon: 'assets/email_icon.svg',
                         iconColor: const Color(0xFF06B6D4),
                         title: 'Email Support',
-                        subtitle: 'support@onlygigz.com',
+                        subtitle: 'admin@onlygigz.app',
                         badge: 'Response in 24hrs',
                         badgeColor: const Color(0xFFA1F301),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildContactItem(
-                      icon: Icons.phone_outlined,
-                      iconColor: const Color(0xFFFF6B9D),
-                      title: 'Phone Support',
-                      subtitle: '+1 (555) 123-4567\nMon-Fri, 9AM-6PM EST',
-                      badge: null,
-                      badgeColor: null,
+                    GestureDetector(
+                      onTap: () async {
+                        final Uri phoneUri = Uri(
+                          scheme: 'tel',
+                          path: '+18334444669',
+                        );
+                        try {
+                          await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+                        } catch (_) {
+                          if (await canLaunchUrl(phoneUri)) {
+                            await launchUrl(phoneUri);
+                          }
+                        }
+                      },
+                      child: _buildContactItem(
+                        icon: Icons.phone_outlined,
+                        iconColor: const Color(0xFFFF6B9D),
+                        title: 'Phone Support',
+                        subtitle: '(833) 444-4669\nMon-Fri, 9AM-6PM EST',
+                        badge: null,
+                        badgeColor: null,
+                      ),
                     ),
                     const SizedBox(height: 32),
                     // Frequently Asked Questions
@@ -261,7 +280,9 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const LiveChatScreen()),
+                            ),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 14),

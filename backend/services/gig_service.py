@@ -55,6 +55,10 @@ class GigService:
             "expiryDate": request.expiryDate or request.date,
             "budget": request.budget,
             "location": capitalize_words(request.location),
+            "address": request.address or "",
+            "city": request.city or "",
+            "state": request.state or "",
+            "zipCode": request.zipCode or "",
             "organizerId": request.organizerId,
             "organizer_id": request.organizerId, # For compatibility
             "organizerName": capitalize_words(organizer_name),
@@ -197,6 +201,20 @@ class GigService:
         except Exception as e:
             print(f"Could not fetch musician profile: {e}")
 
+        # Fetch gig details to ensure location and budget are always populated
+        gig_location = request.location or ""
+        gig_budget = request.budget or ""
+        try:
+            gig_doc_ref = db.collection("gigs").document(request.gigId).get()
+            if gig_doc_ref.exists:
+                g_dict = gig_doc_ref.to_dict() or {}
+                if not gig_location:
+                    gig_location = g_dict.get("location") or g_dict.get("venue") or g_dict.get("city") or ""
+                if not gig_budget:
+                    gig_budget = g_dict.get("budget") or g_dict.get("price") or g_dict.get("pay") or ""
+        except Exception as e:
+            print(f"Could not fetch gig details for application location: {e}")
+
         application_data = {
             "gigId": request.gigId,
             "gigTitle": request.gigTitle,
@@ -208,6 +226,8 @@ class GigService:
             "organizerName": request.organizerName,
             "gigDate": request.gigDate,
             "gigTime": request.gigTime,
+            "location": gig_location,
+            "budget": gig_budget,
             "duration": request.duration,
             "proposedRate": request.proposedRate,
             "coverMessage": request.coverMessage,
@@ -260,6 +280,24 @@ class GigService:
                         )
                     else:
                         print(f"GigService: External gig {request.gigId} has no public contact email to notify.")
+
+                    # Trigger notification to Admin Portal when someone applies to a scraped gig
+                    try:
+                        from backend.services.admin_notification_service import AdminNotificationService
+                        AdminNotificationService._save(
+                            title="New Application on Scraped Gig",
+                            body=f"{musician_name} has applied for scraped gig '{request.gigTitle}'",
+                            category="scraped_gig_application",
+                            data={
+                                "gigId": request.gigId,
+                                "gigTitle": request.gigTitle,
+                                "musicianId": request.musicianId,
+                                "musicianName": musician_name,
+                                "posterEmail": poster_email or "N/A"
+                            }
+                        )
+                    except Exception as admin_notif_err:
+                        print(f"GigService: Error notifying admin of scraped gig application: {admin_notif_err}")
         except Exception as e:
             print(f"Error notifying external poster via email: {e}")
         

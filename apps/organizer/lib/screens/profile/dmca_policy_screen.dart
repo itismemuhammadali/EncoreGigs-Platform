@@ -51,7 +51,7 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _rawContent = 'Error loading DMCA policy text. Please visit https://onlygigz.app/dmca-policy';
+          _rawContent = 'Error loading DMCA policy text. Please visit https://admin.onlygigz.app/dmca-policy.html';
           _isLoading = false;
         });
       }
@@ -59,7 +59,7 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
   }
 
   Future<void> _openWebPage() async {
-    final uri = Uri.parse('https://onlygigz.app/dmca-policy');
+    final uri = Uri.parse('https://admin.onlygigz.app/dmca-policy.html');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -359,7 +359,7 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
       }
 
       // Handle Footer text centered at the bottom of the screen
-      if (b.startsWith('FOOTER:') || b.contains('St. Landry Parish, Louisiana')) {
+      if (b.startsWith('FOOTER:')) {
         final footerText = b.replaceAll('FOOTER:', '').trim();
         widgets.add(
           Padding(
@@ -382,8 +382,12 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
       }
 
       // Section Header detection
-      final isHeading = (RegExp(r'^\d+\.\s+').hasMatch(b) && b.length < 100 && !b.contains('\n')) ||
+      final isHeading = (RegExp(r'^\d+\.\s+').hasMatch(b) && !b.endsWith('.') && b.length < 80 && !b.contains('\n')) ||
           (b.toUpperCase() == b && b.length < 60 && !b.contains('.'));
+
+      // Numbered List Item detection (e.g. "1. A physical or electronic signature...", "4. Your name...")
+      final numMatch = RegExp(r'^(\d+)\.\s+([\s\S]+)').firstMatch(b);
+      final isNumberedItem = numMatch != null && !isHeading;
 
       if (isHeading) {
         widgets.add(
@@ -400,14 +404,46 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
             ),
           ),
         );
-      } else if (b.contains('•') || b.contains('●') || b.startsWith('-')) {
+      } else if (isNumberedItem) {
+        final numStr = numMatch.group(1)!;
+        final itemText = numMatch.group(2)!.trim();
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8, left: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$numStr. ',
+                  style: const TextStyle(
+                    color: Color(0xFFA1F301),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: SelectableText(
+                    itemText,
+                    style: TextStyle(
+                      color: Colors.grey[300],
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else if (b.contains('•') || b.contains('●') || RegExp(r'(?:^|\n)\s*[-•●]\s+').hasMatch(b)) {
         // Separate intro text from bullet list if present
-        final bulletIdx = b.indexOf(RegExp(r'[•●\-]'));
+        final bulletMatch = RegExp(r'(?:^|\n)\s*[-•●]\s+|[•●]').firstMatch(b);
         String introPart = '';
         String bulletPart = b;
-        if (bulletIdx > 0) {
-          introPart = b.substring(0, bulletIdx).trim();
-          bulletPart = b.substring(bulletIdx).trim();
+        if (bulletMatch != null && bulletMatch.start > 0) {
+          introPart = b.substring(0, bulletMatch.start).trim();
+          bulletPart = b.substring(bulletMatch.start).trim();
         }
 
         if (introPart.isNotEmpty) {
@@ -427,7 +463,11 @@ class _DmcaPolicyScreenState extends State<DmcaPolicyScreen> {
         }
 
         // Render bullet lines cleanly with bold title prefixes before colon
-        final lines = bulletPart.split(RegExp(r'[\n•●\-]')).where((l) => l.trim().isNotEmpty).toList();
+        final lines = bulletPart
+            .split(RegExp(r'(?:\r?\n\s*[-•●]\s*|\s+[•●]\s*)'))
+            .map((l) => l.replaceFirst(RegExp(r'^[-•●]\s*'), '').trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
 
         widgets.add(
           Padding(

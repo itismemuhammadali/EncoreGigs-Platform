@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../models/chat_model.dart';
 import 'api_service.dart';
@@ -49,8 +51,57 @@ class ChatService extends ChangeNotifier {
       });
     } catch (e) {
       debugPrint('Error sending message via backend: $e');
-      throw e;
+      rethrow;
     }
+  }
+
+  Future<void> sendAttachmentMessage({
+    required String chatId,
+    required File file,
+    required String fileName,
+    required String attachmentType, // 'image' or 'file'
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+
+    final storagePath = 'chat_attachments/$chatId/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final ref = FirebaseStorage.instance.ref().child(storagePath);
+
+    final metadata = SettableMetadata(
+      customMetadata: {'originalName': fileName},
+    );
+    final uploadTask = await ref.putFile(file, metadata);
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+    final displayText = attachmentType == 'image' ? '📷 Image attachment' : '📎 $fileName';
+
+    final messageData = {
+      'senderId': uid,
+      'text': displayText,
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': attachmentType,
+      'attachmentUrl': downloadUrl,
+      'attachmentName': fileName,
+      'attachmentType': attachmentType,
+    };
+
+    final batch = _firestore.batch();
+
+    final messageRef = _firestore
+        .collection('chats')
+        .doc(chatId)
+        .collection('messages')
+        .doc();
+    batch.set(messageRef, messageData);
+
+    final chatRef = _firestore.collection('chats').doc(chatId);
+    batch.update(chatRef, {
+      'lastMessage': displayText,
+      'lastMessageTime': FieldValue.serverTimestamp(),
+      'lastMessageSenderId': uid,
+    });
+
+    await batch.commit();
   }
 
   Future<String> getOrCreateChat(String otherUserId, String otherUserName, String otherUserImage) async {
@@ -78,7 +129,7 @@ class ChatService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error getting/creating chat via backend: $e');
       // Fallback or rethrow
-      throw e;
+      rethrow;
     }
   }
 }

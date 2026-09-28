@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../../services/chat_service.dart';
 import '../messages/chat/chat_screen.dart';
@@ -98,18 +97,26 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
 
           final data = snapshot.data!;
           final String name = data['fullName'] ?? data['name'] ?? 'Unknown';
-          final String? imagePath = fixEmulatorUrl(data['profileImageUrl']);
+          final String imagePath = fixEmulatorUrl(data['profileImageUrl']);
+          final String bannerUrl = fixEmulatorUrl(
+              data['bannerImageUrl'] ?? 
+              data['bannerImage'] ?? 
+              data['coverImageUrl'] ?? 
+              data['posterUrl'] ?? 
+              data['banner']);
           final double rating = (data['averageRating'] ?? 0.0).toDouble();
           final int reviewCount = data['reviewCount'] ?? 0;
-          final String location = data['location'] ?? 'Unknown';
+          final bool showLocation = data['showLocation'] != false;
+          final String location = showLocation ? (data['location'] ?? 'Unknown') : 'Location Private';
           final String bio = data['bio'] ?? 'No bio provided.';
           final List<String> genres =
               List<String>.from(data['genres'] ?? []);
           final int experience = data['yearsOfExperience'] ?? 0;
-          final int gigsCompleted = data['gigsCompleted'] ?? 0;
-          final double responseRate = (data['responseRate'] ?? 100.0).toDouble();
           final Map<String, dynamic> portfolio =
               data['portfolio'] as Map<String, dynamic>? ?? {};
+          final bool showPhone = data['showPhone'] != false;
+          final String? phoneNumber = (data['phoneNumber'] ?? data['phone'])?.toString();
+          final bool activityStatus = data['activityStatus'] != false;
 
           return SafeArea(
             bottom: false,
@@ -121,14 +128,27 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Cover + profile header
-                        Image.asset(
-                          'assets/gig_image1.jpg',
-                          width: double.infinity,
-                          height: 200,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Container(height: 200, color: const Color(0xFF1A1A1F)),
-                        ),
+                        _isNetworkImage(bannerUrl)
+                            ? Image.network(
+                                bannerUrl,
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Image.asset(
+                                  'assets/gig_image1.jpg',
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
+                            : Image.asset(
+                                bannerUrl.isNotEmpty ? bannerUrl : 'assets/gig_image1.jpg',
+                                width: double.infinity,
+                                height: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(height: 200, color: const Color(0xFF1A1A1F)),
+                              ),
                         Container(
                           color: Colors.black,
                           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -139,20 +159,20 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                                 borderRadius: BorderRadius.circular(32),
                                 child: _isNetworkImage(imagePath)
                                     ? Image.network(
-                                        imagePath!,
+                                        imagePath,
                                         width: 64,
                                         height: 64,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
+                                        errorBuilder: (context, error, stackTrace) =>
                                             _placeholderImage(),
                                       )
-                                    : (imagePath != null
+                                    : (imagePath.isNotEmpty
                                         ? Image.asset(
                                             imagePath,
                                             width: 64,
                                             height: 64,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) =>
+                                            errorBuilder: (context, error, stackTrace) =>
                                                 _placeholderImage(),
                                           )
                                         : _placeholderImage()),
@@ -200,6 +220,30 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                                          ],
                                        ],
                                      ),
+                                     if (activityStatus) ...[
+                                       const SizedBox(height: 4),
+                                       Row(
+                                         children: [
+                                           Container(
+                                             width: 8,
+                                             height: 8,
+                                             decoration: const BoxDecoration(
+                                               color: Color(0xFFA2F301),
+                                               shape: BoxShape.circle,
+                                             ),
+                                           ),
+                                           const SizedBox(width: 6),
+                                           const Text(
+                                             'Active now',
+                                             style: TextStyle(
+                                               color: Color(0xFFA2F301),
+                                               fontSize: 12,
+                                               fontWeight: FontWeight.w500,
+                                             ),
+                                           ),
+                                         ],
+                                       ),
+                                     ],
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
@@ -344,6 +388,72 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                                 const SizedBox(height: 16),
                               ],
 
+                              // Contact Information (respects privacy settings - email hidden per platform policy)
+                              if (showPhone && phoneNumber != null && phoneNumber.isNotEmpty) ...[
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A1A1F),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFFA2F301).withValues(alpha: 0.25),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Contact Information',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFEC4899).withValues(alpha: 0.15),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.phone_outlined,
+                                              color: Color(0xFFEC4899),
+                                              size: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Phone Number',
+                                                style: TextStyle(color: Color(0xFF888888), fontSize: 11),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                phoneNumber,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
                               // About
                               Container(
                                 width: double.infinity,
@@ -430,7 +540,7 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
                 _buildBottomActions(
                   context,
                   name: name,
-                  imagePath: imagePath ?? '',
+                  imagePath: imagePath,
                   rating: rating,
                   reviewCount: reviewCount,
                   location: location,
@@ -695,29 +805,6 @@ class _MusicianProfileScreenState extends State<MusicianProfileScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFFA2F301),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _reviewCard(
       String reviewer, int stars, String review, String date) {

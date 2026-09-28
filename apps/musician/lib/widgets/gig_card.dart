@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import '../models/gig_model.dart';
 
 class GigCard extends StatelessWidget {
@@ -194,7 +195,7 @@ class GigCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                gig.pay,
+                                gig.pay.startsWith('\$') ? gig.pay : '\$${gig.pay}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
@@ -219,10 +220,10 @@ class GigCard extends StatelessWidget {
                                 ),
                               Row(
                                 children: [
-                                  const Icon(Icons.calendar_today, color: Color(0xFF00BCD4), size: 16),
+                                  const Icon(Icons.calendar_today_outlined, color: Color(0xFF00BCD4), size: 16),
                                   const SizedBox(width: 4),
                                   Text(
-                                    gig.date.toString().split(' ')[0],
+                                    DateFormat('MMM d, y').format(gig.date),
                                     style: const TextStyle(
                                       color: Color(0xFF00BCD4),
                                       fontSize: 14,
@@ -244,7 +245,7 @@ class GigCard extends StatelessWidget {
                       // Location row
                       Row(
                         children: [
-                          const Icon(Icons.location_on, color: Color(0xFF999999), size: 16),
+                          const Icon(Icons.location_on_outlined, color: Color(0xFF999999), size: 16),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
@@ -257,6 +258,14 @@ class GigCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (gig.distance > 0)
+                            Text(
+                              '${gig.distance.toStringAsFixed(1)} mi',
+                              style: const TextStyle(
+                                color: Color(0xFF999999),
+                                fontSize: 14,
+                              ),
+                            ),
                         ],
                       ),
                     ],

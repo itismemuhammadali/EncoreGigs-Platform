@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save, Mail } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Trash2, Key, Globe, RefreshCw, CheckCircle, AlertCircle, Save, Mail, Upload, FileText, Download, Check, X } from "lucide-react";
 
 export default function SystemConfigPage() {
   const [sources, setSources] = useState<any[]>([]);
@@ -9,6 +9,15 @@ export default function SystemConfigPage() {
   const [newUrl, setNewUrl] = useState("");
   const [newName, setNewName] = useState("");
   const [addingSource, setAddingSource] = useState(false);
+
+  // CSV Upload States
+  const [sourceMode, setSourceMode] = useState<"manual" | "csv">("manual");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [parsedCsvSources, setParsedCsvSources] = useState<{ name: string; url: string; type: string }[]>([]);
+  const [csvError, setCsvError] = useState<string | null>(null);
+  const [csvSuccess, setCsvSuccess] = useState<string | null>(null);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [cookiesJson, setCookiesJson] = useState("");
   const [savingCookies, setSavingCookies] = useState(false);
@@ -130,6 +139,152 @@ export default function SystemConfigPage() {
     } catch (err) {
       console.error("Failed to delete source:", err);
     }
+  };
+
+  const parseCsvContent = (text: string) => {
+    setCsvError(null);
+    setCsvSuccess(null);
+    try {
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      if (lines.length === 0) {
+        setCsvError("The selected CSV file is empty.");
+        setParsedCsvSources([]);
+        return;
+      }
+
+      const results: { name: string; url: string; type: string }[] = [];
+      let startIndex = 0;
+
+      // Detect header row
+      const firstLineLower = lines[0].toLowerCase();
+      if (
+        firstLineLower.includes("url") ||
+        firstLineLower.includes("link") ||
+        firstLineLower.includes("group") ||
+        firstLineLower.includes("name")
+      ) {
+        startIndex = 1;
+      }
+
+      for (let i = startIndex; i < lines.length; i++) {
+        const line = lines[i];
+        const parts = line.split(/[,;\t]/).map((p) => p.trim().replace(/^["']|["']$/g, ""));
+
+        let url = "";
+        let name = "Facebook Group";
+
+        if (parts.length >= 2) {
+          if (parts[0].startsWith("http") || parts[0].includes("facebook.com")) {
+            url = parts[0];
+            name = parts[1] || "Facebook Group";
+          } else {
+            name = parts[0] || "Facebook Group";
+            url = parts[1];
+          }
+        } else if (parts.length === 1 && (parts[0].startsWith("http") || parts[0].includes("facebook.com"))) {
+          url = parts[0];
+          name = "Facebook Group";
+        }
+
+        if (
+          url &&
+          (url.startsWith("http://") ||
+            url.startsWith("https://") ||
+            url.startsWith("facebook.com") ||
+            url.startsWith("www.facebook.com"))
+        ) {
+          if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "https://" + url;
+          }
+          results.push({
+            name: name || "Facebook Group",
+            url: url,
+            type: "facebook_group",
+          });
+        }
+      }
+
+      if (results.length === 0) {
+        setCsvError("No valid URLs found in the CSV. Please ensure URLs start with http:// or https://facebook.com/groups/...");
+        setParsedCsvSources([]);
+      } else {
+        setParsedCsvSources(results);
+      }
+    } catch (err: any) {
+      setCsvError("Failed to parse CSV file: " + err.message);
+    }
+  };
+
+  const handleCsvFileSelect = (file: File) => {
+    if (!file.name.endsWith(".csv") && !file.type.includes("csv") && !file.type.includes("text")) {
+      setCsvError("Please upload a valid .csv file.");
+      return;
+    }
+    setCsvFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      parseCsvContent(text);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBatchCsvImport = async () => {
+    if (parsedCsvSources.length === 0) return;
+    setImportingCsv(true);
+    setCsvError(null);
+    setCsvSuccess(null);
+
+    try {
+      const res = await fetch(`${API_URL}/scraper/sources/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources: parsedCsvSources }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCsvSuccess(`Successfully imported ${data.added || parsedCsvSources.length} scraper group sources!`);
+        setParsedCsvSources([]);
+        setCsvFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        fetchSources();
+      } else {
+        // Fallback: sequential adds if batch endpoint unavailable
+        let successCount = 0;
+        for (const s of parsedCsvSources) {
+          try {
+            await fetch(`${API_URL}/scraper/sources`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(s),
+            });
+            successCount++;
+          } catch {}
+        }
+        setCsvSuccess(`Imported ${successCount} sources successfully into scraper.`);
+        setParsedCsvSources([]);
+        setCsvFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        fetchSources();
+      }
+    } catch (err: any) {
+      setCsvError("Error importing sources: " + err.message);
+    } finally {
+      setImportingCsv(false);
+    }
+  };
+
+  const downloadSampleCsv = () => {
+    const sample = "Group Name,URL\nAustin Musician Gigs,https://facebook.com/groups/austinlivemusic\nNashville Gigs Network,https://facebook.com/groups/nashvillegigs\nLA Venues & Bands,https://facebook.com/groups/lamusicevents\n";
+    const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "onlygigz_scraper_groups_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleSaveCookies = async () => {
@@ -265,32 +420,188 @@ export default function SystemConfigPage() {
           </button>
         </div>
 
-        {/* Add Source Form */}
-        <form onSubmit={handleAddSource} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="text"
-            placeholder="Group Name (e.g. Austin Musician Gigs)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
-          />
-          <input
-            type="url"
-            placeholder="https://facebook.com/groups/..."
-            value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
-            required
-            className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
-          />
-          <button
-            type="submit"
-            disabled={addingSource}
-            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50"
-          >
-            <Plus className="w-4 h-4" />
-            {addingSource ? "Adding..." : "Add Group URL"}
-          </button>
-        </form>
+        {/* Mode Selector Tabs */}
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSourceMode("manual")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                sourceMode === "manual"
+                  ? "bg-indigo-600 text-white shadow"
+                  : "bg-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              Single Group URL
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceMode("csv")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                sourceMode === "csv"
+                  ? "bg-indigo-600 text-white shadow"
+                  : "bg-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload CSV File
+            </button>
+          </div>
+
+          {sourceMode === "csv" && (
+            <button
+              type="button"
+              onClick={downloadSampleCsv}
+              className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Download Sample CSV
+            </button>
+          )}
+        </div>
+
+        {/* Feedback Banners for CSV */}
+        {csvError && (
+          <div className="p-3.5 rounded-lg flex items-center justify-between gap-3 bg-red-500/10 text-red-400 border border-red-500/20 text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{csvError}</span>
+            </div>
+            <button onClick={() => setCsvError(null)} className="text-zinc-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {csvSuccess && (
+          <div className="p-3.5 rounded-lg flex items-center justify-between gap-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <span>{csvSuccess}</span>
+            </div>
+            <button onClick={() => setCsvSuccess(null)} className="text-zinc-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Mode 1: Manual Single Input Form */}
+        {sourceMode === "manual" ? (
+          <form onSubmit={handleAddSource} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              type="text"
+              placeholder="Group Name (e.g. Austin Musician Gigs)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+            <input
+              type="url"
+              placeholder="https://facebook.com/groups/..."
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              required
+              className="bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2.5 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={addingSource}
+              className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              {addingSource ? "Adding..." : "Add Group URL"}
+            </button>
+          </form>
+        ) : (
+          /* Mode 2: CSV Bulk Upload UI */
+          <div className="space-y-4">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleCsvFileSelect(e.dataTransfer.files[0]);
+                }
+              }}
+              className="border-2 border-dashed border-zinc-800 hover:border-indigo-500/50 bg-zinc-950/60 rounded-xl p-6 text-center cursor-pointer transition-all group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv,text/plain"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleCsvFileSelect(e.target.files[0]);
+                  }
+                }}
+              />
+              <div className="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                <Upload className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-semibold text-white">
+                {csvFile ? csvFile.name : "Click to select or drag and drop your CSV file here"}
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                CSV format: Column headers (Name, URL) or a simple list of Facebook group links
+              </p>
+            </div>
+
+            {/* Parsed CSV Preview */}
+            {parsedCsvSources.length > 0 && (
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-indigo-400" />
+                    <span className="text-sm font-semibold text-white">
+                      Found {parsedCsvSources.length} Group Sources Ready to Import
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setParsedCsvSources([]);
+                      setCsvFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                    className="text-xs text-zinc-500 hover:text-red-400"
+                  >
+                    Clear File
+                  </button>
+                </div>
+
+                <div className="max-h-40 overflow-y-auto divide-y divide-zinc-800/50 text-xs">
+                  {parsedCsvSources.slice(0, 10).map((src, i) => (
+                    <div key={i} className="py-1.5 flex items-center justify-between text-zinc-300">
+                      <span className="font-medium text-white truncate max-w-xs">{src.name}</span>
+                      <span className="text-zinc-500 truncate max-w-md">{src.url}</span>
+                    </div>
+                  ))}
+                  {parsedCsvSources.length > 10 && (
+                    <div className="py-1.5 text-zinc-500 text-center italic">
+                      + {parsedCsvSources.length - 10} more rows
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    disabled={importingCsv}
+                    onClick={handleBatchCsvImport}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    {importingCsv
+                      ? "Importing Groups to Firebase..."
+                      : `Import All ${parsedCsvSources.length} Groups`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Sources List */}
         <div className="divide-y divide-zinc-800/60 border border-zinc-800 rounded-lg bg-zinc-950/50 max-h-96 overflow-y-auto">

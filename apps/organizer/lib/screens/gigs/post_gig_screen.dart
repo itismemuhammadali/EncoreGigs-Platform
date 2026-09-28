@@ -10,11 +10,15 @@ import 'gig_posted_screen.dart';
 class PostGigScreen extends StatefulWidget {
   final bool returnToGigs;
   final GigModel? gigToEdit;
+  final bool isDuplicate;
+  final String? initialDate;
 
   const PostGigScreen({
     super.key,
     this.returnToGigs = false,
     this.gigToEdit,
+    this.isDuplicate = false,
+    this.initialDate,
   });
 
   @override
@@ -22,6 +26,8 @@ class PostGigScreen extends StatefulWidget {
 }
 
 class _PostGigScreenState extends State<PostGigScreen> {
+  bool get _isEditMode => widget.gigToEdit != null && !widget.isDuplicate && widget.gigToEdit!.gigId.isNotEmpty;
+  bool get _isDuplicateMode => widget.isDuplicate;
   static const List<String> _genreOptions = <String>[
     'Country',
     'Cajun / Zydeco',
@@ -88,10 +94,34 @@ class _PostGigScreenState extends State<PostGigScreen> {
   final _arrivalTimeController = TextEditingController();
   final _expiryDateController = TextEditingController();
   final _budgetController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _zipController = TextEditingController();
   final _durationHoursController = TextEditingController();
   final _additionalDetailsController = TextEditingController();
   final _incentiveOtherController = TextEditingController();
+
+  String _getFormattedLocation() {
+    final addr = _addressController.text.trim();
+    final city = _cityController.text.trim();
+    final state = _stateController.text.trim();
+    final zip = _zipController.text.trim();
+
+    final parts = <String>[];
+    if (addr.isNotEmpty) parts.add(addr);
+    if (city.isNotEmpty) parts.add(city);
+    if (state.isNotEmpty) {
+      if (zip.isNotEmpty) {
+        parts.add('$state $zip');
+      } else {
+        parts.add(state);
+      }
+    } else if (zip.isNotEmpty) {
+      parts.add(zip);
+    }
+    return parts.join(', ');
+  }
 
   // State selections
   final List<String> _requirements = [];
@@ -128,7 +158,31 @@ class _PostGigScreenState extends State<PostGigScreen> {
       _timeController.text = g.time;
       _expiryDateController.text = g.expiryDate ?? g.date;
       _budgetController.text = g.budget;
-      _locationController.text = g.location;
+      
+      if (g.address != null && g.address!.isNotEmpty) {
+        _addressController.text = g.address!;
+        _cityController.text = g.city ?? '';
+        _stateController.text = g.state ?? '';
+        _zipController.text = g.zipCode ?? '';
+      } else {
+        final loc = g.location;
+        if (loc.isNotEmpty) {
+          final commaParts = loc.split(',').map((s) => s.trim()).toList();
+          if (commaParts.length >= 3) {
+            _addressController.text = commaParts[0];
+            _cityController.text = commaParts[1];
+            final stateZip = commaParts[2].split(' ');
+            if (stateZip.isNotEmpty) _stateController.text = stateZip[0];
+            if (stateZip.length > 1) _zipController.text = stateZip.sublist(1).join(' ');
+          } else if (commaParts.length == 2) {
+            _cityController.text = commaParts[0];
+            _stateController.text = commaParts[1];
+          } else {
+            _addressController.text = loc;
+          }
+        }
+      }
+
       _durationHoursController.text = (g.duration ?? '').replaceAll(' hrs', '').replaceAll(' hours', '').trim();
       _isUrgent = g.isUrgent;
       _selectedGenres.addAll(g.genres);
@@ -155,6 +209,43 @@ class _PostGigScreenState extends State<PostGigScreen> {
           if (_ageRestrictionOptions.contains(val)) _selectedAgeRestriction = val;
         }
       }
+    } else {
+      if (widget.initialDate != null && widget.initialDate!.isNotEmpty) {
+        _dateController.text = widget.initialDate!;
+        _expiryDateController.text = widget.initialDate!;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadOrganizerDefaultLocation();
+      });
+    }
+  }
+
+  Future<void> _loadOrganizerDefaultLocation() async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.user;
+      if (user == null) return;
+      final profile = await authService.getProfile(user.uid);
+      if (profile != null && mounted) {
+        if (_addressController.text.trim().isEmpty &&
+            _cityController.text.trim().isEmpty &&
+            _stateController.text.trim().isEmpty &&
+            _zipController.text.trim().isEmpty) {
+          final address = (profile['address'] ?? '').toString().trim();
+          final city = (profile['city'] ?? profile['primaryCity'] ?? '').toString().trim();
+          final state = (profile['state'] ?? profile['primaryState'] ?? '').toString().trim();
+          final zip = (profile['zipCode'] ?? profile['zip'] ?? '').toString().trim();
+
+          setState(() {
+            _addressController.text = address;
+            _cityController.text = city;
+            _stateController.text = state;
+            _zipController.text = zip;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading organizer default location: $e');
     }
   }
 
@@ -167,7 +258,10 @@ class _PostGigScreenState extends State<PostGigScreen> {
     _arrivalTimeController.dispose();
     _expiryDateController.dispose();
     _budgetController.dispose();
-    _locationController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _zipController.dispose();
     _durationHoursController.dispose();
     _additionalDetailsController.dispose();
     _incentiveOtherController.dispose();
@@ -308,8 +402,14 @@ class _PostGigScreenState extends State<PostGigScreen> {
     if (_selectedGenres.isEmpty) missingFields.add('Preferred Genre(s)');
     if (_dateController.text.trim().isEmpty) missingFields.add('Performance Date');
     if (_timeController.text.trim().isEmpty) missingFields.add('Performance Time');
+    final fullLocation = _getFormattedLocation();
+    final addr = _addressController.text.trim();
+    final city = _cityController.text.trim();
+    final state = _stateController.text.trim();
+    final zip = _zipController.text.trim();
+
     if (_durationHoursController.text.trim().isEmpty) missingFields.add('Length of Performance');
-    if (_locationController.text.trim().isEmpty) missingFields.add('Location');
+    if (fullLocation.isEmpty) missingFields.add('Venue Location');
     if (_budgetController.text.trim().isEmpty) missingFields.add('Budget');
 
     if (missingFields.isNotEmpty) {
@@ -365,7 +465,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
       autoDescription.writeln('\nAdditional Details:\n${_additionalDetailsController.text.trim()}');
     }
 
-    if (widget.gigToEdit != null) {
+    if (_isEditMode) {
       final error = await authService.updateGig(widget.gigToEdit!.gigId, {
         'title': _titleController.text.trim(),
         'description': autoDescription.toString(),
@@ -377,7 +477,11 @@ class _PostGigScreenState extends State<PostGigScreen> {
             ? _expiryDateController.text.trim()
             : _dateController.text.trim(),
         'budget': _budgetController.text.trim(),
-        'location': _locationController.text.trim(),
+        'location': fullLocation,
+        'address': addr,
+        'city': city,
+        'state': state,
+        'zipCode': zip,
         'imageUrl': finalImageUrl,
         'duration': '${_durationHoursController.text.trim()} hrs',
         'isUrgent': _isUrgent,
@@ -394,7 +498,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
             date: _dateController.text.trim(),
             time: _timeController.text.trim(),
             budget: _budgetController.text.trim(),
-            location: _locationController.text.trim(),
+            location: fullLocation,
             organizerId: authService.user?.uid ?? '',
             imageUrl: finalImageUrl,
             isUrgent: _isUrgent,
@@ -426,7 +530,11 @@ class _PostGigScreenState extends State<PostGigScreen> {
           ? _expiryDateController.text.trim()
           : _dateController.text.trim(),
       budget: _budgetController.text.trim(),
-      location: _locationController.text.trim(),
+      location: fullLocation,
+      address: addr,
+      city: city,
+      state: state,
+      zipCode: zip,
       imageUrl: finalImageUrl,
       duration: '${_durationHoursController.text.trim()} hrs',
       isUrgent: _isUrgent,
@@ -444,7 +552,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
           date: _dateController.text.trim(),
           time: _timeController.text.trim(),
           budget: _budgetController.text.trim(),
-          location: _locationController.text.trim(),
+          location: fullLocation,
           organizerId: authService.user?.uid ?? '',
           imageUrl: finalImageUrl,
           isUrgent: _isUrgent,
@@ -488,7 +596,9 @@ class _PostGigScreenState extends State<PostGigScreen> {
           ),
         ),
         title: Text(
-          widget.gigToEdit != null ? 'Edit Gig' : 'Post New Gig',
+          _isDuplicateMode
+              ? 'Duplicate Gig'
+              : (_isEditMode ? 'Edit Gig' : 'Post New Gig'),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -928,10 +1038,50 @@ class _PostGigScreenState extends State<PostGigScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Location with Zip Code
-              _buildLabel('Location (Full Address with Zip Code)'),
+              // Venue Location (Address, City, State, ZIP)
+              _buildLabel('Venue Street Address'),
               const SizedBox(height: 8),
-              _buildField(_locationController, 'Street Address, City, State, ZIP Code'),
+              _buildField(_addressController, 'e.g., 123 Bourbon St'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('City'),
+                        const SizedBox(height: 8),
+                        _buildField(_cityController, 'e.g., New Orleans'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('State'),
+                        const SizedBox(height: 8),
+                        _buildField(_stateController, 'LA'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('ZIP Code'),
+                        const SizedBox(height: 8),
+                        _buildField(_zipController, '70112', keyboardType: TextInputType.number),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
 
               // Budget (Max Allowed)
@@ -1297,7 +1447,9 @@ class _PostGigScreenState extends State<PostGigScreen> {
                   )
                 : Center(
                     child: Text(
-                      widget.gigToEdit != null ? 'Save Changes' : 'Post Gig',
+                      _isDuplicateMode
+                          ? 'Duplicate & Post Gig'
+                          : (_isEditMode ? 'Save Changes' : 'Post Gig'),
                       style: const TextStyle(
                           color: Colors.black,
                           fontSize: 16,

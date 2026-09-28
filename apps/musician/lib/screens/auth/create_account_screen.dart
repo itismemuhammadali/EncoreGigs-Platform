@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -191,19 +193,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   label: 'Continue with Google',
                   onTap: () => _handleSocialSignIn('google'),
                 ),
-                const SizedBox(height: 12),
-                _buildSocialButton(
-                  icon: 'f',
-                  label: 'Continue with Facebook',
-                  isFacebook: true,
-                  onTap: () {},
-                ),
-                const SizedBox(height: 12),
-                _buildSocialButton(
-                  iconPath: 'assets/apple_icon.svg',
-                  label: 'Continue with Apple',
-                  onTap: () => _handleSocialSignIn('apple'),
-                ),
+                if (!kIsWeb && Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  _buildSocialButton(
+                    iconPath: 'assets/apple_icon.svg',
+                    label: 'Continue with Apple',
+                    onTap: () => _handleSocialSignIn('apple'),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 Row(
                   children: [

@@ -41,7 +41,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
         _error = '';
       });
       
-      final data = await _apiService.getBookings(musicianId: _currentUser!.uid);
+      final data = await _apiService.getBookings(musicianId: _currentUser.uid);
       setState(() {
         _allContracts = data;
         _isLoading = false;

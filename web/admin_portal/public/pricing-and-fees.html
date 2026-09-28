@@ -37,21 +37,127 @@
       text-decoration: none;
       letter-spacing: 1.5px;
     }
-    .nav-links {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .nav-links a {
-      color: #94A3B8;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: color 0.2s ease;
-    }
-    .nav-links a:hover, .nav-links a.active {
+    .menu-btn {
+      background: rgba(161, 243, 1, 0.08);
+      border: 1.5px solid rgba(161, 243, 1, 0.35);
       color: #A1F301;
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .menu-btn:hover {
+      background: rgba(161, 243, 1, 0.2);
+      border-color: #A1F301;
+      transform: scale(1.05);
+      box-shadow: 0 0 16px rgba(161, 243, 1, 0.3);
+    }
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index: 998;
+    }
+    .drawer-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #11111A;
+      border-left: 1.5px solid rgba(161, 243, 1, 0.3);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.8);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 24px 20px;
+    }
+    .nav-drawer.open {
+      right: 0;
+    }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 20px;
+    }
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+    .drawer-close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #A0A0B2;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .drawer-close-btn:hover {
+      color: #A1F301;
+      border-color: #A1F301;
+      background: rgba(161, 243, 1, 0.1);
+    }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .drawer-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      color: #C0C0D0;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .drawer-link:hover {
+      color: #FFFFFF;
+      background: rgba(161, 243, 1, 0.08);
+      border-color: rgba(161, 243, 1, 0.25);
+      transform: translateX(4px);
+    }
+    .drawer-link.active {
+      color: #A1F301;
+      background: rgba(161, 243, 1, 0.12);
+      border-color: rgba(161, 243, 1, 0.4);
+    }
+    .drawer-link-icon {
+      font-size: 18px;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .container {
       max-width: 920px;
@@ -158,16 +264,58 @@
 <body>
   <header>
     <a href="/legal.html" class="brand-logo">ONLYGIGZ</a>
-    <nav class="nav-links">
-      <a href="/legal.html">Legal Hub</a>
-      <a href="/terms-of-service.html" class="">Terms of Service</a>
-      <a href="/privacy-policy.html" class="">Privacy Policy</a>
-      <a href="/terms-and-conditions.html" class="">Terms & Conditions</a>
-      <a href="/pricing-and-fees.html" class="active">Pricing & Fees</a>
-      <a href="/dmca-policy.html" class="">DMCA</a>
-      <a href="/about-us.html" class="">About Us</a>
-    </nav>
+    <button id="menu-btn" class="menu-btn" aria-label="Open Navigation Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="7" x2="20" y2="7"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="17" x2="20" y2="17"></line>
+      </svg>
+    </button>
   </header>
+
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <aside id="nav-drawer" class="nav-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Navigation</div>
+      <button id="drawer-close-btn" class="drawer-close-btn" aria-label="Close Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="/legal.html" class="drawer-link">
+        <span class="drawer-link-icon">⚖️</span>
+        <span class="drawer-link-text">Legal Hub</span>
+      </a>
+      <a href="/terms-of-service.html" class="drawer-link">
+        <span class="drawer-link-icon">📜</span>
+        <span class="drawer-link-text">Terms of Service</span>
+      </a>
+      <a href="/privacy-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">🛡️</span>
+        <span class="drawer-link-text">Privacy Policy</span>
+      </a>
+      <a href="/terms-and-conditions.html" class="drawer-link">
+        <span class="drawer-link-icon">📋</span>
+        <span class="drawer-link-text">Terms &amp; Conditions</span>
+      </a>
+      <a href="/pricing-and-fees.html" class="drawer-link active">
+        <span class="drawer-link-icon">💳</span>
+        <span class="drawer-link-text">Pricing &amp; Fees</span>
+      </a>
+      <a href="/dmca-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">©️</span>
+        <span class="drawer-link-text">DMCA Policy</span>
+      </a>
+      <a href="/about-us.html" class="drawer-link">
+        <span class="drawer-link-icon">🎸</span>
+        <span class="drawer-link-text">About Us</span>
+      </a>
+    </nav>
+  </aside>
 
   <div class="container">
     <div class="doc-card">
@@ -278,5 +426,33 @@
   <footer>
     <p>&copy; 2026 ONLYGIGZ, LLC. All rights reserved. &bull; <a href="/legal.html">Legal & Policy Center</a></p>
   </footer>
+
+  <script>
+    const menuBtn = document.getElementById('menu-btn');
+    const closeBtn = document.getElementById('drawer-close-btn');
+    const drawer = document.getElementById('nav-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+
+    function openDrawer() {
+      drawer.classList.add('open');
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (backdrop) backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) {
+        closeDrawer();
+      }
+    });
+  </script>
 </body>
 </html>

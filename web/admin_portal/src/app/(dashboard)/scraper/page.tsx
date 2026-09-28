@@ -496,6 +496,23 @@ export default function ScraperModule() {
         isOpen={editModal.show}
         onClose={() => setEditModal({ show: false, gig: null })}
         gigData={editModal.gig}
+        gigsList={importedGigs}
+        currentIndex={editModal.gig ? importedGigs.findIndex(g => g.id === editModal.gig?.id) : 0}
+        onNavigate={(newIdx) => {
+          if (importedGigs[newIdx]) {
+            setEditModal({ show: true, gig: importedGigs[newIdx] });
+          }
+        }}
+        onDelete={async (gigId) => {
+          try {
+            await apiRequest(`/scraper/gigs/${gigId}`, { method: "DELETE" });
+            setImportedGigs(prev => prev.filter(g => g.id !== gigId));
+            setEditModal({ show: false, gig: null });
+            showToast("Gig deleted successfully");
+          } catch (error) {
+            showToast("Failed to delete gig", "error");
+          }
+        }}
         onApprove={async (gigId) => {
           await handlePublishGig(gigId);
         }}

@@ -122,7 +122,7 @@ class _OrganizationDetailsScreenState
               title: const Text('Take a photo of license', style: TextStyle(color: Colors.white)),
               onTap: () async {
                 final XFile? photo = await picker.pickImage(source: ImageSource.camera);
-                if (mounted) Navigator.pop(context, photo);
+                if (context.mounted) Navigator.pop(context, photo);
               },
             ),
             ListTile(
@@ -130,7 +130,7 @@ class _OrganizationDetailsScreenState
               title: const Text('Choose license from gallery', style: TextStyle(color: Colors.white)),
               onTap: () async {
                 final XFile? galleryImage = await picker.pickImage(source: ImageSource.gallery);
-                if (mounted) Navigator.pop(context, galleryImage);
+                if (context.mounted) Navigator.pop(context, galleryImage);
               },
             ),
           ],

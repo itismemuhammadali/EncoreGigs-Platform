@@ -21,6 +21,31 @@ class ApplicationDetailScreen extends StatefulWidget {
 class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   bool _loadingBooking = false;
   bool _isWithdrawing = false;
+  late String _displayLocation;
+
+  @override
+  void initState() {
+    super.initState();
+    _displayLocation = widget.application.location;
+    if (_displayLocation == 'Not specified' && widget.application.gigId.isNotEmpty) {
+      _resolveGigLocation();
+    }
+  }
+
+  Future<void> _resolveGigLocation() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('gigs').doc(widget.application.gigId).get();
+      if (doc.exists) {
+        final data = doc.data();
+        final loc = data?['location'] ?? data?['venue'] ?? data?['city'];
+        if (loc != null && loc.toString().trim().isNotEmpty && mounted) {
+          setState(() {
+            _displayLocation = loc.toString().trim();
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   Future<void> _handleWithdrawApplication() async {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -251,7 +276,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                             iconPath: 'assets/location_pointer.svg',
                             iconColor: const Color(0xFFFF6B9D),
                             label: 'Location',
-                            value: application.location,
+                            value: _displayLocation,
                           ),
                           const SizedBox(height: 14),
                           _buildDetailRowSvg(

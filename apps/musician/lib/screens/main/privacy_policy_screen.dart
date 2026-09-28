@@ -51,7 +51,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _rawContent = 'Error loading privacy policy text. Please visit https://onlygigz.app/privacy-policy';
+          _rawContent = 'Error loading privacy policy text. Please visit https://admin.onlygigz.app/privacy-policy.html';
           _isLoading = false;
         });
       }
@@ -59,7 +59,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   }
 
   Future<void> _openWebPage() async {
-    final uri = Uri.parse('https://onlygigz.app/privacy-policy');
+    final uri = Uri.parse('https://admin.onlygigz.app/privacy-policy.html');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -359,7 +359,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       }
 
       // Handle Footer text centered at the bottom of the screen
-      if (b.startsWith('FOOTER:') || b.contains('St. Landry Parish, Louisiana')) {
+      if (b.startsWith('FOOTER:')) {
         final footerText = b.replaceAll('FOOTER:', '').trim();
         widgets.add(
           Padding(
@@ -383,7 +383,12 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
 
       // Section Header detection
       final isHeading = (RegExp(r'^\d+\.\s+').hasMatch(b) && b.length < 100 && !b.contains('\n')) ||
-          (b.toUpperCase() == b && b.length < 60 && !b.contains('.'));
+          (b.toUpperCase() == b && b.length < 60 && !b.contains('.') && b.trim().length > 2);
+
+      final isSubHeading = (RegExp(r'^[A-Z]\.\s+').hasMatch(b) && b.length < 60 && !b.contains('\n')) ||
+          b == 'Categories of Personal Information We Collect and Why' ||
+          b == 'Your CCPA Rights' ||
+          b == 'Do Not Sell or Share My Personal Information';
 
       if (isHeading) {
         widgets.add(
@@ -400,9 +405,24 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             ),
           ),
         );
-      } else if (b.contains('•') || b.contains('●') || b.startsWith('-')) {
+      } else if (isSubHeading) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 18, bottom: 8),
+            child: Text(
+              b,
+              style: const TextStyle(
+                color: Color(0xFFA1F301),
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        );
+      } else if (b.contains('•') || b.contains('●') || RegExp(r'^\s*[-•●]\s+', multiLine: true).hasMatch(b)) {
         // Separate intro text from bullet list if present
-        final bulletIdx = b.indexOf(RegExp(r'[•●\-]'));
+        final bulletIdx = b.indexOf(RegExp(r'[•●]'));
         String introPart = '';
         String bulletPart = b;
         if (bulletIdx > 0) {
@@ -426,8 +446,12 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           );
         }
 
-        // Render bullet lines cleanly with bold title prefixes before colon
-        final lines = bulletPart.split(RegExp(r'[\n•●\-]')).where((l) => l.trim().isNotEmpty).toList();
+        // Render bullet lines cleanly without splitting on hyphens inside regular words
+        final lines = bulletPart
+            .split(RegExp(r'(?:\r?\n\s*[-•●]\s*|\s+[•●]\s*)'))
+            .map((l) => l.replaceFirst(RegExp(r'^[-•●]\s*'), '').trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
 
         widgets.add(
           Padding(

@@ -3,7 +3,7 @@
   "nonRenewingSubscriptions": [],
   "products": [
     {
-      "displayPrice": "19.99",
+      "displayPrice": "4.99",
       "familyShareable": false,
       "internalID": "10000001",
       "localizations": [
@@ -18,7 +18,7 @@
       "type": "NonConsumable"
     },
     {
-      "displayPrice": "49.99",
+      "displayPrice": "14.99",
       "familyShareable": false,
       "internalID": "10000002",
       "localizations": [
@@ -33,7 +33,7 @@
       "type": "NonConsumable"
     },
     {
-      "displayPrice": "149.99",
+      "displayPrice": "39.99",
       "familyShareable": false,
       "internalID": "10000003",
       "localizations": [

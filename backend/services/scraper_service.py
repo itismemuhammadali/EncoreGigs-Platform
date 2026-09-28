@@ -345,6 +345,49 @@ class ScraperService:
             return None
 
     @staticmethod
+    def add_sources_batch(sources: list):
+        """Batch add multiple scraper sources to Firestore (e.g. from CSV upload)."""
+        try:
+            if not sources:
+                return {"added": 0, "sources": []}
+            
+            # Use chunks of 450 to stay well within Firestore's 500 limit per batch
+            chunk_size = 450
+            total_added = 0
+            added_records = []
+            
+            for i in range(0, len(sources), chunk_size):
+                chunk = sources[i:i + chunk_size]
+                batch = db.batch()
+                chunk_records = []
+                
+                for item in chunk:
+                    url = (item.get("url") or "").strip()
+                    if not url:
+                        continue
+                    name = (item.get("name") or "").strip() or "Facebook Group"
+                    source_type = (item.get("type") or "facebook_group").strip()
+                    
+                    doc_ref = db.collection("scraper_sources").document()
+                    batch.set(doc_ref, {
+                        "url": url,
+                        "name": name,
+                        "type": source_type,
+                        "enabled": True,
+                        "addedAt": gc_firestore.SERVER_TIMESTAMP
+                    })
+                    chunk_records.append({"id": doc_ref.id, "url": url, "name": name, "type": source_type})
+                
+                batch.commit()
+                total_added += len(chunk_records)
+                added_records.extend(chunk_records)
+                
+            return {"added": total_added, "sources": added_records}
+        except Exception as e:
+            print(f"Error batch adding scraper sources: {e}")
+            return {"added": 0, "error": str(e), "sources": []}
+
+    @staticmethod
     def delete_source(source_id: str):
         """Delete a scraper source by ID."""
         try:

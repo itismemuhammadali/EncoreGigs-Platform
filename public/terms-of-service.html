@@ -37,21 +37,127 @@
       text-decoration: none;
       letter-spacing: 1.5px;
     }
-    .nav-links {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .nav-links a {
-      color: #94A3B8;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: color 0.2s ease;
-    }
-    .nav-links a:hover, .nav-links a.active {
+    .menu-btn {
+      background: rgba(161, 243, 1, 0.08);
+      border: 1.5px solid rgba(161, 243, 1, 0.35);
       color: #A1F301;
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .menu-btn:hover {
+      background: rgba(161, 243, 1, 0.2);
+      border-color: #A1F301;
+      transform: scale(1.05);
+      box-shadow: 0 0 16px rgba(161, 243, 1, 0.3);
+    }
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index: 998;
+    }
+    .drawer-backdrop.open {
+      opacity: 1;
+      visibility: visible;
+    }
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      max-width: 85vw;
+      height: 100vh;
+      background: #11111A;
+      border-left: 1.5px solid rgba(161, 243, 1, 0.3);
+      box-shadow: -12px 0 40px rgba(0, 0, 0, 0.8);
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      padding: 24px 20px;
+    }
+    .nav-drawer.open {
+      right: 0;
+    }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 20px;
+    }
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+    .drawer-close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #A0A0B2;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .drawer-close-btn:hover {
+      color: #A1F301;
+      border-color: #A1F301;
+      background: rgba(161, 243, 1, 0.1);
+    }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .drawer-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      color: #C0C0D0;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .drawer-link:hover {
+      color: #FFFFFF;
+      background: rgba(161, 243, 1, 0.08);
+      border-color: rgba(161, 243, 1, 0.25);
+      transform: translateX(4px);
+    }
+    .drawer-link.active {
+      color: #A1F301;
+      background: rgba(161, 243, 1, 0.12);
+      border-color: rgba(161, 243, 1, 0.4);
+    }
+    .drawer-link-icon {
+      font-size: 18px;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .container {
       max-width: 920px;
@@ -158,16 +264,58 @@
 <body>
   <header>
     <a href="/legal.html" class="brand-logo">ONLYGIGZ</a>
-    <nav class="nav-links">
-      <a href="/legal.html">Legal Hub</a>
-      <a href="/terms-of-service.html" class="active">Terms of Service</a>
-      <a href="/privacy-policy.html" class="">Privacy Policy</a>
-      <a href="/terms-and-conditions.html" class="">Terms & Conditions</a>
-      <a href="/pricing-and-fees.html" class="">Pricing & Fees</a>
-      <a href="/dmca-policy.html" class="">DMCA</a>
-      <a href="/about-us.html" class="">About Us</a>
-    </nav>
+    <button id="menu-btn" class="menu-btn" aria-label="Open Navigation Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="7" x2="20" y2="7"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="17" x2="20" y2="17"></line>
+      </svg>
+    </button>
   </header>
+
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <aside id="nav-drawer" class="nav-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Navigation</div>
+      <button id="drawer-close-btn" class="drawer-close-btn" aria-label="Close Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="/legal.html" class="drawer-link">
+        <span class="drawer-link-icon">⚖️</span>
+        <span class="drawer-link-text">Legal Hub</span>
+      </a>
+      <a href="/terms-of-service.html" class="drawer-link active">
+        <span class="drawer-link-icon">📜</span>
+        <span class="drawer-link-text">Terms of Service</span>
+      </a>
+      <a href="/privacy-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">🛡️</span>
+        <span class="drawer-link-text">Privacy Policy</span>
+      </a>
+      <a href="/terms-and-conditions.html" class="drawer-link">
+        <span class="drawer-link-icon">📋</span>
+        <span class="drawer-link-text">Terms &amp; Conditions</span>
+      </a>
+      <a href="/pricing-and-fees.html" class="drawer-link">
+        <span class="drawer-link-icon">💳</span>
+        <span class="drawer-link-text">Pricing &amp; Fees</span>
+      </a>
+      <a href="/dmca-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">©️</span>
+        <span class="drawer-link-text">DMCA Policy</span>
+      </a>
+      <a href="/about-us.html" class="drawer-link">
+        <span class="drawer-link-icon">🎸</span>
+        <span class="drawer-link-text">About Us</span>
+      </a>
+    </nav>
+  </aside>
 
   <div class="container">
     <div class="doc-card">
@@ -410,8 +558,12 @@
           <li>Unauthorized access to a user's account resulting from circumstances outside OnlyGigz's reasonable control</li>
           <li>Temporary interruption, suspension, error, or unavailability of the Platform</li>
           <li>Third-party products, websites, applications, integrations, or services</li>
-          <li>An event, Gig, or Booking rendered impossible, illegal, or commercially impracticable by a Force Majeure Event as described in Section 32A Aggregate Liability Cap TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF ONLYGIGZ, LLC AND ITS MEMBERS, MANAGERS, OFFICERS, EMPLOYEES, CONTRACTORS, AFFILIATES, AGENTS, AND SERVICE PROVIDERS FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THE PLATFORM OR THESE TERMS WILL NOT EXCEED THE GREATER OF: (A) ONE HUNDRED U.S. DOLLARS ($100.00); OR (B) THE TOTAL AMOUNT OF PLATFORM FEES, SUBSCRIPTION FEES, COMMISSIONS, OR OTHER FEES ACTUALLY PAID BY YOU DIRECTLY TO ONLYGIGZ DURING THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM. For purposes of this limitation, amounts paid by an Organizer to an Entertainer for entertainment or performance services are not amounts paid to OnlyGigz and will not be included when calculating OnlyGigz's aggregate liability. The limitations contained in this Section apply regardless of the legal theory upon which liability is asserted, including contract, tort, negligence, strict liability, statutory liability, or otherwise. Nothing in these Terms is intended to exclude, restrict, or limit liability that cannot lawfully be excluded, restricted, or limited under applicable law. The limitations in this Section are an essential part of the agreement between you and OnlyGigz and apply to the maximum extent permitted by applicable law. 32A. FORCE MAJEURE OnlyGigz will not be liable for any failure or delay in performing its obligations under these Terms, and will not be responsible for a Gig's cancellation, postponement, or modification, to the extent caused by circumstances beyond OnlyGigz's or a party's reasonable control, including hurricanes, tropical storms, flooding, and other severe weather events; government orders, evacuation orders, curfews, or declared states of emergency; pandemic or public health emergencies; power or internet outages; acts of God, war, terrorism, or civil unrest; strikes or labor disputes; and failures of third-party payment processors, financial institutions, or infrastructure providers (a “Force Majeure Event”). A Force Majeure Event affecting a specific Booking does not excuse the Entertainer's or Organizer's obligations to each other under the applicable performance agreement; those obligations, including any cancellation, postponement, or refund terms tied to a Force Majeure Event, are governed by the performance agreement and the Refunds & Cancellation Policy. Given OnlyGigz's Gulf South service area, users acknowledge that hurricane season and severe weather are foreseeable and should plan Bookings, deposits, and cancellation terms accordingly.</li>
+          <li>An event, Gig, or Booking rendered impossible, illegal, or commercially impracticable by a Force Majeure Event as described in Section 32A</li>
         </ul>
+        <h3>Aggregate Liability Cap</h3>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE TOTAL AGGREGATE LIABILITY OF ONLYGIGZ, LLC AND ITS MEMBERS, MANAGERS, OFFICERS, EMPLOYEES, CONTRACTORS, AFFILIATES, AGENTS, AND SERVICE PROVIDERS FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THE PLATFORM OR THESE TERMS WILL NOT EXCEED THE GREATER OF: (A) ONE HUNDRED U.S. DOLLARS ($100.00); OR (B) THE TOTAL AMOUNT OF PLATFORM FEES, SUBSCRIPTION FEES, COMMISSIONS, OR OTHER FEES ACTUALLY PAID BY YOU DIRECTLY TO ONLYGIGZ DURING THE TWELVE (12) MONTHS IMMEDIATELY PRECEDING THE EVENT GIVING RISE TO THE CLAIM. For purposes of this limitation, amounts paid by an Organizer to an Entertainer for entertainment or performance services are not amounts paid to OnlyGigz and will not be included when calculating OnlyGigz's aggregate liability. The limitations contained in this Section apply regardless of the legal theory upon which liability is asserted, including contract, tort, negligence, strict liability, statutory liability, or otherwise. Nothing in these Terms is intended to exclude, restrict, or limit liability that cannot lawfully be excluded, restricted, or limited under applicable law. The limitations in this Section are an essential part of the agreement between you and OnlyGigz and apply to the maximum extent permitted by applicable law.</p>
+        <h2>32A. FORCE MAJEURE</h2>
+        <p>OnlyGigz will not be liable for any failure or delay in performing its obligations under these Terms, and will not be responsible for a Gig's cancellation, postponement, or modification, to the extent caused by circumstances beyond OnlyGigz's or a party's reasonable control, including hurricanes, tropical storms, flooding, and other severe weather events; government orders, evacuation orders, curfews, or declared states of emergency; pandemic or public health emergencies; power or internet outages; acts of God, war, terrorism, or civil unrest; strikes or labor disputes; and failures of third-party payment processors, financial institutions, or infrastructure providers (a “Force Majeure Event”). A Force Majeure Event affecting a specific Booking does not excuse the Entertainer's or Organizer's obligations to each other under the applicable performance agreement; those obligations, including any cancellation, postponement, or refund terms tied to a Force Majeure Event, are governed by the performance agreement and the Refunds &amp; Cancellation Policy. Given OnlyGigz's Gulf South service area, users acknowledge that hurricane season and severe weather are foreseeable and should plan Bookings, deposits, and cancellation terms accordingly.</p>
         <h2>33. INDEMNIFICATION</h2>
         <p>To the extent permitted by law, you agree to defend, indemnify, and hold harmless OnlyGigz, LLC and its owners, members, managers, officers, employees, contractors, affiliates, and service providers from claims, damages, losses, liabilities, and reasonable expenses arising from:</p>
         <ul>
@@ -445,22 +597,37 @@
         <p>The following policies, as applicable, are incorporated into these Terms by reference:</p>
         <ul>
           <li>Privacy Policy</li>
-          <li>Pricing & Fees Policy</li>
-          <li>Refunds & Cancellation Policy</li>
-          <li>Copyright & DMCA Policy</li>
+          <li>Pricing &amp; Fees Policy</li>
+          <li>Refunds &amp; Cancellation Policy</li>
+          <li>Copyright &amp; DMCA Policy</li>
           <li>Aggregation Module Sourcing Policy</li>
           <li>Any additional Platform rules or policies expressly incorporated by reference If a conflict exists between these Terms and a transaction-specific performance agreement, the performance agreement controls the relationship between the Entertainer and Organizer for that Booking, while these Terms continue to govern each user's relationship with OnlyGigz.</li>
         </ul>
         <h2>38. CHANGES TO THESE TERMS</h2>
         <p>OnlyGigz may update these Terms periodically to reflect changes to the Platform, business practices, technology, or legal requirements. The updated Terms will display a revised “Last Updated” date. Where required by law, OnlyGigz will provide additional notice of material changes. Continued use of the Platform after updated Terms become effective constitutes acceptance to the extent permitted by law.</p>
         <h2>39. GOVERNING LAW</h2>
-        <p>These Terms are governed by the laws of the State of Louisiana, without regard to conflict-of-law principles, except where applicable law requires otherwise. 40. DISPUTE RESOLUTION; BINDING ARBITRATION; CLASS ACTION WAIVER PLEASE READ THIS SECTION CAREFULLY. IT AFFECTS YOUR LEGAL RIGHTS, INCLUDING YOUR RIGHT TO BRING CERTAIN CLAIMS IN COURT, HAVE A JURY TRIAL, OR PARTICIPATE IN A CLASS ACTION. 40.1 Informal Dispute Resolution Before initiating arbitration or other formal legal proceedings against OnlyGigz, you and OnlyGigz agree to first attempt in good faith to resolve the dispute informally. A party seeking to initiate a dispute must provide written notice describing:</p>
+        <p>These Terms are governed by the laws of the State of Louisiana, without regard to conflict-of-law principles, except where applicable law requires otherwise.</p>
+        <h2>40. DISPUTE RESOLUTION; BINDING ARBITRATION; CLASS ACTION WAIVER</h2>
+        <p><strong>PLEASE READ THIS SECTION CAREFULLY. IT AFFECTS YOUR LEGAL RIGHTS, INCLUDING YOUR RIGHT TO BRING CERTAIN CLAIMS IN COURT, HAVE A JURY TRIAL, OR PARTICIPATE IN A CLASS ACTION.</strong></p>
+        <h3>40.1 Informal Dispute Resolution</h3>
+        <p>Before initiating arbitration or other formal legal proceedings against OnlyGigz, you and OnlyGigz agree to first attempt in good faith to resolve the dispute informally. A party seeking to initiate a dispute must provide written notice describing:</p>
         <ul>
           <li>The name and contact information of the person or entity asserting the claim</li>
           <li>The OnlyGigz account associated with the dispute, if applicable</li>
           <li>A description of the dispute</li>
           <li>The facts giving rise to the claim</li>
-          <li>The relief or resolution requested Notice to OnlyGigz must be sent to: OnlyGigz, LLC Attn: Legal 5520 Johnston St. Ste K Lafayette, Louisiana 70503 Email: admin@onlygigz.app The parties will have thirty (30) days after receipt of the dispute notice to attempt to resolve the matter informally. Neither party may initiate arbitration until this informal resolution period has expired, except where immediate injunctive or other emergency relief is reasonably necessary. 40.2 Agreement to Binding Individual Arbitration Except for disputes expressly excluded below, you and OnlyGigz agree that any dispute, claim, or controversy arising out of or relating to:</li>
+          <li>The relief or resolution requested</li>
+        </ul>
+        <p>Notice to OnlyGigz must be sent to:<br>
+        OnlyGigz, LLC<br>
+        Attn: Legal<br>
+        5520 Johnston St. Ste K<br>
+        Lafayette, Louisiana 70503<br>
+        Email: admin@onlygigz.app</p>
+        <p>The parties will have thirty (30) days after receipt of the dispute notice to attempt to resolve the matter informally. Neither party may initiate arbitration until this informal resolution period has expired, except where immediate injunctive or other emergency relief is reasonably necessary.</p>
+        <h3>40.2 Agreement to Binding Individual Arbitration</h3>
+        <p>Except for disputes expressly excluded below, you and OnlyGigz agree that any dispute, claim, or controversy arising out of or relating to:</p>
+        <ul>
           <li>These Terms</li>
           <li>Your use of the Platform</li>
           <li>Your OnlyGigz account</li>
@@ -469,16 +636,53 @@
           <li>Communications or transactions occurring through the Platform</li>
           <li>OnlyGigz's services</li>
           <li>The relationship between you and OnlyGigz</li>
-          <li>The interpretation, applicability, enforceability, formation, or alleged breach of these Terms will be resolved through binding individual arbitration rather than in court, to the extent permitted by applicable law. The arbitration will be conducted by a neutral arbitrator and not by a judge or jury. 40.3 Federal Arbitration Act This arbitration agreement involves interstate commerce and is governed by the Federal Arbitration Act, 9 U.S.C. §§ 1–16, to the extent applicable. To the extent state law applies and is not preempted by federal law, Louisiana law will apply as provided in these Terms. 40.4 Arbitration Administrator and Rules Arbitration will be administered by the American Arbitration Association (“AAA”) under the applicable AAA Consumer Arbitration Rules or Commercial Arbitration Rules, as appropriate to the nature of the dispute and the parties involved, except where those rules conflict with these Terms. Information concerning AAA arbitration procedures and applicable rules and fees is available from AAA. If AAA is unavailable or unwilling to administer a particular dispute, the parties will attempt in good faith to select another nationally recognized arbitration provider. If the parties cannot agree, a court of competent jurisdiction may appoint an arbitrator or arbitration administrator as permitted by applicable law. 40.5 Location and Method of Arbitration Unless the parties agree otherwise, arbitration may be conducted through written submissions, telephone, videoconference, or an in-person hearing as permitted by the applicable arbitration rules. OnlyGigz will not require an individual consumer to travel to Louisiana for an arbitration hearing when applicable law or arbitration rules provide the consumer with the right to participate from another location. For disputes involving business users where an in-person hearing is required and the parties have not agreed otherwise, the hearing will take place in St. Landry Parish, Louisiana, subject to applicable law and the arbitration administrator's rules. 40.6 Arbitration Fees Payment of filing, administrative, and arbitrator fees will be governed by the applicable arbitration rules and applicable law. OnlyGigz will not require an individual consumer to pay arbitration costs that applicable law requires OnlyGigz to pay. Each party will otherwise be responsible for its own attorneys' fees and costs unless the arbitrator awards such fees or costs under applicable law, these Terms, or another enforceable agreement. 40.7 Arbitrator's Authority The arbitrator may award any remedy or relief that would otherwise be available to the individual party under applicable law, subject to the limitations contained in these Terms. The arbitrator will issue a written decision sufficient to explain the essential findings and conclusions upon which the award is based. Judgment upon an arbitration award may be entered in any court having jurisdiction. 40.8 Exceptions to Arbitration Notwithstanding the agreement to arbitrate, either party may:</li>
+          <li>The interpretation, applicability, enforceability, formation, or alleged breach of these Terms</li>
+        </ul>
+        <p>will be resolved through binding individual arbitration rather than in court, to the extent permitted by applicable law. The arbitration will be conducted by a neutral arbitrator and not by a judge or jury.</p>
+        <h3>40.3 Federal Arbitration Act</h3>
+        <p>This arbitration agreement involves interstate commerce and is governed by the Federal Arbitration Act, 9 U.S.C. §§ 1–16, to the extent applicable. To the extent state law applies and is not preempted by federal law, Louisiana law will apply as provided in these Terms.</p>
+        <h3>40.4 Arbitration Administrator and Rules</h3>
+        <p>Arbitration will be administered by the American Arbitration Association (“AAA”) under the applicable AAA Consumer Arbitration Rules or Commercial Arbitration Rules, as appropriate to the nature of the dispute and the parties involved, except where those rules conflict with these Terms. Information concerning AAA arbitration procedures and applicable rules and fees is available from AAA. If AAA is unavailable or unwilling to administer a particular dispute, the parties will attempt in good faith to select another nationally recognized arbitration provider. If the parties cannot agree, a court of competent jurisdiction may appoint an arbitrator or arbitration administrator as permitted by applicable law.</p>
+        <h3>40.5 Location and Method of Arbitration</h3>
+        <p>Unless the parties agree otherwise, arbitration may be conducted through written submissions, telephone, videoconference, or an in-person hearing as permitted by the applicable arbitration rules. OnlyGigz will not require an individual consumer to travel to Louisiana for an arbitration hearing when applicable law or arbitration rules provide the consumer with the right to participate from another location. For disputes involving business users where an in-person hearing is required and the parties have not agreed otherwise, the hearing will take place in St. Landry Parish, Louisiana, subject to applicable law and the arbitration administrator's rules.</p>
+        <h3>40.6 Arbitration Fees</h3>
+        <p>Payment of filing, administrative, and arbitrator fees will be governed by the applicable arbitration rules and applicable law. OnlyGigz will not require an individual consumer to pay arbitration costs that applicable law requires OnlyGigz to pay. Each party will otherwise be responsible for its own attorneys' fees and costs unless the arbitrator awards such fees or costs under applicable law, these Terms, or another enforceable agreement.</p>
+        <h3>40.7 Arbitrator's Authority</h3>
+        <p>The arbitrator may award any remedy or relief that would otherwise be available to the individual party under applicable law, subject to the limitations contained in these Terms. The arbitrator will issue a written decision sufficient to explain the essential findings and conclusions upon which the award is based. Judgment upon an arbitration award may be entered in any court having jurisdiction.</p>
+        <h3>40.8 Exceptions to Arbitration</h3>
+        <p>Notwithstanding the agreement to arbitrate, either party may:</p>
+        <ul>
           <li>Bring an eligible individual claim in small claims court</li>
           <li>Seek temporary or preliminary injunctive relief from a court when necessary to prevent immediate and irreparable harm pending arbitration</li>
           <li>Seek relief concerning infringement, misuse, or misappropriation of intellectual property rights where court relief is legally available</li>
-          <li>Bring a claim before a governmental agency where applicable law permits the agency to hear the claim Nothing in this Section prevents either party from reporting suspected unlawful activity to an appropriate governmental authority. 40.9 Disputes Between Entertainers and Organizers This arbitration agreement governs disputes between a user and OnlyGigz. It does not automatically require arbitration of a dispute solely between an Entertainer and Organizer arising under their separate performance agreement unless that performance agreement independently contains an arbitration provision. OnlyGigz is not a party to the performance agreement between an Entertainer and Organizer merely because OnlyGigz facilitated the Booking or generated the agreement. 40.10 CLASS ACTION AND JURY TRIAL WAIVER TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, YOU AND ONLYGIGZ AGREE THAT CLAIMS AGAINST EACH OTHER WILL BE BROUGHT ONLY IN AN INDIVIDUAL CAPACITY AND NOT AS A PLAINTIFF, CLAIMANT, OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, CONSOLIDATED, COORDINATED, OR REPRESENTATIVE ACTION OR PROCEEDING. YOU AND ONLYGIGZ WAIVE THE RIGHT TO A TRIAL BY JURY FOR CLAIMS SUBJECT TO THIS ARBITRATION AGREEMENT. Unless both parties agree otherwise in writing, an arbitrator may not consolidate the claims of more than one person or entity and may not preside over any form of class, collective, consolidated, coordinated, or representative proceeding. If applicable law prohibits enforcement of a particular portion of this waiver for a specific claim or request for relief, that portion will be severed and handled as required by applicable law, while the remaining arbitrable claims will proceed in individual arbitration to the extent permitted by law. 40.11 Right to Opt Out of Arbitration You may opt out of the arbitration provisions of this Section by providing written notice to OnlyGigz within thirty (30) days after the date you first accept these Terms. Your opt-out notice must include:</li>
+          <li>Bring a claim before a governmental agency where applicable law permits the agency to hear the claim</li>
+        </ul>
+        <p>Nothing in this Section prevents either party from reporting suspected unlawful activity to an appropriate governmental authority.</p>
+        <h3>40.9 Disputes Between Entertainers and Organizers</h3>
+        <p>This arbitration agreement governs disputes between a user and OnlyGigz. It does not automatically require arbitration of a dispute solely between an Entertainer and Organizer arising under their separate performance agreement unless that performance agreement independently contains an arbitration provision. OnlyGigz is not a party to the performance agreement between an Entertainer and Organizer merely because OnlyGigz facilitated the Booking or generated the agreement.</p>
+        <h3>40.10 CLASS ACTION AND JURY TRIAL WAIVER</h3>
+        <p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, YOU AND ONLYGIGZ AGREE THAT CLAIMS AGAINST EACH OTHER WILL BE BROUGHT ONLY IN AN INDIVIDUAL CAPACITY AND NOT AS A PLAINTIFF, CLAIMANT, OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, CONSOLIDATED, COORDINATED, OR REPRESENTATIVE ACTION OR PROCEEDING. YOU AND ONLYGIGZ WAIVE THE RIGHT TO A TRIAL BY JURY FOR CLAIMS SUBJECT TO THIS ARBITRATION AGREEMENT.</p>
+        <p>Unless both parties agree otherwise in writing, an arbitrator may not consolidate the claims of more than one person or entity and may not preside over any form of class, collective, consolidated, coordinated, or representative proceeding. If applicable law prohibits enforcement of a particular portion of this waiver for a specific claim or request for relief, that portion will be severed and handled as required by applicable law, while the remaining arbitrable claims will proceed in individual arbitration to the extent permitted by law.</p>
+        <h3>40.11 Right to Opt Out of Arbitration</h3>
+        <p>You may opt out of the arbitration provisions of this Section by providing written notice to OnlyGigz within thirty (30) days after the date you first accept these Terms. Your opt-out notice must include:</p>
+        <ul>
           <li>Your full name</li>
           <li>The email address associated with your OnlyGigz account</li>
           <li>A clear statement that you wish to opt out of the OnlyGigz arbitration agreement</li>
-          <li>The date of the request Opt-out notices must be sent to: admin@onlygigz.app or by mail to: OnlyGigz, LLC Attn: Arbitration Opt-Out 5520 Johnston St. Ste K Lafayette, Louisiana 70503 Opting out of arbitration will not affect your ability to use the Platform and will not modify any other provision of these Terms. 40.12 Claims Not Subject to Arbitration If a dispute between you and OnlyGigz is determined not to be subject to arbitration, and applicable law permits the parties to select a forum, the parties agree that the dispute will be brought in a state or federal court of competent jurisdiction located in St. Landry Parish, Louisiana, subject to any mandatory consumer-protection or jurisdictional rights that cannot lawfully be waived. You and OnlyGigz consent to the personal jurisdiction of such courts for those disputes. 40.13 Severability Except as otherwise provided in the class-action waiver above, if any portion of this arbitration agreement is determined to be invalid or unenforceable, that provision will be severed to the minimum extent necessary and the remainder of this Section will remain in effect, to the extent permitted by law. 40.14 Survival This Section survives termination of your OnlyGigz account and termination or expiration of these Terms.</li>
+          <li>The date of the request</li>
         </ul>
+        <p>Opt-out notices must be sent to: admin@onlygigz.app or by mail to:<br>
+        OnlyGigz, LLC<br>
+        Attn: Arbitration Opt-Out<br>
+        5520 Johnston St. Ste K<br>
+        Lafayette, Louisiana 70503</p>
+        <p>Opting out of arbitration will not affect your ability to use the Platform and will not modify any other provision of these Terms.</p>
+        <h3>40.12 Claims Not Subject to Arbitration</h3>
+        <p>If a dispute between you and OnlyGigz is determined not to be subject to arbitration, and applicable law permits the parties to select a forum, the parties agree that the dispute will be brought in a state or federal court of competent jurisdiction located in St. Landry Parish, Louisiana, subject to any mandatory consumer-protection or jurisdictional rights that cannot lawfully be waived. You and OnlyGigz consent to the personal jurisdiction of such courts for those disputes.</p>
+        <h3>40.13 Severability</h3>
+        <p>Except as otherwise provided in the class-action waiver above, if any portion of this arbitration agreement is determined to be invalid or unenforceable, that provision will be severed to the minimum extent necessary and the remainder of this Section will remain in effect, to the extent permitted by law.</p>
+        <h3>40.14 Survival</h3>
+        <p>This Section survives termination of your OnlyGigz account and termination or expiration of these Terms.</p>
         <h2>41. SEVERABILITY</h2>
         <p>If any provision of these Terms is determined to be invalid or unenforceable, the remaining provisions will continue in full force and effect to the maximum extent permitted by law.</p>
         <h2>42. NO WAIVER</h2>
@@ -488,7 +692,14 @@
         <h2>44. ENTIRE AGREEMENT</h2>
         <p>These Terms, together with incorporated policies and any applicable Platform-specific terms, constitute the agreement between you and OnlyGigz regarding use of the Platform. The separate performance agreement between an Entertainer and Organizer governs the entertainment services associated with that Booking.</p>
         <h2>45. CONTACT INFORMATION</h2>
-        <p>Questions regarding these Terms may be directed to: OnlyGigz, LLC 5520 Johnston St. Ste K Lafayette, Louisiana 70503 Email: admin@onlygigz.app Website: www.onlygigz.app ACKNOWLEDGMENT BY CREATING AN ACCOUNT OR USING ONLYGIGZ, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREED TO THESE TERMS OF SERVICE.</p>
+        <p>Questions regarding these Terms may be directed to:<br>
+        OnlyGigz, LLC<br>
+        5520 Johnston St. Ste K<br>
+        Lafayette, Louisiana 70503<br>
+        Email: admin@onlygigz.app<br>
+        Website: www.onlygigz.app</p>
+        <h3>ACKNOWLEDGMENT</h3>
+        <p><strong>BY CREATING AN ACCOUNT OR USING ONLYGIGZ, YOU ACKNOWLEDGE THAT YOU HAVE READ, UNDERSTOOD, AND AGREED TO THESE TERMS OF SERVICE.</strong></p>
       </div>
     </div>
   </div>
@@ -496,5 +707,33 @@
   <footer>
     <p>&copy; 2026 ONLYGIGZ, LLC. All rights reserved. &bull; <a href="/legal.html">Legal & Policy Center</a></p>
   </footer>
+
+  <script>
+    const menuBtn = document.getElementById('menu-btn');
+    const closeBtn = document.getElementById('drawer-close-btn');
+    const drawer = document.getElementById('nav-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+
+    function openDrawer() {
+      drawer.classList.add('open');
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (backdrop) backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) {
+        closeDrawer();
+      }
+    });
+  </script>
 </body>
 </html>

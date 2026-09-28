@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:onlygigz_musician/models/profile_model.dart';
 import 'package:onlygigz_musician/services/auth_service.dart';
@@ -73,46 +74,107 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (currentUser == null) return;
 
     try {
-      final data = await _apiService.getProfile(currentUser.uid);
+      Map<String, dynamic> data = {};
+      try {
+        data = await _apiService.getProfile(currentUser.uid);
+      } catch (e) {
+        debugPrint('Error loading profile from api: $e');
+      }
+
+      // Check Firestore document for live fields
+      Map<String, dynamic> firestoreData = {};
+      try {
+        final doc = await FirebaseFirestore.instance.collection('musicians').doc(currentUser.uid).get();
+        if (doc.exists && doc.data() != null) {
+          firestoreData = doc.data()!;
+        }
+      } catch (e) {
+        debugPrint('Error loading profile from firestore musicians: $e');
+      }
+
+      Map<String, dynamic> userFirestoreData = {};
+      try {
+        final uDoc = await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get();
+        if (uDoc.exists && uDoc.data() != null) {
+          userFirestoreData = uDoc.data()!;
+        }
+      } catch (e) {
+        debugPrint('Error loading profile from firestore users: $e');
+      }
+
+      final mergedData = Map<String, dynamic>.from(data);
+      firestoreData.forEach((k, v) {
+        if (v != null && v.toString().trim().isNotEmpty) {
+          if (!mergedData.containsKey(k) || mergedData[k] == null || mergedData[k].toString().trim().isEmpty) {
+            mergedData[k] = v;
+          }
+        }
+      });
+      userFirestoreData.forEach((k, v) {
+        if (v != null && v.toString().trim().isNotEmpty) {
+          if (!mergedData.containsKey(k) || mergedData[k] == null || mergedData[k].toString().trim().isEmpty) {
+            mergedData[k] = v;
+          }
+        }
+      });
 
       if (mounted) {
-        final profile = Profile.fromFirestore(data);
+        final profile = Profile.fromFirestore(mergedData);
 
         setState(() {
           fullNameController.text = profile.name;
           professionalTitleController.text = profile.profession;
           bioController.text = profile.bio;
           locationController.text = profile.location;
-          primaryCityController.text = data['primaryCity'] ?? profile.primaryCity;
-          primaryStateController.text = data['primaryState'] ?? profile.primaryState;
-          primaryZipController.text = data['primaryZip'] ?? profile.primaryZip;
-          secondaryCityController.text = data['secondaryCity'] ?? profile.secondaryCity;
-          secondaryStateController.text = data['secondaryState'] ?? profile.secondaryState;
-          secondaryZipController.text = data['secondaryZip'] ?? profile.secondaryZip;
-          travelRadiusController.text = (data['travelRadius'] ?? profile.travelRadius).toString();
+          primaryCityController.text = mergedData['primaryCity'] ?? profile.primaryCity;
+          primaryStateController.text = mergedData['primaryState'] ?? profile.primaryState;
+          primaryZipController.text = mergedData['primaryZip'] ?? profile.primaryZip;
+          secondaryCityController.text = mergedData['secondaryCity'] ?? profile.secondaryCity;
+          secondaryStateController.text = mergedData['secondaryState'] ?? profile.secondaryState;
+          secondaryZipController.text = mergedData['secondaryZip'] ?? profile.secondaryZip;
+          travelRadiusController.text = (mergedData['travelRadius'] ?? profile.travelRadius).toString();
           
-          String phone = data['contact'] ?? '';
+          String phone = (mergedData['phoneNumber'] ??
+                  mergedData['phone'] ??
+                  mergedData['contact'] ??
+                  firestoreData['phoneNumber'] ??
+                  firestoreData['phone'] ??
+                  firestoreData['contact'] ??
+                  userFirestoreData['phoneNumber'] ??
+                  userFirestoreData['phone'] ??
+                  userFirestoreData['contact'] ??
+                  profile.contact)
+              .toString()
+              .trim();
+
+          if (phone.isEmpty && currentUser.phoneNumber != null) {
+            phone = currentUser.phoneNumber!.trim();
+          }
+
           if (phone.isNotEmpty) {
             bool found = false;
-            for (var country in countries) {
-              if (phone.startsWith(country.code)) {
+            final cleanPhone = phone.trim();
+            final sortedCountries = List<CountryCode>.from(countries)
+              ..sort((a, b) => b.code.length.compareTo(a.code.length));
+            for (var country in sortedCountries) {
+              if (cleanPhone.startsWith(country.code)) {
                 _selectedCountry = country;
-                phoneController.text = phone.substring(country.code.length).trim();
+                phoneController.text = cleanPhone.substring(country.code.length).trim();
                 found = true;
                 break;
               }
             }
             if (!found) {
-              phoneController.text = phone;
+              phoneController.text = cleanPhone;
             }
           }
           
           // Parsing rate range
-          final rateStr = data['feeRange']?.toString() ?? '0';
+          final rateStr = mergedData['feeRange']?.toString() ?? '0';
           minRateController.text = rateStr;
-          maxRateController.text = (data['maxFeeRange'] ?? rateStr).toString();
+          maxRateController.text = (mergedData['maxFeeRange'] ?? rateStr).toString();
           
-          yearsOfExperienceController.text = data['yearsOfExperience']?.toString() ?? '0';
+          yearsOfExperienceController.text = mergedData['yearsOfExperience']?.toString() ?? '0';
           selectedGenres = List<String>.from(profile.genres);
           selectedTags = List<String>.from(profile.tags);
           currentProfileImageUrl = profile.profileImage;
@@ -217,12 +279,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ? '$pCity, $pState $pZip'.trim()
           : (locationController.text.isNotEmpty ? locationController.text.trim() : pCity);
 
+      final inputPhone = phoneController.text.trim();
+      final fullPhone = inputPhone.isNotEmpty ? '${_selectedCountry.code} $inputPhone'.trim() : '';
+
       // Update via Backend
       await _apiService.updateProfile({
         'uid': currentUser.uid,
         'name': fullNameController.text.trim(),
         'email': currentUser.email,
-        'contact': '${_selectedCountry.code} ${phoneController.text.trim()}',
+        'contact': fullPhone,
+        'phoneNumber': fullPhone,
+        'phone': fullPhone,
         'location': computedLocation,
         'primaryCity': pCity,
         'primaryState': pState,
@@ -241,6 +308,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'genres': selectedGenres,
         'tags': selectedTags,
       });
+
+      // Synchronize phone fields to Firestore collections (musicians and users)
+      try {
+        final phonePayload = {
+          'contact': fullPhone,
+          'phoneNumber': fullPhone,
+          'phone': fullPhone,
+        };
+        await FirebaseFirestore.instance.collection('musicians').doc(currentUser.uid).set(
+          phonePayload,
+          SetOptions(merge: true),
+        );
+        await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).set(
+          phonePayload,
+          SetOptions(merge: true),
+        );
+      } catch (e) {
+        debugPrint('Error syncing phone to firestore: $e');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

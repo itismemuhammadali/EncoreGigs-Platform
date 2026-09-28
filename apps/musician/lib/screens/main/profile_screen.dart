@@ -77,50 +77,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header banner image with settings icon
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 116),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0A0A0F),
-                      image: (profile.bannerImage != null && profile.bannerImage!.isNotEmpty)
-                          ? DecorationImage(
-                              image: NetworkImage(profile.bannerImage!),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
-                      border: (profile.bannerImage != null && profile.bannerImage!.isNotEmpty)
-                          ? Border(
-                              bottom: BorderSide(
-                                color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                                width: 1.5,
-                              ),
-                            )
-                          : null,
-                    ),
+                  // Top bar with settings icon
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, bottom: 12, right: 16),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1A1A1F),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                                width: 1,
                               ),
-                              child: SvgPicture.asset(
-                                'assets/setting_icon.svg',
-                                width: 24,
-                                height: 24,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
-                                ),
+                            ),
+                            child: SvgPicture.asset(
+                              'assets/setting_icon.svg',
+                              width: 22,
+                              height: 22,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
                               ),
                             ),
                           ),
@@ -129,55 +112,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
 
-                  // Profile Card (overlapping header)
+                  // Profile Card
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Transform.translate(
-                      offset: const Offset(0, -100),
-                      child: ProfileHeader(profile: profile),
+                    child: ProfileHeader(profile: profile),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Featured Artist Card
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: FeaturedArtistCard(profile: profileData),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // About Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: AboutSection(profile: profile),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Portfolio Section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: PortfolioSection(
+                      portfolioItems: profile.portfolioItems,
                     ),
                   ),
+                  const SizedBox(height: 24),
 
-                  // All remaining content moved up to eliminate gap
-                  Transform.translate(
-                    offset: const Offset(0, -84),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-
-                        // Featured Artist Card
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: FeaturedArtistCard(profile: profileData),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // About Section
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: AboutSection(profile: profile),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Portfolio Section
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: PortfolioSection(
-                            portfolioItems: profile.portfolioItems,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Action Buttons
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: ActionButtons(),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
+                  // Action Buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ActionButtons(),
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             );

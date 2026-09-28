@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
@@ -16,227 +18,340 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   bool activityStatus = true;
   bool searchEngineIndexing = true;
   String profileVisibilityOption = 'everyone';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final doc = await FirebaseFirestore.instance.collection('musicians').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (mounted) {
+          setState(() {
+            profileVisibility = data['profileVisibility'] is bool ? data['profileVisibility'] : true;
+            showEmail = data['showEmail'] is bool ? data['showEmail'] : true;
+            showPhone = data['showPhone'] is bool ? data['showPhone'] : true;
+            showLocation = data['showLocation'] is bool ? data['showLocation'] : true;
+            activityStatus = data['activityStatus'] is bool ? data['activityStatus'] : true;
+            searchEngineIndexing = data['searchEngineIndexing'] is bool ? data['searchEngineIndexing'] : true;
+            profileVisibilityOption = (data['profileVisibilityOption'] as String?) ?? 'everyone';
+            _isLoading = false;
+          });
+        }
+      } else {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data() != null) {
+          final uData = userDoc.data()!;
+          if (mounted) {
+            setState(() {
+              profileVisibility = uData['profileVisibility'] is bool ? uData['profileVisibility'] : true;
+              showEmail = uData['showEmail'] is bool ? uData['showEmail'] : true;
+              showPhone = uData['showPhone'] is bool ? uData['showPhone'] : true;
+              showLocation = uData['showLocation'] is bool ? uData['showLocation'] : true;
+              activityStatus = uData['activityStatus'] is bool ? uData['activityStatus'] : true;
+              searchEngineIndexing = uData['searchEngineIndexing'] is bool ? uData['searchEngineIndexing'] : true;
+              profileVisibilityOption = (uData['profileVisibilityOption'] as String?) ?? 'everyone';
+              _isLoading = false;
+            });
+          }
+        } else {
+          if (mounted) setState(() => _isLoading = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading privacy settings: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _updateSetting(String key, dynamic value) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final updateData = {key: value, 'updatedAt': FieldValue.serverTimestamp()};
+      await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set(
+        updateData,
+        SetOptions(merge: true),
+      );
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set(
+        updateData,
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('Error updating setting $key: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update $key: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                      width: 1.5,
-                    ),
-                  ),
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFA1F301),
                 ),
+              )
+            : SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Row(
+                    // Header
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.arrow_back, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text('Back', style: TextStyle(color: Colors.white)),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.arrow_back, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text('Back', style: TextStyle(color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Privacy Settings',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Control your privacy and visibility',
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 14,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Privacy Settings',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Control your privacy and visibility',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-                    // Your Privacy Matters Info Box
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFA1F301).withValues(alpha: 0.2),
-                        border: Border.all(
-                          color: const Color(0xFFA1F301).withValues(alpha: 0.5),
-                          width: 1.5,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: SvgPicture.asset(
-                              'assets/eye_icon.svg',
-                              fit: BoxFit.contain,
-                              colorFilter: const ColorFilter.mode(
-                                Color(0xFFA1F301),
-                                BlendMode.srcIn,
+                          const SizedBox(height: 24),
+                          // Your Privacy Matters Info Box
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFA1F301).withValues(alpha: 0.2),
+                              border: Border.all(
+                                color: const Color(0xFFA1F301).withValues(alpha: 0.5),
+                                width: 1.5,
                               ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                const Text(
-                                  'Your Privacy Matters',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: SvgPicture.asset(
+                                    'assets/eye_icon.svg',
+                                    fit: BoxFit.contain,
+                                    colorFilter: const ColorFilter.mode(
+                                      Color(0xFFA1F301),
+                                      BlendMode.srcIn,
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Control what information is visible to other users and how you appear on the platform.',
-                                  style: TextStyle(
-                                    color: Colors.grey[400],
-                                    fontSize: 12,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Your Privacy Matters',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Control what information is visible to other users and how you appear on the platform.',
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // Privacy Settings Items
-                    Column(
-                      children: [
-                        _buildToggleItemWithBorder(
-                          svgIcon: 'assets/profile_icon.svg',
-                          iconColor: const Color(0xFFA1F301),
-                          title: 'Profile Visibility',
-                          subtitle: 'Make your profile visible to all users',
-                          value: profileVisibility,
-                          onChanged: (v) => setState(() => profileVisibility = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildToggleItemWithBorder(
-                          svgIcon: 'assets/email_icon.svg',
-                          iconColor: const Color(0xFF06B6D4),
-                          title: 'Show Email Address',
-                          subtitle: 'Display your email on your public profile',
-                          value: showEmail,
-                          onChanged: (v) => setState(() => showEmail = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildToggleItemWithBorder(
-                          icon: Icons.phone_outlined,
-                          iconColor: const Color(0xFFEC4899),
-                          title: 'Show Phone Number',
-                          subtitle: 'Display your phone number on your public profile',
-                          value: showPhone,
-                          onChanged: (v) => setState(() => showPhone = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildToggleItemWithBorder(
-                          svgIcon: 'assets/location_pointer.svg',
-                          iconColor: const Color(0xFFA1F301),
-                          title: 'Show Location',
-                          subtitle: 'Display your city and state',
-                          value: showLocation,
-                          onChanged: (v) => setState(() => showLocation = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildToggleItemWithBorder(
-                          icon: Icons.visibility_outlined,
-                          iconColor: const Color(0xFF06B6D4),
-                          title: 'Activity Status',
-                          subtitle: 'Show when you\'re online and active',
-                          value: activityStatus,
-                          onChanged: (v) => setState(() => activityStatus = v),
-                        ),
-                        const SizedBox(height: 12),
-                        _buildToggleItemWithBorder(
-                          svgIcon: 'assets/users_icon.svg',
-                          iconColor: const Color(0xFFEC4899),
-                          title: 'Search Engine Indexing',
-                          subtitle: 'Allow search engines to index your profile',
-                          value: searchEngineIndexing,
-                          onChanged: (v) => setState(() => searchEngineIndexing = v),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    // Who Can See Your Profile
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Who Can See Your Profile',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          const SizedBox(height: 24),
+                          // Privacy Settings Items
+                          Column(
+                            children: [
+                              _buildToggleItemWithBorder(
+                                svgIcon: 'assets/profile_icon.svg',
+                                iconColor: const Color(0xFFA1F301),
+                                title: 'Profile Visibility',
+                                subtitle: 'Make your profile visible to all users',
+                                value: profileVisibility,
+                                onChanged: (v) {
+                                  setState(() => profileVisibility = v);
+                                  _updateSetting('profileVisibility', v);
+                                },
                               ),
+                              const SizedBox(height: 12),
+                              _buildToggleItemWithBorder(
+                                svgIcon: 'assets/email_icon.svg',
+                                iconColor: const Color(0xFF06B6D4),
+                                title: 'Show Email Address',
+                                subtitle: 'Display your email on your public profile',
+                                value: showEmail,
+                                onChanged: (v) {
+                                  setState(() => showEmail = v);
+                                  _updateSetting('showEmail', v);
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildToggleItemWithBorder(
+                                icon: Icons.phone_outlined,
+                                iconColor: const Color(0xFFEC4899),
+                                title: 'Show Phone Number',
+                                subtitle: 'Display your phone number on your public profile',
+                                value: showPhone,
+                                onChanged: (v) {
+                                  setState(() => showPhone = v);
+                                  _updateSetting('showPhone', v);
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildToggleItemWithBorder(
+                                svgIcon: 'assets/location_pointer.svg',
+                                iconColor: const Color(0xFFA1F301),
+                                title: 'Show Location',
+                                subtitle: 'Display your city and state',
+                                value: showLocation,
+                                onChanged: (v) {
+                                  setState(() => showLocation = v);
+                                  _updateSetting('showLocation', v);
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildToggleItemWithBorder(
+                                icon: Icons.visibility_outlined,
+                                iconColor: const Color(0xFF06B6D4),
+                                title: 'Activity Status',
+                                subtitle: 'Show when you\'re online and active',
+                                value: activityStatus,
+                                onChanged: (v) {
+                                  setState(() => activityStatus = v);
+                                  _updateSetting('activityStatus', v);
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildToggleItemWithBorder(
+                                svgIcon: 'assets/users_icon.svg',
+                                iconColor: const Color(0xFFEC4899),
+                                title: 'Search Engine Indexing',
+                                subtitle: 'Allow search engines to index your profile',
+                                value: searchEngineIndexing,
+                                onChanged: (v) {
+                                  setState(() => searchEngineIndexing = v);
+                                  _updateSetting('searchEngineIndexing', v);
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 32),
+                          // Who Can See Your Profile
+                          Container(
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                width: 1.5,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      'Who Can See Your Profile',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                _buildRadioItem(
+                                  title: 'Everyone',
+                                  value: 'everyone',
+                                  groupValue: profileVisibilityOption,
+                                  onChanged: (v) {
+                                    setState(() => profileVisibilityOption = v!);
+                                    _updateSetting('profileVisibilityOption', v);
+                                  },
+                                ),
+                                _buildRadioItem(
+                                  title: 'Only verified users',
+                                  value: 'verified',
+                                  groupValue: profileVisibilityOption,
+                                  onChanged: (v) {
+                                    setState(() => profileVisibilityOption = v!);
+                                    _updateSetting('profileVisibilityOption', v);
+                                  },
+                                ),
+                                _buildRadioItem(
+                                  title: 'Only my connections',
+                                  value: 'connections',
+                                  groupValue: profileVisibilityOption,
+                                  onChanged: (v) {
+                                    setState(() => profileVisibilityOption = v!);
+                                    _updateSetting('profileVisibilityOption', v);
+                                  },
+                                  isLast: true,
+                                ),
+                              ],
                             ),
                           ),
-                          _buildRadioItem(
-                            title: 'Everyone',
-                            value: 'everyone',
-                            groupValue: profileVisibilityOption,
-                            onChanged: (v) => setState(() => profileVisibilityOption = v!),
-                          ),
-                          _buildRadioItem(
-                            title: 'Only verified users',
-                            value: 'verified',
-                            groupValue: profileVisibilityOption,
-                            onChanged: (v) => setState(() => profileVisibilityOption = v!),
-                          ),
-                          _buildRadioItem(
-                            title: 'Only my connections',
-                            value: 'connections',
-                            groupValue: profileVisibilityOption,
-                            onChanged: (v) => setState(() => profileVisibilityOption = v!),
-                            isLast: true,
-                          ),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 32),
                     // Blocked Users
                     Container(

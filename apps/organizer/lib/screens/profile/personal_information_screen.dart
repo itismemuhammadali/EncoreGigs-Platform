@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
 import '../../constants.dart';
 import '../../widgets/country_code_picker.dart';
@@ -20,7 +21,10 @@ class _PersonalInformationScreenState
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _zipController = TextEditingController();
   final _bioController = TextEditingController();
   String? _profileImageUrl;
   File? _selectedImage;
@@ -60,8 +64,26 @@ class _PersonalInformationScreenState
             }
           }
 
-          _locationController.text = profile['location'] ?? profile['city'] ?? '';
-          _bioController.text = profile['bio'] ?? profile['description'] ?? '';
+          _addressController.text = profile['address'] ?? '';
+          _cityController.text = profile['city'] ?? profile['primaryCity'] ?? '';
+          _stateController.text = profile['state'] ?? profile['primaryState'] ?? '';
+          _zipController.text = profile['zipCode'] ?? profile['zip'] ?? profile['primaryZip'] ?? '';
+
+          // Fallback if city/state is empty but legacy location exists
+          if (_cityController.text.isEmpty && profile['location'] != null) {
+            final loc = profile['location'].toString();
+            if (loc.contains(',')) {
+              final parts = loc.split(',');
+              _cityController.text = parts[0].trim();
+              if (parts.length > 1) {
+                _stateController.text = parts[1].trim();
+              }
+            } else {
+              _cityController.text = loc.trim();
+            }
+          }
+
+          _bioController.text = profile['bio'] ?? profile['description'] ?? profile['about'] ?? '';
           _profileImageUrl = fixEmulatorUrl(profile['profileImageUrl']);
           _isLoading = false;
         });
@@ -90,16 +112,26 @@ class _PersonalInformationScreenState
               leading: const Icon(Icons.camera_alt, color: Color(0xFFA2F301)),
               title: const Text('Take a photo', style: TextStyle(color: Colors.white)),
               onTap: () async {
-                final XFile? photo = await picker.pickImage(source: ImageSource.camera);
-                if (mounted) Navigator.pop(context, photo);
+                final XFile? photo = await picker.pickImage(
+                  source: ImageSource.camera,
+                  maxWidth: 1200,
+                  maxHeight: 1200,
+                  imageQuality: 85,
+                );
+                if (context.mounted) Navigator.pop(context, photo);
               },
             ),
             ListTile(
               leading: const Icon(Icons.photo_library, color: Color(0xFFA2F301)),
               title: const Text('Choose from gallery', style: TextStyle(color: Colors.white)),
               onTap: () async {
-                final XFile? galleryImage = await picker.pickImage(source: ImageSource.gallery);
-                if (mounted) Navigator.pop(context, galleryImage);
+                final XFile? galleryImage = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  maxWidth: 1200,
+                  maxHeight: 1200,
+                  imageQuality: 85,
+                );
+                if (context.mounted) Navigator.pop(context, galleryImage);
               },
             ),
           ],
@@ -120,30 +152,75 @@ class _PersonalInformationScreenState
     final authService = Provider.of<AuthService>(context, listen: false);
     final user = authService.user;
     
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _isSaving = false);
+      return;
+    }
 
     String? imageUrl = _profileImageUrl;
     if (_selectedImage != null) {
+      final uploadPath = 'profile_photos/${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
       final uploadedUrl = await authService.uploadImage(
         _selectedImage!,
-        'profile_images/${user.uid}.jpg',
+        uploadPath,
       );
       if (uploadedUrl != null) {
         imageUrl = uploadedUrl;
       }
     }
 
+    final street = _addressController.text.trim();
+    final city = _cityController.text.trim();
+    final state = _stateController.text.trim();
+    final zip = _zipController.text.trim();
+    final combinedLocation = [city, state].where((s) => s.isNotEmpty).join(', ');
+
+    // 1. Immediately persist to Firestore
+    try {
+      final Map<String, dynamic> updateData = {
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'contact': '${_selectedCountry.code} ${_phoneController.text.trim()}',
+        'address': street,
+        'city': city,
+        'state': state,
+        'zipCode': zip,
+        'location': combinedLocation.isNotEmpty ? combinedLocation : street,
+        'bio': _bioController.text.trim(),
+        'about': _bioController.text.trim(),
+      };
+      if (imageUrl != null) {
+        updateData['profileImageUrl'] = imageUrl;
+      }
+      await FirebaseFirestore.instance
+          .collection('organizers')
+          .doc(user.uid)
+          .set(updateData, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore direct save error: $e');
+    }
+
+    // 2. Persist via backend API
     final error = await authService.updateProfile(
       uid: user.uid,
-      name: _nameController.text,
-      email: _emailController.text,
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
       contact: '${_selectedCountry.code} ${_phoneController.text.trim()}',
-      location: _locationController.text,
-      bio: _bioController.text,
+      location: combinedLocation.isNotEmpty ? combinedLocation : street,
+      bio: _bioController.text.trim(),
+      address: street,
+      city: city,
+      state: state,
+      zipCode: zip,
       profileImageUrl: imageUrl,
     );
 
-    setState(() => _isSaving = false);
+    setState(() {
+      _isSaving = false;
+      if (imageUrl != null) {
+        _profileImageUrl = imageUrl;
+      }
+    });
 
     if (error == null) {
       if (mounted) {
@@ -166,7 +243,10 @@ class _PersonalInformationScreenState
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _locationController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _zipController.dispose();
     _bioController.dispose();
     super.dispose();
   }
@@ -312,19 +392,72 @@ class _PersonalInformationScreenState
                 ],
               ),
               const SizedBox(height: 20),
-              _buildLabel('Location'),
+              // Location fields
+              _buildLabel('Street Address'),
               const SizedBox(height: 8),
-              _buildField(_locationController, 'City, State'),
-              const SizedBox(height: 20),
-              _buildLabel('Bio'),
-              const SizedBox(height: 8),
+              _buildField(_addressController, 'e.g. 123 Main St'),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('City'),
+                        const SizedBox(height: 8),
+                        _buildField(_cityController, 'City'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('State'),
+                        const SizedBox(height: 8),
+                        _buildField(_stateController, 'State'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildLabel('Zip Code'),
+                        const SizedBox(height: 8),
+                        _buildField(_zipController, 'Zip Code',
+                            keyboardType: TextInputType.text),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // About (formerly Bio)
+              _buildLabel('About'),
+              const SizedBox(height: 6),
+              const Text(
+                'Tell entertainers a little about you, your organization, venue, or the types of events you host.',
+                style: TextStyle(
+                  color: Color(0xFF888888),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 10),
               TextField(
                 controller: _bioController,
                 maxLines: 4,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Tell us about yourself...',
-                  hintStyle: const TextStyle(color: Color(0xFF555555)),
+                  hintText: "Share anything you'd like entertainers to know about you or your events...",
+                  hintStyle: const TextStyle(color: Color(0xFF555555), fontSize: 14),
                   filled: true,
                   fillColor: const Color(0xFF1A1A1F),
                   border: OutlineInputBorder(

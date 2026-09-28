@@ -78,9 +78,19 @@ class Application {
           ? DateTime.tryParse(data['gigDate']) ??
               DateTime.now().add(const Duration(days: 7))
           : DateTime.now().add(const Duration(days: 7)),
-      pay: data['budget'] ?? 'TBD',
+      pay: (data['budget'] != null && data['budget'].toString().trim().isNotEmpty)
+          ? data['budget']
+          : (data['pay'] != null && data['pay'].toString().trim().isNotEmpty)
+              ? data['pay']
+              : 'TBD',
       message: data['coverMessage'] ?? '',
-      location: data['location'] ?? 'Not specified',
+      location: (data['location'] != null && data['location'].toString().trim().isNotEmpty)
+          ? data['location']
+          : (data['gigLocation'] != null && data['gigLocation'].toString().trim().isNotEmpty)
+              ? data['gigLocation']
+              : (data['venue'] != null && data['venue'].toString().trim().isNotEmpty)
+                  ? data['venue']
+                  : 'Not specified',
       coverLetter: data['coverMessage'] ?? '',
       proposedRate: data['proposedRate'] ?? 'TBD',
       attachments: List<String>.from(data['attachments'] ?? []),

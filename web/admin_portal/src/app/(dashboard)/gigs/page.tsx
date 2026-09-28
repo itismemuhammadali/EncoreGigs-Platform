@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Filter,
@@ -38,10 +39,16 @@ interface Gig {
 }
 
 export default function GigManagement() {
+  const searchParams = useSearchParams();
   const [gigs, setGigs] = useState<Gig[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "manual" | "scraped" | "flagged">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = searchParams.get("q") || searchParams.get("search");
+    if (q) setSearchQuery(q);
+  }, [searchParams]);
 
   // Modal & Toast States
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: "" });

@@ -75,18 +75,7 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => PostGigScreen(
-                        gigToEdit: GigModel(
-                          gigId: '',
-                          title: '',
-                          description: '',
-                          requirements: [],
-                          genres: [],
-                          date: dateStr,
-                          time: '',
-                          budget: '',
-                          location: '',
-                          organizerId: '',
-                        ),
+                        initialDate: dateStr,
                       ),
                     ),
                   );
@@ -150,18 +139,29 @@ class _OrganizerCalendarScreenState extends State<OrganizerCalendarScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFA2F301)),
             onPressed: () async {
               final nav = Navigator.of(context);
-              final newEvent = CalendarEventModel(
-                id: '',
-                userId: userId,
-                userType: 'organizer',
-                source: status == 'UNAVAILABLE' ? 'unavailable_block' : 'outside_gig',
-                title: titleController.text.trim(),
-                startTime: DateTime(date.year, date.month, date.day, 19, 0),
-                endTime: DateTime(date.year, date.month, date.day, 22, 0),
-                status: status,
-              );
-              await _calendarService.createCalendarEvent(newEvent);
-              nav.pop();
+              try {
+                final newEvent = CalendarEventModel(
+                  id: '',
+                  userId: userId,
+                  userType: 'organizer',
+                  source: status == 'UNAVAILABLE' ? 'unavailable_block' : 'outside_gig',
+                  title: titleController.text.trim().isNotEmpty 
+                      ? titleController.text.trim() 
+                      : (status == 'UNAVAILABLE' ? 'Venue Unavailable' : 'Private Booking'),
+                  startTime: DateTime(date.year, date.month, date.day, 19, 0),
+                  endTime: DateTime(date.year, date.month, date.day, 22, 0),
+                  status: status,
+                );
+                await _calendarService.createCalendarEvent(newEvent);
+                nav.pop();
+              } catch (e) {
+                nav.pop();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to save event: $e')),
+                  );
+                }
+              }
             },
             child: const Text('Save', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
           ),

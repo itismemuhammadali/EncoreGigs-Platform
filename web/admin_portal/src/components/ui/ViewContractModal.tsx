@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { X, Download, FileText } from "lucide-react";
 
 interface ViewContractModalProps {
@@ -50,11 +51,21 @@ export function ViewContractModal({ isOpen, onClose, contract, onDownload }: Vie
         <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-6">
           <div className="bg-[#333333]/30 border border-[#2A2A2A] rounded-[8px] p-8 flex flex-col items-center">
             {/* Document Header */}
-            <div className="text-center mb-10">
-              <h3 className="text-white text-[18px] font-semibold leading-[28px] mb-2 uppercase tracking-wide">
-                GIG SERVICE AGREEMENT
+            <div className="text-center mb-8 flex flex-col items-center">
+              <Image 
+                src="/logo.png" 
+                alt="OnlyGigz Logo" 
+                width={90} 
+                height={57} 
+                className="h-10 w-auto object-contain mb-3"
+              />
+              <h3 className="text-white text-[18px] font-semibold leading-[28px] mb-1 uppercase tracking-wide">
+                ONLYGIGZ DIGITAL PERFORMANCE AGREEMENT
               </h3>
-              <p className="text-[#999999] text-[14px] leading-[20px]">Contract ID: {contract.id}</p>
+              <p className="text-[#999999] text-[13px] leading-[18px] italic mb-1">
+                This agreement is auto-generated upon booking confirmation on OnlyGigz.
+              </p>
+              <p className="text-[#A1F301] text-[13px] font-mono leading-[20px]">Contract ID: {contract.id}</p>
             </div>
 
             {/* Document Details Grid */}

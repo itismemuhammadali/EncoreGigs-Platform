@@ -129,7 +129,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
       decoration: BoxDecoration(
         color: const Color(0xFF0A0A0F),
         border: Border.all(
-          color: const Color(0xFFA1F301).withOpacity(0.3),
+          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(24),
@@ -146,7 +146,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFFA1F301).withOpacity(0.3),
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.3),
                     width: 3,
                   ),
                 ),
@@ -245,6 +245,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
           // Genre tags
           Wrap(
             spacing: 12,
+            runSpacing: 10,
             alignment: WrapAlignment.center,
             children: widget.profile.genres.map((genre) {
               Color borderColor = genre == 'Jazz'
@@ -256,7 +257,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: borderColor.withOpacity(0.15),
+                  color: borderColor.withValues(alpha: 0.15),
                   border: Border.all(
                     color: borderColor,
                     width: 1.5,
@@ -279,7 +280,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
           // Divider
           Container(
             height: 1,
-            color: const Color(0xFFA1F301).withOpacity(0.3),
+            color: const Color(0xFFA1F301).withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
 

@@ -60,6 +60,9 @@ class MessageModel {
   final String text;
   final DateTime timestamp;
   final String type;
+  final String? attachmentUrl;
+  final String? attachmentName;
+  final String? attachmentType;
 
   MessageModel({
     required this.id,
@@ -67,16 +70,23 @@ class MessageModel {
     required this.text,
     required this.timestamp,
     this.type = 'text',
+    this.attachmentUrl,
+    this.attachmentName,
+    this.attachmentType,
   });
 
   factory MessageModel.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final rawUrl = data['attachmentUrl'] as String?;
     return MessageModel(
       id: doc.id,
       senderId: data['senderId'] ?? '',
       text: data['text'] ?? '',
       timestamp: (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      type: data['type'] ?? 'text',
+      type: data['type'] ?? (rawUrl != null && rawUrl.isNotEmpty ? 'file' : 'text'),
+      attachmentUrl: rawUrl != null ? fixEmulatorUrl(rawUrl) : null,
+      attachmentName: data['attachmentName'] as String?,
+      attachmentType: data['attachmentType'] as String?,
     );
   }
 }

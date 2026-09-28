@@ -1,9 +1,18 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -31,11 +40,29 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            val keyPropsExist = keystorePropertiesFile.exists()
+            keyAlias = if (keyPropsExist) keystoreProperties["keyAlias"] as String? ?: "upload" else "upload"
+            keyPassword = if (keyPropsExist) keystoreProperties["keyPassword"] as String? ?: "onlygigz2026" else "onlygigz2026"
+            val storeFilePath = if (keyPropsExist && keystoreProperties.containsKey("storeFile")) {
+                keystoreProperties["storeFile"] as String
+            } else {
+                "upload-keystore.jks"
+            }
+            storeFile = file(storeFilePath)
+            storePassword = if (keyPropsExist) keystoreProperties["storePassword"] as String? ?: "onlygigz2026" else "onlygigz2026"
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            val releaseKeystore = file("upload-keystore.jks")
+            signingConfig = if (releaseKeystore.exists() || keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -56,4 +83,16 @@ tasks.whenTaskAdded {
             }
         }
     }
+    if (name == "bundleRelease") {
+        doLast {
+            val bundleDir = file("${buildDir}/outputs/bundle/release")
+            val oldFile = file("${bundleDir}/app-release.aab")
+            val newFile = file("${bundleDir}/OnlyGigz-Musician-v${android.defaultConfig.versionName}.aab")
+            if (oldFile.exists()) {
+                oldFile.copyTo(newFile, overwrite = true)
+                println("AAB copied to: ${newFile.name}")
+            }
+        }
+    }
 }
+

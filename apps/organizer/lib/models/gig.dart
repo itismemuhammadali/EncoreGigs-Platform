@@ -37,6 +37,10 @@ class GigModel {
   final String? applicationsText;
   final int applicationsCount;
   final bool isUrgent;
+  final String? address;
+  final String? city;
+  final String? state;
+  final String? zipCode;
 
   GigModel({
     required this.gigId,
@@ -57,6 +61,10 @@ class GigModel {
     this.applicationsText,
     this.applicationsCount = 0,
     this.isUrgent = false,
+    this.address,
+    this.city,
+    this.state,
+    this.zipCode,
   });
 
   factory GigModel.fromFirestore(Map<String, dynamic> snapshot, String id) {
@@ -86,6 +94,10 @@ class GigModel {
       applicationsText: snapshot['applicationsText'],
       applicationsCount: snapshot['applicationsCount'] ?? 0,
       isUrgent: snapshot['isUrgent'] ?? false,
+      address: snapshot['address'],
+      city: snapshot['city'],
+      state: snapshot['state'],
+      zipCode: snapshot['zipCode'],
     );
   }
 }

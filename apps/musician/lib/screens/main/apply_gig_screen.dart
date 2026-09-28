@@ -93,6 +93,8 @@ class _ApplyGigScreenState extends State<ApplyGigScreen> {
         organizerName: widget.gig.organizer ?? 'Event Organizer',
         gigDate: widget.gig.dateString,
         gigTime: widget.gig.time,
+        location: widget.gig.location,
+        budget: widget.gig.budget,
         duration: widget.gig.duration,
         proposedRate: _bidController.text.trim(),
         coverMessage: _coverMessageController.text.trim().isEmpty ? null : _coverMessageController.text.trim(),

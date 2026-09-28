@@ -1,7 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_config/shared_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 
 class DataPrivacyScreen extends StatefulWidget {
@@ -15,6 +16,24 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
   bool _isExporting = false;
   bool _isDeleting = false;
 
+  Widget _buildExportFeatureRow(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Color(0xFFA1F301), size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleExportData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -22,13 +41,16 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
     setState(() => _isExporting = true);
 
     try {
-      final apiService = ApiService();
-      final data = await apiService.exportData(user.uid);
+      final backendUrl = getBackendUrl();
+      final downloadUri = Uri.parse('$backendUrl/auth/download-data/${user.uid}');
+
+      await launchUrl(
+        downloadUri,
+        mode: LaunchMode.externalApplication,
+      );
 
       if (!mounted) return;
       setState(() => _isExporting = false);
-
-      final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
 
       showDialog(
         context: context,
@@ -37,40 +59,52 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
-              Icon(Icons.download_done, color: Color(0xFFA1F301)),
+              Icon(Icons.folder_zip_rounded, color: Color(0xFFA1F301)),
               SizedBox(width: 8),
-              Text('Data Export Ready', style: TextStyle(color: Colors.white, fontSize: 18)),
+              Text('Archive Download Started', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Your account data export was compiled successfully:',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Your complete account data archive (ZIP file) is downloading to your device. It includes:',
+                style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              _buildExportFeatureRow('Full Profile, Bio & Settings'),
+              _buildExportFeatureRow('All Portfolio Media Files (Audio, Images, Videos)'),
+              _buildExportFeatureRow('Applications, Gigs & Bookings History'),
+              _buildExportFeatureRow('Chat Messages & Payment Receipts'),
+              _buildExportFeatureRow('Readable Account Summary Report (HTML)'),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFA1F301).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3)),
                 ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFF2A2A2F)),
-                  ),
-                  child: Text(
-                    jsonStr.length > 800 ? '${jsonStr.substring(0, 800)}...\n\n[Export Payload Complete]' : jsonStr,
-                    style: const TextStyle(color: Color(0xFFA1F301), fontFamily: 'monospace', fontSize: 11),
-                  ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.download_done_rounded, color: Color(0xFFA1F301), size: 18),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Check your device Downloads folder for the complete archive.',
+                        style: TextStyle(color: Color(0xFFA1F301), fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close', style: TextStyle(color: Color(0xFFA1F301))),
+              child: const Text('OK', style: TextStyle(color: Color(0xFFA1F301), fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -79,7 +113,7 @@ class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
       if (mounted) {
         setState(() => _isExporting = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error exporting data: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Error downloading data: $e'), backgroundColor: Colors.red),
         );
       }
     }

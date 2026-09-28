@@ -1,7 +1,11 @@
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/chat_model.dart';
 import '../../services/chat_service.dart';
 
@@ -28,6 +32,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+  bool _isUploading = false;
 
   @override
   void dispose() {
@@ -43,7 +49,10 @@ class _ChatScreenState extends State<ChatScreen> {
     chatService.sendMessage(widget.chatId, _messageController.text.trim());
     
     _messageController.clear();
-    
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -53,6 +62,166 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open file link.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening link: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    final chatService = Provider.of<ChatService>(context, listen: false);
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+
+      setState(() => _isUploading = true);
+      final file = File(picked.path);
+      final fileName = picked.name.isNotEmpty ? picked.name : 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await chatService.sendAttachmentMessage(
+        chatId: widget.chatId,
+        file: file,
+        fileName: fileName,
+        attachmentType: 'image',
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload image: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _pickAndSendFile() async {
+    final chatService = Provider.of<ChatService>(context, listen: false);
+    try {
+      final result = await FilePicker.pickFiles();
+      if (result == null || result.files.isEmpty) return;
+      final picked = result.files.single;
+      if (picked.path == null) return;
+
+      setState(() => _isUploading = true);
+      final file = File(picked.path!);
+      final fileName = picked.name;
+      final isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(picked.extension?.toLowerCase());
+      await chatService.sendAttachmentMessage(
+        chatId: widget.chatId,
+        file: file,
+        fileName: fileName,
+        attachmentType: isImage ? 'image' : 'file',
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload file: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161622),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: Color(0xFF2A2A35), width: 1),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Color(0xFFA1F301), size: 22),
+                ),
+                title: const Text('Take Photo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendImage(ImageSource.camera);
+                },
+              ),
+              const Divider(color: Color(0xFF222230), height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Color(0xFFA1F301), size: 22),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendImage(ImageSource.gallery);
+                },
+              ),
+              const Divider(color: Color(0xFF222230), height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.attach_file_rounded, color: Color(0xFFA1F301), size: 22),
+                ),
+                title: const Text('Attach Document / File', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndSendFile();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -177,6 +346,30 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
 
+            // Upload progress indicator
+            if (_isUploading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: const Color(0xFF161622),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA1F301)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Uploading attachment...',
+                      style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+
             // Input bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -193,18 +386,25 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   // Attachment icon
                   GestureDetector(
-                    onTap: () {},
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _isUploading ? null : _showAttachmentOptions,
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      alignment: Alignment.center,
                       child: SvgPicture.asset(
                         'assets/attach_files_icon.svg',
+                        width: 22,
+                        height: 22,
                         fit: BoxFit.contain,
-                        colorFilter: const ColorFilter.mode(Color(0xFF999999), BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                          _isUploading ? Colors.grey[700]! : const Color(0xFFA1F301),
+                          BlendMode.srcIn,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 4),
                   // Text field
                   Expanded(
                     child: TextField(
@@ -258,6 +458,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMessage(MessageModel msg, bool isMe) {
+    final hasAttachment = msg.attachmentUrl != null && msg.attachmentUrl!.isNotEmpty;
+    final isImage = msg.type == 'image' || 
+        (msg.attachmentUrl != null && RegExp(r'\.(jpg|jpeg|png|webp|gif)(\?.*)?$', caseSensitive: false).hasMatch(msg.attachmentUrl!));
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
@@ -267,7 +471,10 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Container(
               constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: hasAttachment && isImage ? 6 : 16,
+                vertical: hasAttachment && isImage ? 6 : 12,
+              ),
               decoration: BoxDecoration(
                 color: isMe ? const Color(0xFFA1F301) : const Color(0xFF1A1A1F),
                 border: isMe ? null : Border.all(color: const Color(0xFF2A2A2F), width: 1),
@@ -278,14 +485,130 @@ class _ChatScreenState extends State<ChatScreen> {
                   bottomRight: Radius.circular(isMe ? 4 : 18),
                 ),
               ),
-              child: Text(
-                msg.text,
-                style: TextStyle(
-                  color: isMe ? Colors.black : Colors.white,
-                  fontSize: 14,
-                  height: 1.4,
-                  fontWeight: isMe ? FontWeight.w500 : FontWeight.w400,
-                ),
+              child: Column(
+                crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                children: [
+                  if (hasAttachment) ...[
+                    if (isImage)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: GestureDetector(
+                          onTap: () => _openUrl(msg.attachmentUrl!),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.network(
+                                msg.attachmentUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: 180,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    height: 180,
+                                    color: Colors.black26,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA1F301)),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  height: 120,
+                                  color: Colors.black26,
+                                  child: const Center(
+                                    child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 8,
+                                bottom: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Icon(Icons.open_in_new, color: Colors.white, size: 14),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      GestureDetector(
+                        onTap: () => _openUrl(msg.attachmentUrl!),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isMe ? Colors.black.withValues(alpha: 0.12) : const Color(0xFF252530),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.insert_drive_file_rounded,
+                                color: isMe ? Colors.black : const Color(0xFFA1F301),
+                                size: 28,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      msg.attachmentName ?? 'Document',
+                                      style: TextStyle(
+                                        color: isMe ? Colors.black : Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Tap to view / download',
+                                      style: TextStyle(
+                                        color: isMe ? Colors.black87 : const Color(0xFFA1F301),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                  if (msg.text.isNotEmpty &&
+                      !msg.text.startsWith('📷 Image attachment') &&
+                      !msg.text.startsWith('📎 ')) ...[
+                    if (hasAttachment) const SizedBox(height: 8),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: hasAttachment && isImage ? 8 : 0,
+                        vertical: hasAttachment && isImage ? 4 : 0,
+                      ),
+                      child: Text(
+                        msg.text,
+                        style: TextStyle(
+                          color: isMe ? Colors.black : Colors.white,
+                          fontSize: 14,
+                          height: 1.4,
+                          fontWeight: isMe ? FontWeight.w500 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 4),

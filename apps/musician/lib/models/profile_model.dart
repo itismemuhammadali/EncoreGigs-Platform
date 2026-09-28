@@ -109,7 +109,11 @@ class Profile {
       profession: instruments.isNotEmpty ? instruments.join(', ') : 'Musician',
       bio: data['bio'] ?? '',
       email: data['email'] ?? '',
-      contact: data['contact'] ?? '',
+      contact: (data['phoneNumber'] != null && data['phoneNumber'].toString().trim().isNotEmpty)
+          ? data['phoneNumber'].toString().trim()
+          : ((data['phone'] != null && data['phone'].toString().trim().isNotEmpty)
+              ? data['phone'].toString().trim()
+              : (data['contact']?.toString().trim() ?? '')),
       avgRating: (data['averageRating'] ?? 0.0).toDouble(),
       gigsCompleted: data['gigsCompleted'] ?? 0,
       responseRate: (data['responseRate'] ?? 100.0).toDouble(),

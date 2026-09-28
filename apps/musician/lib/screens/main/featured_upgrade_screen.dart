@@ -3,6 +3,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/iap_service.dart';
 import 'featured_success_screen.dart';
+import 'terms_of_service_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class FeaturedUpgradeScreen extends StatefulWidget {
   const FeaturedUpgradeScreen({super.key});
@@ -16,9 +18,9 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
   bool _isLoading = false;
 
   final List<Map<String, dynamic>> _plans = [
-    {'duration': '24 Hours', 'price': '\$19.99', 'amount': 19.99, 'badge': null},
-    {'duration': '7 Days', 'price': '\$49.99', 'amount': 49.99, 'badge': 'Most Popular', 'save': 'Save 30%'},
-    {'duration': '30 Days', 'price': '\$149.99', 'amount': 149.99, 'badge': null, 'save': 'Save 50%'},
+    {'duration': '24 Hours', 'price': '\$4.99', 'amount': 4.99, 'badge': null},
+    {'duration': '7 Days', 'price': '\$14.99', 'amount': 14.99, 'badge': 'Most Popular', 'save': 'Save 57%'},
+    {'duration': '30 Days', 'price': '\$39.99', 'amount': 39.99, 'badge': 'Best Value', 'save': 'Save 73%'},
   ];
 
   @override
@@ -86,6 +88,29 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
     }
   }
 
+  Future<void> _handleRestorePurchases() async {
+    setState(() => _isLoading = true);
+    try {
+      await IAPService().restorePurchases();
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checking for previous purchases... Any active featured status will be restored.'),
+            backgroundColor: Color(0xFF1E1E28),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Restore error: ${e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,15 +130,32 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
                   ),
                 ),
               ),
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: const Row(
-                  children: [
-                    Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                    SizedBox(width: 6),
-                    Text('Back', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
-                  ],
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                        SizedBox(width: 6),
+                        Text('Back', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _isLoading ? null : _handleRestorePurchases,
+                    child: const Text(
+                      'Restore',
+                      style: TextStyle(
+                        color: Color(0xFFA1F301),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -382,6 +424,48 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
                   const SizedBox(height: 8),
                   const Text('Cancel anytime. No long-term commitment required.',
                       style: TextStyle(color: Color(0xFF555555), fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const TermsOfServiceScreen(
+                              docType: PolicyDocType.termsAndConditions,
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Terms of Use',
+                          style: TextStyle(
+                            color: Color(0xFF888888),
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('•', style: TextStyle(color: Color(0xFF555555), fontSize: 11)),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PrivacyPolicyScreen(),
+                          ),
+                        ),
+                        child: const Text(
+                          'Privacy Policy',
+                          style: TextStyle(
+                            color: Color(0xFF888888),
+                            fontSize: 11,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

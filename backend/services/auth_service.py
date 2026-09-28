@@ -137,8 +137,16 @@ class AuthService:
             update_data["name"] = request.name
             update_data["fullName"] = request.name
         
-        if request.contact is not None: update_data["contact"] = request.contact
+        phone_to_update = request.phoneNumber or request.phone or request.contact
+        if phone_to_update is not None:
+            update_data["contact"] = phone_to_update
+            update_data["phone"] = phone_to_update
+            update_data["phoneNumber"] = phone_to_update
         if request.location is not None: update_data["location"] = request.location
+        if request.address is not None: update_data["address"] = request.address
+        if request.city is not None: update_data["city"] = request.city
+        if request.state is not None: update_data["state"] = request.state
+        if request.zipCode is not None: update_data["zipCode"] = request.zipCode
         if request.primaryCity is not None: update_data["primaryCity"] = request.primaryCity
         if request.primaryState is not None: update_data["primaryState"] = request.primaryState
         if request.primaryZip is not None: update_data["primaryZip"] = request.primaryZip
@@ -164,6 +172,10 @@ class AuthService:
         # admins just use common fields for now
 
         user_ref.update(update_data)
+        try:
+            db.collection("users").document(request.uid).set(update_data, merge=True)
+        except Exception:
+            pass
         SecurityService.create_log("Settings updated", request.email)
         return True
 

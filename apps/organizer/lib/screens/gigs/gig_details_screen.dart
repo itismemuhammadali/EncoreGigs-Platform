@@ -28,6 +28,20 @@ class GigDetailsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _duplicateGig(BuildContext context) async {
+    final duplicated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PostGigScreen(
+          gigToEdit: gig,
+          isDuplicate: true,
+        ),
+      ),
+    );
+    if (duplicated == true && context.mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
   Future<void> _deleteGig(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -106,6 +120,41 @@ class GigDetailsScreen extends StatelessWidget {
             style: TextStyle(
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600)),
         centerTitle: true,
+        actions: [
+          if (isOwner)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Center(
+                child: InkWell(
+                  onTap: () => _duplicateGig(context),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA2F301).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFA2F301), width: 1),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.copy_rounded, size: 14, color: Color(0xFFA2F301)),
+                        SizedBox(width: 4),
+                        Text(
+                          'Duplicate',
+                          style: TextStyle(
+                            color: Color(0xFFA2F301),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
         bottom: false,
@@ -420,8 +469,24 @@ class GigDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 
-                // 2nd: Edit Icon Button
+                // 2nd: Duplicate Icon Button
                 if (isOwner) ...[
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _duplicateGig(context),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFA2F301).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFA2F301)),
+                      ),
+                      child: const Icon(Icons.copy_rounded, color: Color(0xFFA2F301), size: 20),
+                    ),
+                  ),
+
+                  // 3rd: Edit Icon Button
                   const SizedBox(width: 10),
                   GestureDetector(
                     onTap: () => _editGig(context),

@@ -37,21 +37,127 @@
       text-decoration: none;
       letter-spacing: 1.5px;
     }
-    .nav-links {
+    .menu-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #F1F5F9;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
       display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
       align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
     }
-    .nav-links a {
-      color: #94A3B8;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      transition: color 0.2s ease;
-    }
-    .nav-links a:hover, .nav-links a.active {
+    .menu-btn:hover {
+      background: rgba(161, 243, 1, 0.12);
+      border-color: #A1F301;
       color: #A1F301;
+    }
+    .drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .drawer-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      right: -320px;
+      width: 300px;
+      height: 100vh;
+      background: #0E0E17;
+      border-left: 1px solid rgba(161, 243, 1, 0.2);
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.8);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px;
+      transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .nav-drawer.open {
+      right: 0;
+    }
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 20px;
+    }
+    .drawer-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+    .drawer-close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #A0A0B2;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .drawer-close-btn:hover {
+      color: #A1F301;
+      border-color: #A1F301;
+      background: rgba(161, 243, 1, 0.1);
+    }
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .drawer-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      color: #C0C0D0;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+    .drawer-link:hover {
+      color: #FFFFFF;
+      background: rgba(161, 243, 1, 0.08);
+      border-color: rgba(161, 243, 1, 0.25);
+      transform: translateX(4px);
+    }
+    .drawer-link.active {
+      color: #A1F301;
+      background: rgba(161, 243, 1, 0.12);
+      border-color: rgba(161, 243, 1, 0.4);
+    }
+    .drawer-link-icon {
+      font-size: 18px;
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .container {
       max-width: 920px;
@@ -86,6 +192,17 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       padding-bottom: 20px;
     }
+    .tagline-center {
+      text-align: center;
+      color: #A1F301;
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 4px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      letter-spacing: 0.3px;
+    }
     .doc-content h2 {
       font-size: 22px;
       font-weight: 700;
@@ -107,6 +224,10 @@
       color: #CBD5E1;
       line-height: 1.8;
       margin-bottom: 18px;
+    }
+    .doc-content strong {
+      color: #FFFFFF;
+      font-weight: 700;
     }
     .doc-content ul {
       margin-left: 24px;
@@ -158,38 +279,113 @@
 <body>
   <header>
     <a href="/legal.html" class="brand-logo">ONLYGIGZ</a>
-    <nav class="nav-links">
-      <a href="/legal.html">Legal Hub</a>
-      <a href="/terms-of-service.html" class="">Terms of Service</a>
-      <a href="/privacy-policy.html" class="">Privacy Policy</a>
-      <a href="/terms-and-conditions.html" class="">Terms & Conditions</a>
-      <a href="/pricing-and-fees.html" class="">Pricing & Fees</a>
-      <a href="/dmca-policy.html" class="">DMCA</a>
-      <a href="/about-us.html" class="active">About Us</a>
-    </nav>
+    <button id="menu-btn" class="menu-btn" aria-label="Open Navigation Menu">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="7" x2="20" y2="7"></line>
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="17" x2="20" y2="17"></line>
+      </svg>
+    </button>
   </header>
+
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+
+  <aside id="nav-drawer" class="nav-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Navigation</div>
+      <button id="drawer-close-btn" class="drawer-close-btn" aria-label="Close Navigation Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <nav class="drawer-nav">
+      <a href="/legal.html" class="drawer-link">
+        <span class="drawer-link-icon">⚖️</span>
+        <span class="drawer-link-text">Legal Hub</span>
+      </a>
+      <a href="/terms-of-service.html" class="drawer-link">
+        <span class="drawer-link-icon">📜</span>
+        <span class="drawer-link-text">Terms of Service</span>
+      </a>
+      <a href="/privacy-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">🛡️</span>
+        <span class="drawer-link-text">Privacy Policy</span>
+      </a>
+      <a href="/terms-and-conditions.html" class="drawer-link">
+        <span class="drawer-link-icon">📋</span>
+        <span class="drawer-link-text">Terms &amp; Conditions</span>
+      </a>
+      <a href="/pricing-and-fees.html" class="drawer-link">
+        <span class="drawer-link-icon">💳</span>
+        <span class="drawer-link-text">Pricing &amp; Fees</span>
+      </a>
+      <a href="/dmca-policy.html" class="drawer-link">
+        <span class="drawer-link-icon">©️</span>
+        <span class="drawer-link-text">DMCA Policy</span>
+      </a>
+      <a href="/about-us.html" class="drawer-link active">
+        <span class="drawer-link-icon">🎸</span>
+        <span class="drawer-link-text">About Us</span>
+      </a>
+    </nav>
+  </aside>
 
   <div class="container">
     <div class="doc-card">
       <h1>About OnlyGigz</h1>
-      <div class="subtitle">Our mission to empower musicians and simplify live entertainment booking</div>
+      <div class="tagline-center">Built to Get You Booked.</div>
       <div class="doc-content">
-        <div class="effective-box">Built to Get You Booked.</div>
-        <p>Built From the Booking Problems We Lived</p>
-        <p>OnlyGigz was created by a working musician and booking agent who were experiencing the challenges of live entertainment booking firsthand. Entertainers were coming to us looking for help finding gigs, getting in front of venues, and managing everything that happens behind the scenes. At the same time, venues and organizers were reaching out to us for help finding dependable talent and keeping their entertainment calendars filled. We found ourselves right in the middle of two groups of people who needed each other—but were still struggling to connect. The problem wasn't a lack of talent. And it wasn't a lack of opportunities. It was the way the two were finding each other and getting booked. That's where OnlyGigz began.</p>
-        <p>How It Started</p>
-        <p>It was late one night, driving home after a gig, when everything we had been seeing finally clicked. That’s when the idea for OnlyGigz was born. We started talking about everything we had been seeing: talented entertainers struggling to get in front of the right venues, venues struggling to find dependable entertainment, and both sides trying to manage the entire process through a mix of social media, texts, phone calls, calendars, payment apps, and handshake agreements. There had to be a better way. So we decided to build one. At first, we tried to build OnlyGigz ourselves. With the help of AI, a lot of determination, and probably too much confidence, we jumped in. We also went down plenty of rabbit holes. We spent money learning what worked, what didn't, and just how much would actually be required to build the platform we had envisioned. Eventually, we realized something important: if we were going to do this, we wanted to do it right. So we made the decision to go all in and hired a professional development team to turn the idea into a real platform. What followed were months of late nights, hundreds of decisions, countless revisions, testing, problem-solving, and more than a few conversations that started with: “Wait... what if we added this?” Little by little, the idea that started after a gig became something real. Today, OnlyGigz is in beta testing—and we're getting closer to putting it into the hands of the people we built it for.</p>
-        <p>What We're Building</p>
-        <p>OnlyGigz is an all-in-one platform designed to make live entertainment easier to discover, book, and manage. For entertainers, that means one place to build a professional profile, showcase their talent, manage availability, discover opportunities, apply for gigs, communicate with organizers, manage bookings, sign contracts, and get paid. For venues and organizers, it means a simpler way to post opportunities, find and review talent, communicate, hire, manage booking details, handle contracts and payments, and build relationships with entertainers they want to book again. Instead of piecing together Facebook posts, DMs, texts, spreadsheets, calendars, contracts, and payment apps, OnlyGigz brings the booking process together in one place. From finding the opportunity to finishing the gig.</p>
-        <p>Why OnlyGigz Is Different</p>
-        <p>We didn't build OnlyGigz by looking at the live entertainment industry from the outside. We built it from inside it. We know what it's like to finish a gig and immediately start thinking about where the next one is coming from. We know how much work happens before an entertainer ever steps on stage. And we know how frustrating it can be for a venue or organizer who simply needs dependable entertainment for an open date. Those experiences influence the decisions we make about OnlyGigz. The goal isn't to add technology just for the sake of technology. It's to remove the parts of booking that waste time, create confusion, cause missed opportunities, or make an already demanding industry harder than it needs to be.</p>
-        <p>Our Mission</p>
-        <p>To make booking live entertainment simpler, more trusted, and more professional while giving entertainers better tools to find opportunities, manage their bookings, and build sustainable careers. We want entertainers spending more time doing what they do best—not chasing messages, contracts, payments, and booking details. And we want venues and organizers to be able to find and book great entertainment without rebuilding the process every single time.</p>
-        <p>Our Vision</p>
-        <p>We believe live entertainment deserves better infrastructure. Our vision is to build a platform where discovering talent, finding opportunities, communicating, booking, contracting, paying, and building a professional reputation can all happen in one connected place. And our vision goes beyond simply helping someone book one gig. We want OnlyGigz to become a platform entertainers can use to build their businesses and careers—and a tool organizers can rely on to manage live entertainment confidently. As OnlyGigz grows, so will the tools we build around the people who make live entertainment possible.</p>
-        <p>Built for the People Who Make Live Entertainment Happen</p>
-        <p>OnlyGigz is for the musician playing every weekend. The band trying to fill its calendar. The DJ looking for the next event. The venue owner staring at an open Saturday night. The festival organizer building a lineup. The event planner trying to find the right entertainment for an important night. It's for the people behind the stage, behind the calendar, behind the messages, and behind every successful booking. Because live entertainment doesn't start when the music does. There's an entire business behind it. We're building OnlyGigz for that business.</p>
-        <p>FOOTER: ONLYGIGZ Built to Get You Booked.</p>
+
+        <h2>Built From the Booking Problems We Lived</h2>
+        <p><strong>OnlyGigz was created by a working musician and booking agent who were experiencing the challenges of live entertainment booking firsthand.</strong></p>
+        <p>Entertainers were coming to us looking for help finding gigs, getting in front of venues, and managing everything that happens behind the scenes. At the same time, venues and organizers were reaching out to us for help finding dependable talent and keeping their entertainment calendars filled.</p>
+        <p>We found ourselves right in the middle of two groups of people who needed each other—but were still struggling to connect.</p>
+        <p><strong>The problem wasn't a lack of talent. And it wasn't a lack of opportunities.</strong></p>
+        <p><strong>It was the way the two were finding each other and getting booked.</strong></p>
+        <p>That's where OnlyGigz began.</p>
+
+        <h2>How It Started</h2>
+        <p>It was late one night, driving home after a gig, when everything we had been seeing finally clicked. That’s when the idea for OnlyGigz was born.</p>
+        <p>We started talking about everything we had been seeing: talented entertainers struggling to get in front of the right venues, venues struggling to find dependable entertainment, and both sides trying to manage the entire process through a mix of social media, texts, phone calls, calendars, payment apps, and handshake agreements.</p>
+        <p><strong>There had to be a better way.</strong></p>
+        <p>So we decided to build one.</p>
+        <p>At first, we tried to build OnlyGigz ourselves. With the help of AI, a lot of determination, and probably too much confidence, we jumped in.</p>
+        <p>We also went down plenty of rabbit holes. We spent money learning what worked, what didn't, and just how much would actually be required to build the platform we had envisioned.</p>
+        <p>Eventually, we realized something important: if we were going to do this, we wanted to do it right. So we made the decision to go all in and hired a professional development team to turn the idea into a real platform.</p>
+        <p>What followed were months of late nights, hundreds of decisions, countless revisions, testing, problem-solving, and more than a few conversations that started with:<br>“Wait... what if we added this?”</p>
+        <p>Little by little, the idea that started after a gig became something real. Today, OnlyGigz is in beta testing—and we're getting closer to putting it into the hands of the people we built it for.</p>
+
+        <h2>What We're Building</h2>
+        <p>OnlyGigz is an all-in-one platform designed to make live entertainment easier to discover, book, and manage.</p>
+        <p>For entertainers, that means one place to build a professional profile, showcase their talent, manage availability, discover opportunities, apply for gigs, communicate with organizers, manage bookings, sign contracts, and get paid.</p>
+        <p>For venues and organizers, it means a simpler way to post opportunities, find and review talent, communicate, hire, manage booking details, handle contracts and payments, and build relationships with entertainers they want to book again.</p>
+        <p>Instead of piecing together Facebook posts, DMs, texts, spreadsheets, calendars, contracts, and payment apps, OnlyGigz brings the booking process together in one place.</p>
+        <p><strong>From finding the opportunity to finishing the gig.</strong></p>
+
+        <h2>Why OnlyGigz Is Different</h2>
+        <p>We didn't build OnlyGigz by looking at the live entertainment industry from the outside.</p>
+        <p><strong>We built it from inside it.</strong></p>
+        <p>We know what it's like to finish a gig and immediately start thinking about where the next one is coming from. We know how much work happens before an entertainer ever steps on stage. And we know how frustrating it can be for a venue or organizer who simply needs dependable entertainment for an open date.</p>
+        <p>Those experiences influence the decisions we make about OnlyGigz. The goal isn't to add technology just for the sake of technology. It's to remove the parts of booking that waste time, create confusion, cause missed opportunities, or make an already demanding industry harder than it needs to be.</p>
+
+        <h2>Our Mission</h2>
+        <p><strong>To make booking live entertainment simpler, more trusted, and more professional while giving entertainers better tools to find opportunities, manage their bookings, and build sustainable careers.</strong></p>
+        <p>We want entertainers spending more time doing what they do best—not chasing messages, contracts, payments, and booking details. And we want venues and organizers to be able to find and book great entertainment without rebuilding the process every single time.</p>
+
+        <h2>Our Vision</h2>
+        <p>We believe live entertainment deserves better infrastructure. Our vision is to build a platform where discovering talent, finding opportunities, communicating, booking, contracting, paying, and building a professional reputation can all happen in one connected place.</p>
+        <p>And our vision goes beyond simply helping someone book one gig. We want OnlyGigz to become a platform entertainers can use to build their businesses and careers—and a tool organizers can rely on to manage live entertainment confidently. As OnlyGigz grows, so will the tools we build around the people who make live entertainment possible.</p>
+
+        <h2>Built for the People Who Make Live Entertainment Happen</h2>
+        <p>OnlyGigz is for the musician playing every weekend. The band trying to fill its calendar. The DJ looking for the next event. The venue owner staring at an open Saturday night. The festival organizer building a lineup. The event planner trying to find the right entertainment for an important night.</p>
+        <p>It's for the people behind the stage, behind the calendar, behind the messages, and behind every successful booking.</p>
+        <p><strong>Because live entertainment doesn't start when the music does.</strong></p>
+        <p><strong>There's an entire business behind it.</strong></p>
+        <p><strong>We're building OnlyGigz for that business.</strong></p>
+
+        <p style="text-align: center; color: #94A3B8; font-weight: 700; font-size: 14px; margin-top: 48px; letter-spacing: 0.5px;">ONLYGIGZ &bull; Built to Get You Booked.</p>
       </div>
     </div>
   </div>
@@ -197,5 +393,33 @@
   <footer>
     <p>&copy; 2026 ONLYGIGZ, LLC. All rights reserved. &bull; <a href="/legal.html">Legal & Policy Center</a></p>
   </footer>
+
+  <script>
+    const menuBtn = document.getElementById('menu-btn');
+    const closeBtn = document.getElementById('drawer-close-btn');
+    const drawer = document.getElementById('nav-drawer');
+    const backdrop = document.getElementById('drawer-backdrop');
+
+    function openDrawer() {
+      drawer.classList.add('open');
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+    if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+    if (backdrop) backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && drawer.classList.contains('open')) {
+        closeDrawer();
+      }
+    });
+  </script>
 </body>
 </html>

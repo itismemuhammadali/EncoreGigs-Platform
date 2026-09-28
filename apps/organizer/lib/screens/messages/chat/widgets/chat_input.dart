@@ -4,11 +4,15 @@ import 'package:flutter_svg/flutter_svg.dart';
 class ChatInput extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final VoidCallback? onAttachment;
+  final bool isUploading;
 
   const ChatInput({
     super.key,
     required this.controller,
     required this.onSend,
+    this.onAttachment,
+    this.isUploading = false,
   });
 
   @override
@@ -22,11 +26,17 @@ class ChatInput extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SvgPicture.asset(
-            'assets/attach_files_icon.svg',
-            width: 20,
-            height: 20,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          GestureDetector(
+            onTap: isUploading ? null : onAttachment,
+            child: SvgPicture.asset(
+              'assets/attach_files_icon.svg',
+              width: 20,
+              height: 20,
+              colorFilter: ColorFilter.mode(
+                isUploading ? Colors.grey[700]! : const Color(0xFFA2F301),
+                BlendMode.srcIn,
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Filter,
@@ -40,11 +41,21 @@ interface Organizer {
 }
 
 export default function UserManagement() {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"musicians" | "organizers">("musicians");
   const [searchQuery, setSearchQuery] = useState("");
   const [musicians, setMusicians] = useState<Musician[]>([]);
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const q = searchParams.get("q") || searchParams.get("search");
+    if (q) setSearchQuery(q);
+    const tab = searchParams.get("tab");
+    if (tab === "organizers" || tab === "musicians") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Notifications & Modals
   const [notification, setNotification] = useState<{ show: boolean; message: string }>({ show: false, message: "" });

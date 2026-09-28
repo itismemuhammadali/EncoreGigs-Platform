@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-
+import '../constants.dart';
 
 class SupportMessage {
   final String id;
@@ -10,6 +12,10 @@ class SupportMessage {
   final String senderType; // 'user' or 'admin'
   final String senderName;
   final DateTime timestamp;
+  final String type; // 'text', 'image', 'file'
+  final String? attachmentUrl;
+  final String? attachmentName;
+  final String? attachmentType;
 
   SupportMessage({
     required this.id,
@@ -18,10 +24,15 @@ class SupportMessage {
     required this.senderType,
     required this.senderName,
     required this.timestamp,
+    this.type = 'text',
+    this.attachmentUrl,
+    this.attachmentName,
+    this.attachmentType,
   });
 
   factory SupportMessage.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final rawUrl = data['attachmentUrl'] as String?;
     return SupportMessage(
       id: doc.id,
       text: data['text'] ?? '',
@@ -31,6 +42,10 @@ class SupportMessage {
       timestamp: data['timestamp'] != null 
           ? (data['timestamp'] as Timestamp).toDate() 
           : DateTime.now(),
+      type: data['type'] ?? (rawUrl != null && rawUrl.isNotEmpty ? 'file' : 'text'),
+      attachmentUrl: rawUrl != null ? fixEmulatorUrl(rawUrl) : null,
+      attachmentName: data['attachmentName'] as String?,
+      attachmentType: data['attachmentType'] as String?,
     );
   }
 }
@@ -102,6 +117,72 @@ class SupportChatService extends ChangeNotifier {
       'senderId': uid,
       'senderType': 'user',
       'timestamp': FieldValue.serverTimestamp(),
+      'type': 'text',
+    });
+
+    await batch.commit();
+  }
+
+  Future<void> sendAttachmentMessage({
+    required File file,
+    required String fileName,
+    required String attachmentType, // 'image' or 'file'
+    required String userType,
+    String? userName,
+    bool isFeatured = false,
+  }) async {
+    final uid = currentUserId;
+    if (uid == null) return;
+
+    final storagePath = 'chat_attachments/support/$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+    final ref = FirebaseStorage.instance.ref().child(storagePath);
+
+    final metadata = SettableMetadata(
+      customMetadata: {'originalName': fileName},
+    );
+    final uploadTask = await ref.putFile(file, metadata);
+    final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+    String finalUserName = userName ?? 'User';
+    if (userName == null || userName.isEmpty) {
+      try {
+        final userDoc = await _firestore.collection('organizers').doc(uid).get();
+        if (userDoc.exists) {
+          finalUserName = userDoc.data()?['companyName'] ?? userDoc.data()?['fullName'] ?? 'Organizer';
+        }
+      } catch (e) {
+        debugPrint('Error fetching user name: $e');
+        finalUserName = 'Organizer';
+      }
+    }
+
+    final batch = _firestore.batch();
+    final chatRef = _firestore.collection('support_chats').doc(uid);
+
+    final displayText = attachmentType == 'image' ? '📷 Image attachment' : '📎 $fileName';
+
+    final chatData = {
+      'userId': uid,
+      'userType': userType,
+      'userName': finalUserName,
+      'isFeatured': isFeatured,
+      'lastMessage': displayText,
+      'lastMessageTime': FieldValue.serverTimestamp(),
+      'unreadByAdmin': true,
+    };
+
+    batch.set(chatRef, chatData, SetOptions(merge: true));
+
+    final msgRef = chatRef.collection('messages').doc();
+    batch.set(msgRef, {
+      'text': displayText,
+      'senderId': uid,
+      'senderType': 'user',
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': attachmentType,
+      'attachmentUrl': downloadUrl,
+      'attachmentName': fileName,
+      'attachmentType': attachmentType,
     });
 
     await batch.commit();

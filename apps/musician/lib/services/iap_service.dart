@@ -77,14 +77,14 @@ class IAPService {
 
     // Determine plan & price
     String plan = "7 Days";
-    double amount = 49.99;
+    double amount = 14.99;
 
     if (purchase.productID == 'featured_24h') {
       plan = "24 Hours";
-      amount = 19.99;
+      amount = 4.99;
     } else if (purchase.productID == 'featured_30d') {
       plan = "30 Days";
-      amount = 149.99;
+      amount = 39.99;
     }
 
     try {
@@ -98,6 +98,15 @@ class IAPService {
     } catch (e) {
       debugPrint("Failed to submit featured purchase to backend: $e");
       return false;
+    }
+  }
+
+  Future<void> restorePurchases() async {
+    try {
+      await _iap.restorePurchases();
+    } catch (e) {
+      debugPrint("Error restoring purchases: $e");
+      rethrow;
     }
   }
 
@@ -129,7 +138,9 @@ class IAPService {
 
     if (_isAvailable && _products.any((p) => p.id == productId)) {
       final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
-      return await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      // Returns false because completion will be handled via the purchaseStream callback
+      return false;
     } else {
       // Sandbox / Store pending fallback: Direct verified purchase API call
       try {

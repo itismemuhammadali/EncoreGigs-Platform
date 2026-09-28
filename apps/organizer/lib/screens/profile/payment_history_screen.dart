@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../services/api_service.dart';
+import '../../services/auth_service.dart';
 import 'payment_receipt_screen.dart';
 
 class PaymentModel {
@@ -31,50 +35,85 @@ class PaymentHistoryScreen extends StatefulWidget {
 
 class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   String _selectedFilter = 'All';
+  bool _isLoading = true;
+  List<PaymentModel> _allPayments = [];
+  double _totalPaid = 0.0;
 
-  static const List<PaymentModel> _allPayments = [
-    PaymentModel(
-      title: 'Payment to Sarah Johnson',
-      subtitle: 'Jazz Night - Friday',
-      amount: '-\$750.00',
-      date: 'Feb 1, 2026 • 10:30 AM',
-      imagePath: 'assets/recent_activity_image1.jpg',
-      status: 'completed',
-    ),
-    PaymentModel(
-      title: 'Escrow Hold - Emma Wilson',
-      subtitle: 'Corporate Event',
-      amount: '-\$900.00',
-      date: 'Feb 1, 2026 • 10:30 AM',
-      imagePath: 'assets/recent_activity_image3.jpg',
-      status: 'pending',
-    ),
-    PaymentModel(
-      title: 'Payment to Mike Davis',
-      subtitle: 'Wedding Reception',
-      amount: '-\$1,350.00',
-      date: 'Feb 1, 2026 • 10:30 AM',
-      imagePath: 'assets/recent_activity_image2.jpg',
-      status: 'completed',
-    ),
-    PaymentModel(
-      title: 'Refund from Alex Turner',
-      subtitle: 'Cancelled - Private Party',
-      amount: '+\$600.00',
-      date: 'Jan 15, 2026 • 11:20 AM',
-      imagePath: 'assets/message_image1.jpg',
-      status: 'completed',
-      isIncoming: true,
-    ),
-    PaymentModel(
-      title: 'Escrow Hold - Emma Wilson',
-      subtitle: 'Holiday Gala',
-      amount: '-\$1,100.00',
-      date: 'Jan 15, 2026 • 11:20 AM',
-      imagePath: 'assets/recent_activity_image3.jpg',
-      status: 'completed',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadPaymentHistory();
+  }
+
+  Future<void> _loadPaymentHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final organizerId = authService.currentUser?.uid;
+
+      if (organizerId != null) {
+        final transactions = await apiService.getTransactions(organizerId);
+        final List<PaymentModel> parsed = [];
+        double total = 0.0;
+
+        for (final map in transactions) {
+          final rawAmount = map['amount'];
+          double amt = 0.0;
+          if (rawAmount is num) {
+            amt = (rawAmount / 100.0).abs();
+          } else if (rawAmount is String) {
+            amt = (double.tryParse(rawAmount.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0);
+          }
+
+          final type = (map['type'] ?? '').toString().toLowerCase();
+          final status = (map['status'] ?? 'completed').toString().toLowerCase();
+          final isRefund = type.contains('refund') || (map['isIncoming'] == true);
+
+          if (!isRefund && (status == 'completed' || status == 'succeeded' || status == 'held')) {
+            total += amt;
+          }
+
+          String dateStr = 'Recent';
+          if (map['created'] != null && map['created'] is int) {
+            final dt = DateTime.fromMillisecondsSinceEpoch((map['created'] as int) * 1000);
+            dateStr = DateFormat('MMM d, yyyy • h:mm a').format(dt);
+          } else if (map['createdAt'] != null) {
+            try {
+              final dt = DateTime.parse(map['createdAt'].toString());
+              dateStr = DateFormat('MMM d, yyyy • h:mm a').format(dt);
+            } catch (_) {}
+          }
+
+          final title = map['description'] ?? map['title'] ?? (isRefund ? 'Refund' : 'Payment');
+          final subtitle = map['booking_id'] != null ? 'Booking #${map['booking_id']}' : (map['subtitle'] ?? 'Transaction');
+
+          parsed.add(PaymentModel(
+            title: title.toString(),
+            subtitle: subtitle.toString(),
+            amount: isRefund ? '+\$${amt.toStringAsFixed(2)}' : '-\$${amt.toStringAsFixed(2)}',
+            date: dateStr,
+            imagePath: 'assets/recent_activity_image1.jpg',
+            status: status == 'succeeded' ? 'completed' : status,
+            isIncoming: isRefund,
+          ));
+        }
+
+        if (mounted) {
+          setState(() {
+            _allPayments = parsed;
+            _totalPaid = total;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      debugPrint('Error loading payment history: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   List<PaymentModel> get _filtered {
     if (_selectedFilter == 'All') return _allPayments;
@@ -147,9 +186,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     style: TextStyle(color: Color(0xFF888888), fontSize: 13),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
-                    '\$3,200.00',
-                    style: TextStyle(
+                  Text(
+                    '\$${NumberFormat('#,##0.00').format(_totalPaid)}',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 36,
                       fontWeight: FontWeight.w700,
@@ -223,13 +262,64 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Payment list
+            // Payment list or empty state
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                itemCount: _filtered.length,
-                itemBuilder: (context, index) => _PaymentCard(payment: _filtered[index]),
-              ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFA2F301)),
+                    )
+                  : (_filtered.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 72,
+                                  height: 72,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A1A1F),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0x33A2F301)),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.receipt_long_outlined,
+                                      color: Color(0xFFA2F301),
+                                      size: 34,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                const Text(
+                                  'No Payment History',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Your completed payments, escrow holds, and refunds will appear here once you book musicians.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFF888888),
+                                    fontSize: 14,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          itemCount: _filtered.length,
+                          itemBuilder: (context, index) =>
+                              _PaymentCard(payment: _filtered[index]),
+                        )),
             ),
           ],
         ),

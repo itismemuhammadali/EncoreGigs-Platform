@@ -1,6 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/support_chat_service.dart';
 import 'package:intl/intl.dart';
 import '../../constants/emoji_constants.dart';
@@ -18,6 +19,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   final _messageController = TextEditingController();
   final _supportService = SupportChatService();
   bool _showEmojiPicker = false;
+  bool _isUploading = false;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -26,34 +28,150 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     super.dispose();
   }
 
-  void _insertEmoji(String emoji) {
-    final text = _messageController.text;
-    final selection = _messageController.selection;
-    final newText = text.replaceRange(selection.start, selection.end, emoji);
-    _messageController.text = newText;
-    _messageController.selection = TextSelection.fromPosition(
-      TextPosition(offset: selection.start + emoji.length),
-    );
-  }
-
   void _sendEmoji(String emoji) {
     _supportService.sendMessage(emoji, userType: 'musician');
     setState(() => _showEmojiPicker = false);
   }
 
-  void _pickFile() async {
-    final result = await FilePicker.pickFiles();
-    if (result != null) {
-      debugPrint('File picked: ${result.files.single.name}');
-      // TODO: Upload to Firebase Storage
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open file link.')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error opening link: $e')),
+        );
+      }
     }
   }
 
-  void _pickImage() async {
-    final image = await _imagePicker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      debugPrint('Image picked: ${image.path}');
-      // TODO: Upload to Firebase Storage
+  Future<void> _pickFile() async {
+    try {
+      final result = await FilePicker.pickFiles();
+      if (result == null || result.files.isEmpty) return;
+      final picked = result.files.single;
+      if (picked.path == null) return;
+
+      setState(() => _isUploading = true);
+      final file = File(picked.path!);
+      final fileName = picked.name;
+      final isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(picked.extension?.toLowerCase());
+
+      await _supportService.sendAttachmentMessage(
+        file: file,
+        fileName: fileName,
+        attachmentType: isImage ? 'image' : 'file',
+        userType: 'musician',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload file: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161622),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        side: BorderSide(color: Color(0xFF2A2A35), width: 1),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: Color(0xFFA1F301), size: 22),
+                ),
+                title: const Text('Take Photo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _uploadImageFromSource(ImageSource.camera);
+                },
+              ),
+              const Divider(color: Color(0xFF222230), height: 1),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: Color(0xFFA1F301), size: 22),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _uploadImageFromSource(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _uploadImageFromSource(ImageSource source) async {
+    try {
+      final picked = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+
+      setState(() => _isUploading = true);
+      final file = File(picked.path);
+      final fileName = picked.name.isNotEmpty ? picked.name : 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      await _supportService.sendAttachmentMessage(
+        file: file,
+        fileName: fileName,
+        attachmentType: 'image',
+        userType: 'musician',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload image: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -144,9 +262,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                   if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
                   }
-                  
                   final messages = snapshot.data ?? [];
-                  
                   if (messages.isEmpty) {
                     return const Center(child: Text('No messages yet. Start chatting!', style: TextStyle(color: Colors.grey)));
                   }
@@ -202,17 +318,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                                     children: [
                                       Text(message.senderName, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
                                       const SizedBox(height: 4),
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[900],
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          message.text,
-                                          style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
-                                        ),
-                                      ),
+                                      _buildMessageContent(message, false),
                                       const SizedBox(height: 4),
                                       Text(timeStr, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
                                     ],
@@ -228,24 +334,18 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFA1F301),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Text(
-                                          message.text,
-                                          style: const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w500, height: 1.4),
-                                        ),
-                                      ),
+                                      _buildMessageContent(message, true),
                                       const SizedBox(height: 4),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.end,
                                         children: [
                                           Text(timeStr, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
                                           const SizedBox(width: 4),
-                                          Icon(Icons.check, color: Colors.grey[600], size: 14),
+                                          Icon(
+                                            Icons.check,
+                                            color: Colors.grey[600],
+                                            size: 14,
+                                          ),
                                         ],
                                       ),
                                     ],
@@ -263,11 +363,29 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               ),
             ),
 
-            // Typing Indicator - REMOVED since we do real-time
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            //   child: Text('Sarah is typing...', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontStyle: FontStyle.italic)),
-            // ),
+            // Upload status indicator
+            if (_isUploading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: const Color(0xFF161622),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA1F301)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Uploading attachment...',
+                      style: TextStyle(color: Colors.grey[300], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
 
             // Input Area
             Container(
@@ -326,32 +444,46 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     children: [
                       // File Picker
                       GestureDetector(
-                        onTap: _pickFile,
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _isUploading ? null : _pickFile,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          alignment: Alignment.center,
                           child: SvgPicture.asset(
                             'assets/attach_files_icon.svg',
+                            width: 22,
+                            height: 22,
                             fit: BoxFit.contain,
-                            colorFilter: ColorFilter.mode(Colors.grey[600]!, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              _isUploading ? Colors.grey[700]! : const Color(0xFFA1F301),
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 4),
                       // Image Picker
                       GestureDetector(
-                        onTap: _pickImage,
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _isUploading ? null : _pickImage,
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          alignment: Alignment.center,
                           child: SvgPicture.asset(
                             'assets/image_icon.svg',
+                            width: 22,
+                            height: 22,
                             fit: BoxFit.contain,
-                            colorFilter: ColorFilter.mode(Colors.grey[600]!, BlendMode.srcIn),
+                            colorFilter: ColorFilter.mode(
+                              _isUploading ? Colors.grey[700]! : const Color(0xFFA1F301),
+                              BlendMode.srcIn,
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -408,11 +540,155 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                       ),
                     ],
                   ),
+
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildMessageContent(SupportMessage message, bool isUser) {
+    final hasAttachment = message.attachmentUrl != null && message.attachmentUrl!.isNotEmpty;
+    final isImage = message.type == 'image' ||
+        (message.attachmentUrl != null && RegExp(r'\.(jpg|jpeg|png|webp|gif)(\?.*)?$', caseSensitive: false).hasMatch(message.attachmentUrl!));
+
+    return Container(
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+      padding: EdgeInsets.symmetric(
+        horizontal: hasAttachment && isImage ? 6 : 12,
+        vertical: hasAttachment && isImage ? 6 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: isUser ? const Color(0xFFA1F301) : Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          if (hasAttachment) ...[
+            if (isImage)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: GestureDetector(
+                  onTap: () => _openUrl(message.attachmentUrl!),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.network(
+                        message.attachmentUrl!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: 180,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return Container(
+                            height: 180,
+                            color: Colors.black26,
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA1F301)),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, err, stack) => Container(
+                          height: 120,
+                          color: Colors.black26,
+                          child: const Center(
+                            child: Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(Icons.open_in_new, color: Colors.white, size: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () => _openUrl(message.attachmentUrl!),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isUser ? Colors.black.withValues(alpha: 0.12) : const Color(0xFF252530),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.insert_drive_file_rounded,
+                        color: isUser ? Colors.black : const Color(0xFFA1F301),
+                        size: 28,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              message.attachmentName ?? 'Document',
+                              style: TextStyle(
+                                color: isUser ? Colors.black : Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Tap to view / download',
+                              style: TextStyle(
+                                color: isUser ? Colors.black87 : const Color(0xFFA1F301),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+          if (message.text.isNotEmpty &&
+              !message.text.startsWith('📷 Image attachment') &&
+              !message.text.startsWith('📎 ')) ...[
+            if (hasAttachment) const SizedBox(height: 8),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: hasAttachment && isImage ? 6 : 0,
+                vertical: hasAttachment && isImage ? 2 : 0,
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: isUser ? Colors.black : Colors.white,
+                  fontSize: 14,
+                  fontWeight: isUser ? FontWeight.w500 : FontWeight.normal,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

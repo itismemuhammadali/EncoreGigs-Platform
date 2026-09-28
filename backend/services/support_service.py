@@ -1,45 +1,48 @@
-from firebase_admin import firestore
+from typing import Any, Dict, List, Optional
+from google.cloud.firestore import Query, SERVER_TIMESTAMP
 from datetime import datetime, timezone
 from backend.database import db
 
 class SupportService:
     @staticmethod
-    def get_chats():
-        chats_ref = db.collection('support_chats')
+    def get_chats() -> List[Dict[str, Any]]:
+        chats_ref: Any = db.collection('support_chats')
         # Order by last message time, descending
-        query = chats_ref.order_by('lastMessageTime', direction=firestore.Query.DESCENDING)
+        query = chats_ref.order_by('lastMessageTime', direction=Query.DESCENDING)
         docs = query.stream()
         
-        chats = []
+        chats: List[Dict[str, Any]] = []
         for doc in docs:
-            chat_data = doc.to_dict()
+            raw_data = doc.to_dict()
+            if raw_data is None:
+                continue
+            chat_data: Dict[str, Any] = dict(raw_data)
             chat_data['id'] = doc.id
             # Convert timestamp to ISO string if needed
-            if 'lastMessageTime' in chat_data and chat_data['lastMessageTime']:
+            if chat_data.get('lastMessageTime'):
                 try:
                     chat_data['lastMessageTime'] = chat_data['lastMessageTime'].isoformat()
-                except:
+                except Exception:
                     pass
             # Ensure userType is normalized (lowercase for consistency)
-            if 'userType' in chat_data:
+            if 'userType' in chat_data and isinstance(chat_data['userType'], str):
                 chat_data['userType'] = chat_data['userType'].lower()
             
             # Enrich userName: if it's generic, fetch real name from user profile
             user_id = chat_data.get('userId')
-            user_type = chat_data.get('userType', '').lower()
+            user_type = str(chat_data.get('userType', '')).lower()
             current_name = chat_data.get('userName', 'User')
             
             if user_id and (current_name in ['Musician', 'Organizer', 'User']):
                 try:
+                    user_doc: Any = None
                     if user_type == 'musician':
                         user_doc = db.collection('musicians').document(user_id).get()
                     elif user_type == 'organizer':
                         user_doc = db.collection('organizers').document(user_id).get()
-                    else:
-                        user_doc = None
                     
-                    if user_doc and user_doc.exists:
-                        user_data = user_doc.to_dict()
+                    if user_doc is not None and getattr(user_doc, 'exists', False):
+                        user_data: Dict[str, Any] = user_doc.to_dict() or {}
                         if user_type == 'musician':
                             real_name = user_data.get('fullName', 'Musician')
                         else:
@@ -51,22 +54,21 @@ class SupportService:
                             db.collection('support_chats').document(user_id).update({
                                 'userName': real_name
                             })
-                except Exception as e:
+                except Exception:
                     # Silently fail, keep original name
                     pass
             
             # Enrich with profile data for display
             if user_id:
                 try:
+                    user_doc: Any = None
                     if user_type == 'musician':
                         user_doc = db.collection('musicians').document(user_id).get()
                     elif user_type == 'organizer':
                         user_doc = db.collection('organizers').document(user_id).get()
-                    else:
-                        user_doc = None
                     
-                    if user_doc and user_doc.exists:
-                        user_data = user_doc.to_dict()
+                    if user_doc is not None and getattr(user_doc, 'exists', False):
+                        user_data = user_doc.to_dict() or {}
                         # Add profile data to chat response
                         chat_data['profileImageUrl'] = user_data.get('profileImageUrl')
                         chat_data['email'] = user_data.get('email')
@@ -85,7 +87,7 @@ class SupportService:
                             chat_data['type'] = user_data.get('type')
                             chat_data['address'] = user_data.get('address')
                             chat_data['website'] = user_data.get('website')
-                except Exception as e:
+                except Exception:
                     # Silently fail, proceed without profile enrichment
                     pass
             
@@ -93,20 +95,23 @@ class SupportService:
         return chats
 
     @staticmethod
-    def get_messages(user_id: str):
-        messages_ref = db.collection('support_chats').document(user_id).collection('messages')
+    def get_messages(user_id: str) -> List[Dict[str, Any]]:
+        messages_ref: Any = db.collection('support_chats').document(user_id).collection('messages')
         # Order by timestamp ascending to get chronological order
-        query = messages_ref.order_by('timestamp', direction=firestore.Query.ASCENDING)
+        query = messages_ref.order_by('timestamp', direction=Query.ASCENDING)
         docs = query.stream()
         
-        messages = []
+        messages: List[Dict[str, Any]] = []
         for doc in docs:
-            msg = doc.to_dict()
+            raw_msg = doc.to_dict()
+            if raw_msg is None:
+                continue
+            msg: Dict[str, Any] = dict(raw_msg)
             msg['id'] = doc.id
-            if 'timestamp' in msg and msg['timestamp']:
+            if msg.get('timestamp'):
                 try:
                     msg['timestamp'] = msg['timestamp'].isoformat()
-                except:
+                except Exception:
                     pass
             messages.append(msg)
             
@@ -118,13 +123,13 @@ class SupportService:
         return messages
 
     @staticmethod
-    def send_message(user_id: str, text: str, sender_id: str = "admin"):
-        chat_ref = db.collection('support_chats').document(user_id)
+    def send_message(user_id: str, text: str, sender_id: str = "admin") -> Dict[str, Any]:
+        chat_ref: Any = db.collection('support_chats').document(user_id)
         
         # Check if chat exists, if not, create a basic placeholder 
         # (Though usually users initiate the chat, so it should exist)
-        chat_doc = chat_ref.get()
-        if not chat_doc.exists:
+        chat_doc: Any = chat_ref.get()
+        if not getattr(chat_doc, 'exists', False):
             chat_ref.set({
                 'userId': user_id,
                 'userType': 'unknown',
@@ -133,23 +138,24 @@ class SupportService:
                 'unreadByAdmin': False,
                 'unreadByUser': True,
                 'lastMessage': text,
-                'lastMessageTime': firestore.SERVER_TIMESTAMP
+                'lastMessageTime': SERVER_TIMESTAMP
             })
         else:
             chat_ref.update({
                 'lastMessage': text,
-                'lastMessageTime': firestore.SERVER_TIMESTAMP,
+                'lastMessageTime': SERVER_TIMESTAMP,
                 'unreadByUser': True
             })
             
         # Add the message
-        msg_ref = chat_ref.collection('messages').document()
+        msg_ref: Any = chat_ref.collection('messages').document()
         message_data = {
             'text': text,
             'senderId': sender_id,
             'senderType': 'admin',
-            'timestamp': firestore.SERVER_TIMESTAMP
+            'timestamp': SERVER_TIMESTAMP
         }
         msg_ref.set(message_data)
         
         return {"success": True, "message_id": msg_ref.id}
+

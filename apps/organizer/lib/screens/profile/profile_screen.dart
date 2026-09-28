@@ -70,11 +70,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       iconPath: 'assets/profile_icon.svg',
                       title: 'Personal Information',
                       subtitle: 'Update your profile details',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const PersonalInformationScreen(),
-                        ),
-                      ),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PersonalInformationScreen(),
+                          ),
+                        );
+                        if (mounted) setState(() {});
+                      },
                     ),
                     ProfileMenuItem(
                       iconPath: 'assets/organization_icon.svg',
