@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { 
   User, 
   Shield, 
@@ -18,14 +19,17 @@ import {
   Plus,
   Trash2,
   X,
-  UserPlus
+  UserPlus,
+  Sliders,
+  ShieldAlert
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { apiRequest } from "@/lib/api";
+import { SystemConfigSection } from "@/components/settings/SystemConfigSection";
 
 // --- Types ---
-type SettingsTab = "profile" | "access" | "payment" | "scraper" | "notifications" | "security" | "security_2fa";
+type SettingsTab = "profile" | "access" | "payment" | "scraper" | "notifications" | "security" | "security_2fa" | "system_config";
 
 interface SecurityLog {
   id: string;
@@ -36,7 +40,10 @@ interface SecurityLog {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: "", type: "success" as "success" | "error" });
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -166,38 +173,49 @@ export default function SettingsPage() {
     }
   };
 
-  // Fetch initial data
+  // Fetch initial data & check authentication
   useEffect(() => {
+    const token = localStorage.getItem("admin_token");
     const userStr = localStorage.getItem("admin_user");
-    if (userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        const uid = userData.localId || userData.uid;
+    if (!token || !userStr) {
+      router.replace("/");
+      return;
+    }
 
-        // Immediately sync 2FA state from stored user data
-        if (userData.is2FAEnabled !== undefined || userData.is_2fa_enabled !== undefined) {
-          const isEnabled = userData.is2FAEnabled === true || userData.is_2fa_enabled === true;
-          const rawMethod = userData.twoFactorMethod || userData.two_factor_method || "email";
-          const normMethod = (rawMethod === "email_link" || rawMethod === "email") ? "email" : "sms";
-          setTwoFA({
-            is2FAEnabled: isEnabled,
-            method: normMethod as "email" | "sms",
-            phoneNumber: userData.phoneNumber || userData.phone_number || ""
-          });
-        }
+    try {
+      const userData = JSON.parse(userStr);
+      const role = (userData.role || "").toLowerCase().trim();
+      const superAdmin = role === "super_admin" || role === "superadmin";
+      setIsSuperAdmin(superAdmin);
+      setIsAuthLoading(false);
 
-        if (uid) {
-          fetchProfile(uid);
-        }
-      } catch (e) {
-        console.error("Failed to parse admin_user", e);
+      const uid = userData.localId || userData.uid;
+
+      // Immediately sync 2FA state from stored user data
+      if (userData.is2FAEnabled !== undefined || userData.is_2fa_enabled !== undefined) {
+        const isEnabled = userData.is2FAEnabled === true || userData.is_2fa_enabled === true;
+        const rawMethod = userData.twoFactorMethod || userData.two_factor_method || "email";
+        const normMethod = (rawMethod === "email_link" || rawMethod === "email") ? "email" : "sms";
+        setTwoFA({
+          is2FAEnabled: isEnabled,
+          method: normMethod as "email" | "sms",
+          phoneNumber: userData.phoneNumber || userData.phone_number || ""
+        });
       }
+
+      if (uid) {
+        fetchProfile(uid);
+      }
+    } catch (e) {
+      console.error("Failed to parse admin_user", e);
+      router.replace("/");
+      return;
     }
     fetchTeamMembers();
     fetchPaymentConfig();
     fetchScraperConfig();
     fetchNotificationPreferences();
-  }, []);
+  }, [router]);
 
   const fetchNotificationPreferences = async () => {
     try {
@@ -417,6 +435,11 @@ export default function SettingsPage() {
         role: data.role || "Admin",
         profileImageUrl: data.profileImageUrl || ""
       });
+
+      const roleStr = (data.role || "").toLowerCase().trim();
+      if (roleStr === "super_admin" || roleStr === "superadmin") {
+        setIsSuperAdmin(true);
+      }
 
       const isEnabled = data.is2FAEnabled === true || data.is_2fa_enabled === true;
       const rawMethod = data.twoFactorMethod || data.two_factor_method || "email";
@@ -649,7 +672,17 @@ export default function SettingsPage() {
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "security_2fa", label: "Security & 2FA", icon: Smartphone },
     { id: "security", label: "Security Logs", icon: Lock },
+    ...(isSuperAdmin ? [{ id: "system_config", label: "System Config", icon: Sliders }] : []),
   ];
+
+  if (isAuthLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-white">
+        <Loader2 className="w-8 h-8 text-[#A2F301] animate-spin" />
+        <p className="text-[#999999] text-[14px]">Verifying credentials...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full text-white font-inter pb-20">
@@ -1587,6 +1620,30 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* System Config Tab (Super Admin Only) */}
+          {activeTab === "system_config" && (
+            isSuperAdmin ? (
+              <SystemConfigSection />
+            ) : (
+              <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center max-w-md mx-auto">
+                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-500">
+                  <ShieldAlert className="w-8 h-8" />
+                </div>
+                <h2 className="text-white text-xl font-bold mb-2">Access Restricted</h2>
+                <p className="text-[#999999] text-sm leading-relaxed mb-6">
+                  System Configuration contains core server keys, scraper parameters, and external credentials. Access is strictly restricted to <b>Super Administrators</b>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("profile")}
+                  className="px-6 py-2.5 bg-[#A2F301] hover:bg-[#8ed601] text-black font-bold text-sm rounded-[8px] transition-all"
+                >
+                  Return to Profile
+                </button>
+              </div>
+            )
           )}
         </div>
       </div>
