@@ -274,7 +274,7 @@ class _GigDetailScreenState extends State<GigDetailScreen> {
 
                       // Organizer card
                       GestureDetector(
-                        onTap: _viewOrganizerProfile,
+                        onTap: gig.isScraped ? null : _viewOrganizerProfile,
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -383,7 +383,8 @@ class _GigDetailScreenState extends State<GigDetailScreen> {
                                           ],
                                         ),
                                       ),
-                                      const Icon(Icons.chevron_right, color: Color(0xFF666666)),
+                                      if (!gig.isScraped)
+                                        const Icon(Icons.chevron_right, color: Color(0xFF666666)),
                                     ],
                                   ),
                             ],

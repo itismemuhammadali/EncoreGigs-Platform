@@ -84,57 +84,98 @@ Thank you for using OnlyGigz!
         musician_name: str,
         musician_instrument: str = "Musician",
         cover_message: str = "",
-        app_download_url: str = "https://onlygigz.com/download"
-    ):
+        app_download_url: str = "https://onlygigz.com/download",
+        poster_name: str = "Valued User"
+    ) -> bool:
         """
-        Sends an email to external gig posters when a verified musician applies on OnlyGigz.
+        Sends a branded email to external gig posters when a verified musician applies on OnlyGigz.
         Includes applicant summary and a call-to-action link to download the OnlyGigz app.
         """
         if not poster_email:
             print("EmailService: No poster_email provided for external applicant notification.")
-            return
+            return False
 
-        config = EmailService._get_smtp_config()
-        subject = f"🎵 You have a new applicant for '{gig_title}' on OnlyGigz!"
+        subject = f"🎵 New Applicant for '{gig_title}' on OnlyGigz!"
+        logo_attachment = EmailService._get_logo_attachment()
+        attachments = [logo_attachment] if logo_attachment else []
         
-        body = f"""Hello,
+        html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #0A0A0F; margin: 0; padding: 0; }}
+    .container {{ max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,0.25); }}
+    .header {{ background-color: #0A0A0F; padding: 36px 24px; text-align: center; border-bottom: 2px solid #A1F301; }}
+    .header img {{ height: 48px; max-width: 180px; object-fit: contain; display: block; margin: 0 auto; }}
+    .header-tag {{ color: #A1F301; margin-top: 10px; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }}
+    .content {{ padding: 36px 28px; color: #374151; line-height: 1.6; font-size: 16px; }}
+    .content h2 {{ color: #111827; margin-top: 0; font-size: 22px; font-weight: 700; }}
+    .badge {{ display: inline-block; background-color: #fef3c7; color: #92400e; padding: 6px 14px; border-radius: 9999px; font-weight: 700; font-size: 13px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }}
+    .applicant-box {{ background-color: #f3f4f6; border-left: 4px solid #A1F301; padding: 16px; border-radius: 8px; margin: 20px 0; }}
+    .applicant-box p {{ margin: 8px 0; font-weight: 500; }}
+    .applicant-label {{ color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }}
+    .applicant-value {{ color: #111827; font-weight: 700; }}
+    .cta-button {{ display: inline-block; background-color: #A1F301; color: #0A0A0F; font-weight: 800; text-decoration: none; padding: 14px 32px; border-radius: 10px; margin-top: 24px; text-align: center; font-size: 16px; box-shadow: 0 4px 14px rgba(161, 243, 1, 0.4); }}
+    .footer {{ background-color: #f9fafb; padding: 24px; text-align: center; font-size: 13px; color: #9ca3af; border-top: 1px solid #e5e7eb; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="cid:onlygigz-logo" alt="OnlyGigz Logo" onerror="this.style.display='none'" />
+      <div class="header-tag">OnlyGigz Platform</div>
+    </div>
+    <div class="content">
+      <div class="badge">✓ New Applicant</div>
+      <h2>Hello {poster_name},</h2>
+      <p>Great news! A verified musician has applied for your gig on <strong>OnlyGigz</strong>.</p>
+      
+      <div class="applicant-box">
+        <p><span class="applicant-label">Gig Title</span><br/><span class="applicant-value">{gig_title}</span></p>
+        <p><span class="applicant-label">Musician Name</span><br/><span class="applicant-value">{musician_name}</span></p>
+        <p><span class="applicant-label">Instrument / Role</span><br/><span class="applicant-value">{musician_instrument}</span></p>
+        {f'<p><span class="applicant-label">Message from Applicant</span><br/><span class="applicant-value">"{cover_message}"</span></p>' if cover_message else ''}
+      </div>
+      
+      <p>To view their full profile, listen to demo tracks, and accept or decline this applicant, download the OnlyGigz app:</p>
+      <p style="text-align: center; margin: 32px 0;">
+        <a href="{app_download_url}" class="cta-button">Download OnlyGigz App</a>
+      </p>
+      <p style="margin-top: 32px; font-size: 14px; color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 16px;">
+        This is an automated notification from OnlyGigz. If you have any questions, feel free to reach out to our support team.
+      </p>
+    </div>
+    <div class="footer">
+      &copy; OnlyGigz. All rights reserved. &bull; <a href="https://onlygigz.app" style="color: #6b7280; text-decoration: none;">onlygigz.app</a>
+    </div>
+  </div>
+</body>
+</html>"""
 
-Great news! A verified musician has applied for your gig "{gig_title}" on OnlyGigz.
+        plain_text = f"""Hello {poster_name},
 
-Applicant Overview:
-- Name: {musician_name}
-- Instrument / Role: {musician_instrument}
-{f'- Message: "{cover_message}"' if cover_message else ''}
+Great news! A verified musician has applied for your gig on OnlyGigz.
 
-To view their full profile, listen to demo tracks, and accept or decline this applicant, download the OnlyGigz app here:
+Gig Title: {gig_title}
+Musician Name: {musician_name}
+Instrument / Role: {musician_instrument}
+{f'Message from Applicant: "{cover_message}"' if cover_message else ''}
+
+To view their full profile, listen to demo tracks, and accept or decline this applicant, download the OnlyGigz app:
 {app_download_url}
 
 Best regards,
-The OnlyGigz Team
-"""
+The OnlyGigz Team"""
 
-        msg = EmailMessage()
-        msg['Subject'] = subject
-        msg['From'] = config["from_email"]
-        msg['To'] = poster_email
-        msg.set_content(body)
-
-        if config["server"] and config["username"] and config["password"]:
-            try:
-                with smtplib.SMTP(config["server"], config["port"]) as server:
-                    server.starttls()
-                    server.login(config["username"], config["password"])
-                    server.send_message(msg)
-                print(f"EmailService: Sent applicant notification email to external poster ({poster_email})")
-            except Exception as e:
-                print(f"EmailService: Failed to send external applicant email - {e}")
-        else:
-            print("="*50)
-            print(f"EmailService: [SIMULATED EXTERNAL POSTER NOTIFICATION]")
-            print(f"To: {poster_email}")
-            print(f"Subject: {subject}")
-            print("Body:\n" + body)
-            print("="*50)
+        return EmailService.send_sendgrid_email(
+            to_email=poster_email,
+            subject=subject,
+            html_content=html_content,
+            plain_text_content=plain_text,
+            to_name=poster_name,
+            attachments=attachments
+        )
 
     @staticmethod
     def _get_sendgrid_config():

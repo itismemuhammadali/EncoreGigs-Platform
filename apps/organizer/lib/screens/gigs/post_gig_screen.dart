@@ -49,10 +49,10 @@ class _PostGigScreenState extends State<PostGigScreen> {
     'Bar',
     'Nightclub',
     'Wedding',
-    'Private Party (Anniversary)',
-    'Private Party (Birthday)',
-    'Private Party (Corporate)',
-    'Private Party (Holiday Benefit / Fundraiser)',
+    'Anniversary',
+    'Birthday',
+    'Corporate',
+    'Holiday Benefit / Fundraiser',
     'Restaurant',
     'Festival',
     'Other',
@@ -67,8 +67,8 @@ class _PostGigScreenState extends State<PostGigScreen> {
   ];
 
   static const List<String> _entertainerTypeOptions = <String>[
-    'Solo - Acoustic (Voice w/ Instrument)',
-    'Solo - Full Production (Backing Tracks)',
+    'Solo Acoustic (vocals w/instrument)',
+    'Solo Full Production (vocals w/instrument/backing tracks)',
     'Duo / Trio',
     'Full Band',
     'DJ',
@@ -398,7 +398,7 @@ class _PostGigScreenState extends State<PostGigScreen> {
     }
     if (_selectedEventType == null) missingFields.add('Event Type');
     if (_selectedVenueType == null) missingFields.add('Venue Type');
-    if (_selectedEntertainerType == null) missingFields.add('Type of Entertainer');
+    if (_selectedEntertainerType == null) missingFields.add('Performance Type');
     if (_selectedGenres.isEmpty) missingFields.add('Preferred Genre(s)');
     if (_dateController.text.trim().isEmpty) missingFields.add('Performance Date');
     if (_timeController.text.trim().isEmpty) missingFields.add('Performance Time');
@@ -807,8 +807,17 @@ class _PostGigScreenState extends State<PostGigScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Type of Entertainer
-              _buildLabel('Type of Entertainer'),
+              // Performance Type
+              _buildLabel('Performance Type'),
+              const SizedBox(height: 8),
+              Text(
+                'Select the setup you\'re looking for',
+                style: const TextStyle(
+                  color: Color(0xFF999999),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
               const SizedBox(height: 10),
               Column(
                 children: _entertainerTypeOptions.map((ent) {

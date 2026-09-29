@@ -59,7 +59,7 @@ class AccountDeniedScreen extends StatelessWidget {
                     _InfoRow(
                       title: "Need Assistance?",
                       description:
-                          "If you believe this decision was made in error or wish to submit additional details, please contact our support team at admin@onlygigz.app.",
+                          "If you believe this decision was made in error or wish to submit additional details, please contact our support team at support@onlygigz.app.",
                     ),
                   ],
                 ),

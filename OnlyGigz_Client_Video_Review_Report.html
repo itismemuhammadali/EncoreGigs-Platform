@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OnlyGigz — App Walkthrough Review & Technical Solutions Report</title>
+  <style>
+    :root {
+      --primary: #0f172a;
+      --secondary: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --accent: #a1f301;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #0a0a0f 0%, #1e1e24 100%);
+      padding: 44px 48px;
+      color: #ffffff;
+      border-bottom: 3px solid var(--accent);
+    }
+    .header .badge {
+      display: inline-block;
+      background: rgba(161, 243, 1, 0.15);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(161, 243, 1, 0.3);
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .header p {
+      color: #94a3b8;
+      font-size: 15px;
+      max-width: 800px;
+    }
+    .meta-bar {
+      background: #0f172a;
+      padding: 16px 48px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      border-bottom: 1px solid #1e293b;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+    .meta-item strong { color: #ffffff; margin-right: 4px; }
+    .meta-item a { color: #60a5fa; text-decoration: underline; }
+    .content { padding: 48px; }
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 36px 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    h2:first-of-type { margin-top: 0; }
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--secondary);
+      margin: 24px 0 8px 0;
+    }
+    p, ul { margin-bottom: 14px; font-size: 14.5px; color: var(--text-main); }
+    ul { padding-left: 24px; }
+    li { margin-bottom: 8px; }
+    a { color: var(--secondary); text-decoration: underline; }
+    .greeting {
+      background: #f8fafc;
+      border-left: 4px solid var(--secondary);
+      padding: 18px 22px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 15px;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 24px 0;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+    th {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 14px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:nth-child(even) { background-color: #f8fafc; }
+    tr:hover { background-color: #f1f5f9; }
+    .badge-fixed {
+      display: inline-block;
+      background: #dcfce7;
+      color: #166534;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+    }
+    .badge-design {
+      display: inline-block;
+      background: #f1f5f9;
+      color: #334155;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+    }
+    .badge-question {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+    }
+    .badge-info {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11.5px;
+    }
+    .card-fix {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--secondary);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+    .card-fix h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+    .question-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid var(--secondary);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+    .question-box h4 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e3a8a;
+      margin-bottom: 8px;
+    }
+    .question-box p {
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+    .footer {
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      padding: 24px 48px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="badge">ONLYGIGZ TECHNICAL REVIEW</div>
+      <h1>App Walkthrough Review & Technical Solutions Report</h1>
+      <p>Comprehensive review of your screen recording walkthrough, implemented fixes, approved Figma design alignments, and next steps.</p>
+    </div>
+    
+    <div class="meta-bar">
+      <div class="meta-item"><strong>Review Scope:</strong> Your complete 15-minute video walkthrough</div>
+      <div class="meta-item"><strong>Approved Figma:</strong> <a href="https://www.figma.com/design/z1okX3rdSixLuzmi0jzXsq/Jessica-Vasseur_OnlyGigs?node-id=0-1&p=f&t=AYHTZUecL89f15KG-0" target="_blank">Jessica-Vasseur_OnlyGigs</a></div>
+      <div class="meta-item"><strong>Applications:</strong> Musician & Organizer Apps (iOS & Android)</div>
+      <div class="meta-item"><strong>Status:</strong> 100% Addressed & Documented</div>
+    </div>
+
+    <div class="content">
+      <div class="greeting">
+        <strong>Hi Jessica,</strong><br>
+        We have thoroughly reviewed your 15-minute screen recording walkthrough of the OnlyGigz Musician app and cross-referenced every flow against our codebase and your approved <a href="https://www.figma.com/design/z1okX3rdSixLuzmi0jzXsq/Jessica-Vasseur_OnlyGigs?node-id=0-1&p=f&t=AYHTZUecL89f15KG-0" target="_blank">Figma Design Specifications</a>.
+        We have already completed direct code fixes for every software issue you encountered. To make your review as quick and easy as possible, we have placed the 5 quick questions we need your guidance on right below, followed by the details of all fixes and the complete chronological log.
+      </div>
+
+      <h2>1. Quick Questions for Your Guidance (5 Items)</h2>
+      <p>Please share your thoughts on these 5 brief items so we can finalize everything exactly to your preference before store submission:</p>
+
+      <div class="question-box">
+        <h4>Question 1: Official Support Email & Phone Number</h4>
+        <p>In your recording, you reviewed the Help Center screen where <code>support@onlygigz.com</code> and sample phone <code>+1 (555) 123-4567</code> are displayed.</p>
+        <p>• What official email address and phone number would you like us to display for user inquiries?<br>• If you prefer not to offer phone support, would you like us to remove the phone support card entirely?</p>
+      </div>
+
+      <div class="question-box">
+        <h4>Question 2: Help Center FAQ Questions & Answers</h4>
+        <p>In your walkthrough, you drew attention to the FAQ section under Help Center.</p>
+        <p>• Would you like us to populate specific question-and-answer pairs into expandable accordion cards?<br>• If yes, please send over your preferred Q&A list, or let us know if you would like this linked to an external web FAQ page.</p>
+      </div>
+
+      <div class="question-box">
+        <h4>Question 3: Help Center 'Quick Links' Action Targets</h4>
+        <p>The Quick Links area currently has visual cards for 'Video Tutorials', 'Community Forum', 'Report a Problem', and 'Feature Requests'.</p>
+        <p>• Would you like us to connect these to external destinations (e.g. your YouTube channel, feedback form), or would you prefer us to hide this section for initial launch?</p>
+      </div>
+
+      <div class="question-box">
+        <h4>Question 4: Edit Profile Location & Genre Preferences</h4>
+        <p>You highlighted Primary City, Secondary City, and the Music Genres section in Edit Profile.</p>
+        <p>• Primary/Secondary City were added based on your earlier Excel request for multi-market gig matching. Do you want any adjustments to the labels or layout?<br>• For Music Genres, do you prefer a predefined genre dropdown, multi-select checkboxes, tag limits, or the current tag creation flow?</p>
+      </div>
+
+      <div class="question-box">
+        <h4>Question 5: Sign In Screen Logo & Headline Copy</h4>
+        <p>At the end of your recording, you drew an arrow pointing to the logo, drew an 'X' over it, and drew a line through 'Welcome to OnlyGigz'.</p>
+        <p>• Logo: Would you like to provide an updated logo asset (e.g., a specific vector/transparent version), or adjust its sizing/positioning?<br>• Headline: Would you like different heading copy instead of 'Welcome to OnlyGigz', or would you prefer removing this headline entirely?</p>
+      </div>
+
+      <h2>2. Key Updates & Code Fixes We Have Implemented</h2>
+      <div class="card-fix">
+        <h4>2.1 Complete User Data Export Archive (ZIP Package with HTML Report & Portfolio Media)</h4>
+        <p><strong>Problem:</strong> In your video, tapping 'Request Data Export' under Settings -> Data & Privacy displayed raw monospace JSON text in an alert dialog.<br>
+        <strong>What We Built for You:</strong> We developed a full backend export engine (<code>GET /auth/download-data/{uid}</code>) that dynamically compiles an in-memory ZIP package containing a beautifully branded <code>account_summary.html</code> report, structured JSON data files, and downloads all your portfolio media files into a dedicated <code>/portfolio</code> folder in the ZIP. The file downloads directly into your device's Downloads folder.</p>
+      </div>
+
+      <div class="card-fix">
+        <h4>2.2 Live Support & Chat File Attachments + Android 13+ Media Permissions</h4>
+        <p><strong>Problem:</strong> In your test recording, tapping the paperclip icon in Live Support Chat did not open any file picker.<br>
+        <strong>What We Built for You:</strong> We connected interactive file and media pickers (PDFs, documents, camera photos, gallery images) hooked directly to Firebase Storage. In addition, we added the required modern Android 13+ (API 33+) media permissions (<code>READ_MEDIA_IMAGES</code>, <code>READ_MEDIA_VIDEO</code>, <code>READ_MEDIA_AUDIO</code>) to both apps' manifests so that image and file picking are never silently blocked on newer Android devices.</p>
+      </div>
+
+      <div class="card-fix">
+        <h4>2.3 Gig Application Location & Budget Persistence</h4>
+        <p><strong>Problem:</strong> In your recording, opening your submitted application in Application Details showed 'Location: Not specified' even though the original gig lead was in Austin, TX.<br>
+        <strong>What We Built for You:</strong> We updated the gig application workflow to carry the gig's exact location and proposed rate through to Firestore, and added a dynamic fallback lookup so that both existing and future submitted applications clearly display their venue and city.</p>
+      </div>
+
+      <div class="card-fix">
+        <h4>2.4 Musician Profile Visual Layout & Genre Pill Vertical Spacing</h4>
+        <p><strong>Problem:</strong> You noticed the cover banner text ('TO SEE THE BANDS...') peeking out above the profile card, and multiple rows of genre tags were touching each other vertically.<br>
+        <strong>What We Built for You:</strong> We cleaned up the header geometry by removing the overlapping banner translation, providing a sleek dark top bar with the settings gear and a self-contained profile card. We also added vertical breathing room (<code>runSpacing: 10</code>) between wrapped genre pills.</p>
+      </div>
+
+      <div class="card-fix">
+        <h4>2.5 Real-Time Dynamic Payment Methods Counter & Two-Factor Authentication Flow</h4>
+        <p><strong>Problem:</strong> Settings displayed a hardcoded '2 cards' label even when no payment methods were linked. In 2FA, SMS appeared pre-selected and 'Generate Backup Codes' was non-functional.<br>
+        <strong>What We Built for You:</strong> Settings now streams your live Firestore payment cards and Stripe Connect bank accounts dynamically ('0 cards added', '1 card added', etc.). In 2FA, selection starts neutral until you choose SMS or Email, non-functional backup codes were removed, and method selection is required before enabling.</p>
+      </div>
+
+      <div class="card-fix">
+        <h4>2.6 Help Center 'Start Live Chat' Instant Launcher</h4>
+        <p><strong>Problem:</strong> In your video, you circled the bottom gradient banner button 'Start Live Chat' in Help Center, which did not trigger an action.<br>
+        <strong>What We Built for You:</strong> We wired this button in both Musician and Organizer apps to instantly open <code>LiveChatScreen()</code>, allowing users to transition directly from help articles into live admin messaging.</p>
+      </div>
+
+      <h2>3. Master Chronological Walkthrough Log</h2>
+      <p>This table chronologically maps every timestamp from your screen recording to the exact actions taken and the solutions we have put in place:</p>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 12%;">Timestamp</th>
+              <th style="width: 22%;">Screen / Flow</th>
+              <th style="width: 33%;">Your Observation / Feedback</th>
+              <th style="width: 33%;">Status & Resolution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>00:40 - 01:50</strong></td>
+              <td>Application Details</td>
+              <td>You submitted a gig application and noted the details screen displayed 'Location: Not specified' instead of Austin, TX.</td>
+              <td><span class="badge-fixed">FIXED</span> Passed location and budget directly into application documents, and added dynamic fallback lookup in ApplicationDetailScreen so the venue location is always displayed.</td>
+            </tr>
+            <tr>
+              <td><strong>02:05 - 02:30</strong></td>
+              <td>Musician Chat Screen</td>
+              <td>You sent test messages ('hello') and tapped the paperclip attachment icon, but nothing opened.</td>
+              <td><span class="badge-fixed">FIXED</span> Replaced placeholder callback with an interactive modal sheet (Gallery photos, Camera, and Files), enlarged hit area to 40x40, and styled in active neon green.</td>
+            </tr>
+            <tr>
+              <td><strong>02:30 - 03:00</strong></td>
+              <td>Musician Profile</td>
+              <td>You noticed the cover banner image ('TO SEE THE BANDS...') awkwardly peeking out at the top above the profile card.</td>
+              <td><span class="badge-fixed">FIXED</span> Removed the background banner offset container and replaced it with a clean dark header bar with the settings gear and a self-contained profile card.</td>
+            </tr>
+            <tr>
+              <td><strong>03:00 - 03:30</strong></td>
+              <td>Profile Header Genres</td>
+              <td>You observed that multiple music genres were touching each other vertically without spacing.</td>
+              <td><span class="badge-fixed">FIXED</span> Added runSpacing: 10 to the genre Wrap widget matching horizontal spacing: 12 for clean vertical breathing room.</td>
+            </tr>
+            <tr>
+              <td><strong>03:30 - 04:15</strong></td>
+              <td>Featured Artist Upgrade</td>
+              <td>You tapped 'Upgrade Now' to test the featured artist subscription.</td>
+              <td><span class="badge-info">STORE CONFIG</span> Subscriptions are fully coded in the app; products must be registered and approved in Apple App Store Connect & Google Play Console before live billing completes.</td>
+            </tr>
+            <tr>
+              <td><strong>04:15 - 04:45</strong></td>
+              <td>Portfolio Section Cards</td>
+              <td>You questioned why there are 3 separate cards for Videos, Images, and Audios.</td>
+              <td><span class="badge-design">AS DESIGNED</span> Built directly to your <a href="https://www.figma.com/design/z1okX3rdSixLuzmi0jzXsq/Jessica-Vasseur_OnlyGigs?node-id=0-1&p=f&t=AYHTZUecL89f15KG-0" target="_blank">approved Figma design specifications</a>, giving musicians dedicated upload showcase cards for each of the 3 supported media formats.</td>
+            </tr>
+            <tr>
+              <td><strong>04:10 - 04:25</strong></td>
+              <td>Profile Action Buttons</td>
+              <td>You noted that tapping 'Documents' and 'Verification' at the bottom of the profile did not trigger any action.</td>
+              <td><span class="badge-design">AS DESIGNED</span> These buttons were created strictly to match your <a href="https://www.figma.com/design/z1okX3rdSixLuzmi0jzXsq/Jessica-Vasseur_OnlyGigs?node-id=0-1&p=f&t=AYHTZUecL89f15KG-0" target="_blank">approved Figma visual mockup</a>, where they existed as visual component placeholders without wireframes or functional specs. Ready to build as soon as requirements are defined.</td>
+            </tr>
+            <tr>
+              <td><strong>04:25 - 05:20</strong></td>
+              <td>Edit Profile Photos</td>
+              <td>You asked why the profile photo has a cropping modal, but the cover banner image does not have a cropper.</td>
+              <td><span class="badge-info">EXPLANATION</span> Profile photos use a 1:1 circular cropper. Banner covers adhere to standard 16:9 widescreen dimensions. We are happy to build a widescreen banner cropper if you would like.</td>
+            </tr>
+            <tr>
+              <td><strong>05:20 - 05:40</strong></td>
+              <td>Primary & Secondary City</td>
+              <td>You marked and questioned the Primary City and Secondary City fields.</td>
+              <td><span class="badge-question">QUESTION FOR YOU</span> These fields were added based on your prior Excel request for multi-region gig matching. We would love to know if you want any adjustments to these fields.</td>
+            </tr>
+            <tr>
+              <td><strong>05:55 - 06:25</strong></td>
+              <td>Edit Profile Genres</td>
+              <td>You drew a box around the Music Genres section in Edit Profile.</td>
+              <td><span class="badge-question">QUESTION FOR YOU</span> Please let us know if you prefer a predefined genre dropdown, multi-select checkboxes, tag limits, or the current tag creation flow.</td>
+            </tr>
+            <tr>
+              <td><strong>06:37 - 06:47</strong></td>
+              <td>Settings -> Change Password</td>
+              <td>You reviewed the in-app Change Password screen.</td>
+              <td><span class="badge-info">EXPLANATION</span> Allows active, logged-in users to update their password from within app settings without having to log out or request an external password reset email.</td>
+            </tr>
+            <tr>
+              <td><strong>06:30 - 06:40</strong></td>
+              <td>Settings -> Payment Methods</td>
+              <td>You noticed the subtitle showed hardcoded '2 cards' even when no cards or bank accounts were added.</td>
+              <td><span class="badge-fixed">FIXED</span> Replaced static text with a real-time stream dynamically showing '0 cards added', '1 card added', '$count cards added', or 'Bank account added'.</td>
+            </tr>
+            <tr>
+              <td><strong>06:55 - 07:15</strong></td>
+              <td>Wallet Overview & Tabs</td>
+              <td>You walked through the Wallet tabs with questions on payout and bank account setup.</td>
+              <td><span class="badge-design">REFERENCE VIDEO</span> We previously provided a dedicated step-by-step video walkthrough demonstrating bank account linking via Stripe Connect and the payout process.</td>
+            </tr>
+            <tr>
+              <td><strong>07:15 - 07:30</strong></td>
+              <td>Payment Methods Flow</td>
+              <td>You walked through payment methods and card entry.</td>
+              <td><span class="badge-design">REFERENCE VIDEO</span> Fully demonstrated in the step-by-step video walkthrough provided earlier. Please let us know if any specific step remains unclear.</td>
+            </tr>
+            <tr>
+              <td><strong>07:30 - 08:00</strong></td>
+              <td>Two-Factor Authentication</td>
+              <td>You observed SMS was pre-selected by default and 'Generate Backup Codes' did nothing.</td>
+              <td><span class="badge-fixed">FIXED</span> Method selection now starts neutral until you choose SMS or Email. We removed the non-functional backup codes card and enforced selection before enabling.</td>
+            </tr>
+            <tr>
+              <td><strong>08:00 - 08:30</strong></td>
+              <td>Privacy Settings Toggles</td>
+              <td>You asked what 'Show Phone', 'Activity Status', and 'Search Engine Indexing' do.</td>
+              <td><span class="badge-fixed">FIXED</span> All toggles now persist directly to Firestore. Your phone displays in Organizer application review; Activity renders a green badge; Indexing integrates with Organizer Talent Search.</td>
+            </tr>
+            <tr>
+              <td><strong>08:30 - 08:50</strong></td>
+              <td>Data & Privacy Export</td>
+              <td>You tapped 'Request Data Export' and saw a dialog dumping raw monospace JSON code on screen.</td>
+              <td><span class="badge-fixed">FIXED</span> Built a comprehensive ZIP export endpoint (GET /auth/download-data/{uid}) bundling styled account_summary.html, structured JSON data, and downloading all musician portfolio media into your device's Downloads folder.</td>
+            </tr>
+            <tr>
+              <td><strong>08:50 - 09:05</strong></td>
+              <td>My Contracts Screen</td>
+              <td>You opened My Contracts and saw 'No contracts found'.</td>
+              <td><span class="badge-design">AS EXPECTED</span> Normal empty state for accounts with no active signed contracts. Populates automatically as soon as an organizer hires the musician through a formal contract.</td>
+            </tr>
+            <tr>
+              <td><strong>09:05 - 09:30</strong></td>
+              <td>Support Live Chat</td>
+              <td>You sent live messages and tapped the attachment icon, but nothing opened.</td>
+              <td><span class="badge-fixed">FIXED</span> Replaced placeholder with FilePicker and ImagePicker connected to Firebase Storage. Added Android 13+ media permissions to AndroidManifest.xml.</td>
+            </tr>
+            <tr>
+              <td><strong>09:30 - 09:50</strong></td>
+              <td>Help Center Contact Info</td>
+              <td>You noticed support@onlygigz.com and sample phone number +1 (555) 123-4567.</td>
+              <td><span class="badge-info">OFFER</span> We would be delighted to update this with your official support email and phone, or remove the phone support card entirely if phone support will not be offered.</td>
+            </tr>
+            <tr>
+              <td><strong>09:50 - 10:15</strong></td>
+              <td>Help Center FAQ Section</td>
+              <td>You highlighted and drew attention to the FAQ questions list.</td>
+              <td><span class="badge-question">QUESTION FOR YOU</span> Please let us know if you have finalized Q&A pairs for us to populate with expandable cards, or if you prefer linking to an external web FAQ.</td>
+            </tr>
+            <tr>
+              <td><strong>10:15 - 10:35</strong></td>
+              <td>Help Center Quick Links</td>
+              <td>You noted that Quick Links ('Video Tutorials', 'Community Forum', etc.) did not perform actions.</td>
+              <td><span class="badge-info">OFFER</span> Figma mockup visual items. We can easily link these to external destinations (YouTube videos, web forms) or cleanly hide them.</td>
+            </tr>
+            <tr>
+              <td><strong>10:35 - 11:00</strong></td>
+              <td>Help Center 'Start Live Chat'</td>
+              <td>You circled the bottom banner 'Can't Find What You're Looking For? Start Live Chat' button.</td>
+              <td><span class="badge-fixed">FIXED</span> Empty callback wired to immediately launch LiveChatScreen() in both Musician and Organizer apps.</td>
+            </tr>
+            <tr>
+              <td><strong>11:00 - 11:30</strong></td>
+              <td>Dispute Management Screen</td>
+              <td>You tapped 'Create New Dispute', but could not submit or select a gig.</td>
+              <td><span class="badge-design">AS DESIGNED</span> Under OnlyGigz Terms, a dispute is a contractual escrow claim tied to a specific booked gig. Because the test account had 0 gigs, the dropdown showed 'No active gigs found' and disabled submission as intended.</td>
+            </tr>
+            <tr>
+              <td><strong>11:30 - 12:15</strong></td>
+              <td>Settings -> Legal Policies</td>
+              <td>You reviewed Terms of Service, Privacy Policy, DMCA, Pricing & Fees, About Us.</td>
+              <td><span class="badge-fixed">ALREADY COMPLETED</span> Re-extracted verbatim from your official legal documents, formatted with clean typography, deployed to public web pages, and linked with in-app readers and external browser buttons.</td>
+            </tr>
+            <tr>
+              <td><strong>12:15 - 12:45</strong></td>
+              <td>App Version Number</td>
+              <td>You questioned why in-app version shows 'Version 1.0.0' while the APK filename had a test build version.</td>
+              <td><span class="badge-info">EXPLANATION</span> The in-app version reflects the official store release baseline for App Store & Google Play review. APK filenames are labeled by our engineering team for test artifact tracking so testers don't mix up files.</td>
+            </tr>
+            <tr>
+              <td><strong>12:45 - END</strong></td>
+              <td>Sign In Screen Header</td>
+              <td>You logged out, drew an arrow to the app logo, drew an 'X' over it, and drew a line through 'Welcome to OnlyGigz'.</td>
+              <td><span class="badge-question">QUESTION FOR YOU</span> Please let us know if you would like to provide an updated logo asset or adjust sizing, and whether you prefer different headline copy or omitting it.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>4. Approved Figma Design & Platform Architecture Clarifications</h2>
+      <p>All screens and components referenced below were designed and built strictly according to your approved <a href="https://www.figma.com/design/z1okX3rdSixLuzmi0jzXsq/Jessica-Vasseur_OnlyGigs?node-id=0-1&p=f&t=AYHTZUecL89f15KG-0" target="_blank">Jessica-Vasseur_OnlyGigs Figma Project</a>:</p>
+      <ul>
+        <li><strong>Dedicated Portfolio Cards (Video, Image, Audio):</strong> Built directly to your approved Figma design specifications, giving musicians dedicated upload showcase cards for each of the 3 supported media formats.</li>
+        <li><strong>Profile Mockup Buttons ("Documents" & "Verification"):</strong> Created strictly to match your approved Figma visual mockups, where they were included purely as visual component placeholders without any wireframes or functional specifications. If you would like dedicated document storage or identity verification flows, we can build them as soon as you provide the requirements.</li>
+        <li><strong>Dispute Management Prerequisite Rules:</strong> Under Section 14 and Section 27 of the platform Terms, disputes are contractual escrow mediation claims filed against a specific booked gig contract. Because the test account had 0 gigs, the gig selector dropdown properly disabled submission.</li>
+        <li><strong>Mobile App Store Semantic Versioning:</strong> Adheres to official Apple App Store Connect and Google Play Console release standards.</li>
+      </ul>
+    </div>
+
+    <div class="footer">
+      OnlyGigz Technical Review &bull; Prepared for Jessica Vasseur &bull; September 2026
+    </div>
+  </div>
+</body>
+</html>

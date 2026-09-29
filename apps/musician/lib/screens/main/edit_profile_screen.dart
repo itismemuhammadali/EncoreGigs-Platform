@@ -38,6 +38,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController genreController = TextEditingController();
   final TextEditingController tagController = TextEditingController();
 
+  String? _selectedDropdownGenre;
+
+  static const List<String> _availableGenres = [
+    'Country',
+    'Rock',
+    'Pop',
+    'Hip Hop / R&B',
+    'Jazz',
+    'Blues',
+    'Classical',
+    'Electronic',
+    'Latin',
+    'Gospel',
+    'Cajun / Zydeco',
+    'Swamp Pop',
+    'Soul',
+    'Variety',
+    'Acoustic',
+    'Other',
+  ];
+
   List<String> selectedGenres = [];
   List<String> selectedTags = [];
   String? currentProfileImageUrl;
@@ -205,6 +226,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
+  void _addGenreFromDropdown() {
+    if (_selectedDropdownGenre == null || _selectedDropdownGenre!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a genre from the list'),
+          backgroundColor: Colors.amber,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    if (_selectedDropdownGenre == 'Other') {
+      final customGenre = genreController.text.trim();
+      if (customGenre.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter your custom genre'),
+            backgroundColor: Colors.amber,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+      if (!selectedGenres.contains(customGenre)) {
+        setState(() {
+          selectedGenres.add(customGenre);
+          genreController.clear();
+          _selectedDropdownGenre = null;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$customGenre is already added'),
+            backgroundColor: Colors.amber,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      return;
+    }
+
+    final genreToAdd = _selectedDropdownGenre!;
+    if (!selectedGenres.contains(genreToAdd)) {
+      setState(() {
+        selectedGenres.add(genreToAdd);
+        _selectedDropdownGenre = null;
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$genreToAdd is already added'),
+          backgroundColor: Colors.amber,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -279,8 +359,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ? '$pCity, $pState $pZip'.trim()
           : (locationController.text.isNotEmpty ? locationController.text.trim() : pCity);
 
-      final inputPhone = phoneController.text.trim();
+        final inputPhone = phoneController.text.trim();
       final fullPhone = inputPhone.isNotEmpty ? '${_selectedCountry.code} $inputPhone'.trim() : '';
+
+      // Include pending genre selection if user forgot to tap Add before Save
+      if (_selectedDropdownGenre != null && _selectedDropdownGenre != 'Other') {
+        if (!selectedGenres.contains(_selectedDropdownGenre!)) {
+          selectedGenres.add(_selectedDropdownGenre!);
+        }
+      } else if (_selectedDropdownGenre == 'Other') {
+        final custom = genreController.text.trim();
+        if (custom.isNotEmpty && !selectedGenres.contains(custom)) {
+          selectedGenres.add(custom);
+        }
+      }
 
       // Update via Backend
       await _apiService.updateProfile({
@@ -921,116 +1013,122 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 10,
-                            children: selectedGenres.map((genre) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFA1F301).withValues(alpha: 0.15),
-                                  border: Border.all(
-                                    color: const Color(0xFFA1F301).withValues(alpha: 0.6),
-                                    width: 1.5,
+                          if (selectedGenres.isNotEmpty) ...[
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: selectedGenres.map((genre) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
                                   ),
-                                  borderRadius: BorderRadius.circular(50),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      genre,
-                                      style: const TextStyle(
-                                        color: Color(0xFFA1F301),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFA1F301).withValues(alpha: 0.15),
+                                    border: Border.all(
+                                      color: const Color(0xFFA1F301).withValues(alpha: 0.6),
+                                      width: 1.5,
                                     ),
-                                    const SizedBox(width: 8),
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          selectedGenres.remove(genre);
-                                        });
-                                      },
-                                      child: const Text(
-                                        '×',
-                                        style: TextStyle(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        genre,
+                                        style: const TextStyle(
                                           color: Color(0xFFA1F301),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 16),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            selectedGenres.remove(genre);
+                                          });
+                                        },
+                                        child: const Text(
+                                          '×',
+                                          style: TextStyle(
+                                            color: Color(0xFFA1F301),
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           Row(
                             children: [
                               Expanded(
-                                child: TextField(
-                                  controller: genreController,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
+                                child: Container(
+                                  height: 48,
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0A0A0F),
+                                    borderRadius: BorderRadius.circular(50),
+                                    border: Border.all(
+                                      color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                      width: 1.5,
+                                    ),
                                   ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Add a genre',
-                                    hintStyle: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 14,
-                                    ),
-                                    filled: true,
-                                    fillColor: const Color(0xFF0A0A0F),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(50),
-                                      borderSide: BorderSide(
-                                        color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(50),
-                                      borderSide: BorderSide(
-                                        color: const Color(0xFFA1F301).withValues(alpha: 0.3),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(50),
-                                      borderSide: const BorderSide(
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedDropdownGenre,
+                                      isExpanded: true,
+                                      dropdownColor: const Color(0xFF16161D),
+                                      borderRadius: BorderRadius.circular(16),
+                                      icon: const Icon(
+                                        Icons.keyboard_arrow_down,
                                         color: Color(0xFFA1F301),
-                                        width: 1.5,
                                       ),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
+                                      hint: Text(
+                                        'Select a genre',
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      items: _availableGenres.map((genre) {
+                                        return DropdownMenuItem<String>(
+                                          value: genre,
+                                          child: Text(
+                                            genre,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _selectedDropdownGenre = val;
+                                          if (val != 'Other') {
+                                            genreController.clear();
+                                          }
+                                        });
+                                      },
                                     ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               GestureDetector(
-                                onTap: () {
-                                  if (genreController.text.isNotEmpty) {
-                                    setState(() {
-                                      selectedGenres.add(genreController.text);
-                                      genreController.clear();
-                                    });
-                                  }
-                                },
+                                onTap: _addGenreFromDropdown,
                                 child: Container(
+                                  height: 48,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
-                                    vertical: 12,
                                   ),
+                                  alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFA1F301),
                                     borderRadius: BorderRadius.circular(10),
@@ -1047,6 +1145,81 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                             ],
                           ),
+                          if (_selectedDropdownGenre == 'Other') ...[
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: genreController,
+                                    autofocus: true,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Enter custom genre',
+                                      hintStyle: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 14,
+                                      ),
+                                      filled: true,
+                                      fillColor: const Color(0xFF0A0A0F),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(50),
+                                        borderSide: BorderSide(
+                                          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(50),
+                                        borderSide: BorderSide(
+                                          color: const Color(0xFFA1F301).withValues(alpha: 0.3),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(50),
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFA1F301),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onSubmitted: (_) => _addGenreFromDropdown(),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                GestureDetector(
+                                  onTap: _addGenreFromDropdown,
+                                  child: Container(
+                                    height: 48,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFA1F301),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Text(
+                                      'Add',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

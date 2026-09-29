@@ -126,7 +126,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                       onTap: () async {
                         final Uri emailUri = Uri(
                           scheme: 'mailto',
-                          path: 'admin@onlygigz.app',
+                          path: 'support@onlygigz.app',
                           queryParameters: {'subject': 'OnlyGigz Support Request'},
                         );
                         try {
@@ -141,7 +141,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
                         svgIcon: 'assets/email_icon.svg',
                         iconColor: const Color(0xFF06B6D4),
                         title: 'Email Support',
-                        subtitle: 'admin@onlygigz.app',
+                        subtitle: 'support@onlygigz.app',
                         badge: 'Response in 24hrs',
                         badgeColor: const Color(0xFFA1F301),
                       ),

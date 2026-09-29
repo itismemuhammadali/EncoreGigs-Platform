@@ -3,7 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/api_service.dart';
 import '../../models/gig_model.dart';
+import '../../models/booking_model.dart';
 import 'gig_detail_screen.dart';
+import 'booking_detail_screen.dart';
 import 'bookings_screen.dart';
 import 'wallet_overview_screen.dart';
 import 'messages_screen.dart';
@@ -86,6 +88,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _fetchNotifications();
+    _setupRealtimeListener();
+  }
+
+  void _setupRealtimeListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Listen for real-time updates to notifications
+    FirebaseFirestore.instance
+        .collection('notifications')
+        .where('userId', isEqualTo: user.uid)
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted) {
+            setState(() {
+              _notifications.clear();
+              for (var doc in snapshot.docs) {
+                _notifications.add(AppNotification.fromMap({
+                  'id': doc.id,
+                  ...doc.data(),
+                }));
+              }
+            });
+          }
+        });
   }
 
   Future<void> _fetchNotifications() async {
@@ -123,6 +152,49 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (!mounted) return;
+
+    // Handle booking notifications with bookingId
+    final bookingId = notification.data['bookingId'] ?? notification.data['booking_id'];
+    if (bookingId != null && bookingId.toString().isNotEmpty) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFFA1F301)),
+        ),
+      );
+
+      try {
+        final bookingDoc = await FirebaseFirestore.instance
+            .collection('bookings')
+            .doc(bookingId.toString())
+            .get();
+        
+        if (mounted && bookingDoc.exists) {
+          Navigator.of(context).pop(); // Dismiss loading
+          final bookingData = bookingDoc.data() as Map<String, dynamic>;
+          final booking = Booking.fromFirestore(bookingData, bookingId.toString());
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BookingDetailScreen(booking: booking),
+            ),
+          );
+        } else if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Booking not found')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context).pop(); // Dismiss loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not load booking details: $e')),
+          );
+        }
+      }
+      return;
+    }
 
     final gigId = notification.data['gigId'] ?? notification.data['gig_id'];
 

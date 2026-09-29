@@ -122,9 +122,9 @@ class BookingService:
             NotificationService.send_to_user(
                 user_id=request.musicianId,
                 title="You've been hired!",
-                body=f"{organizer_name} hired you for '{request.gigTitle}'",
+                body=f"{organizer_name} is waiting for your signature on '{request.gigTitle}'",
                 notif_type="booking_hired",
-                data={"gigId": request.gigId, "type": "hire"}
+                data={"gigId": request.gigId, "bookingId": doc_ref.id, "type": "hire"}
             )
                 
             return doc_ref.id

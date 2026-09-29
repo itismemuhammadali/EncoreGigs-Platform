@@ -106,6 +106,8 @@ Future<void> _setupFCM() async {
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('Received foreground message: ${message.notification?.title}');
+      // The notification will be automatically saved to Firestore by the backend
+      // and will appear in the notifications screen when it refreshes
     });
   } catch (e) {
     debugPrint('FCM setup non-fatal error: $e');
