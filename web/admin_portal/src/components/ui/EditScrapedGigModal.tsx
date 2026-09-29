@@ -442,11 +442,8 @@ export function EditScrapedGigModal({
     setIsDeleting(true);
     try {
       await onDelete(gigData.id);
-      if (onNavigate && currentIndex < gigsList.length - 1) {
-        onNavigate(currentIndex);
-      } else {
-        onClose();
-      }
+      // Close the modal immediately after deletion — no navigation to avoid race condition
+      onClose();
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
@@ -1095,9 +1092,17 @@ export function EditScrapedGigModal({
                     type="button"
                     disabled={isDeleting}
                     onClick={handleDelete}
-                    className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded font-bold transition-colors"
+                    className="text-xs bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded font-bold transition-colors disabled:opacity-60 flex items-center gap-1"
                   >
-                    Yes
+                    {isDeleting ? (
+                      <>
+                        <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : "Yes"}
                   </button>
                   <button
                     type="button"

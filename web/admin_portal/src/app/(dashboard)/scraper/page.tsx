@@ -165,6 +165,8 @@ export default function ScraperModule() {
         setImportedGigs(prev => prev.filter(g => g.id !== deleteModal.gigId));
         setDeleteModal({ show: false, gigId: null });
         showToast("Gig deleted successfully");
+        // Refresh stats cards immediately so count updates without page reload
+        fetchData();
       } catch (error) {
         showToast("Failed to delete gig", "error");
       }
@@ -509,6 +511,8 @@ export default function ScraperModule() {
             setImportedGigs(prev => prev.filter(g => g.id !== gigId));
             setEditModal({ show: false, gig: null });
             showToast("Gig deleted successfully");
+            // Refresh stats cards immediately so count updates without page reload
+            fetchData();
           } catch (error) {
             showToast("Failed to delete gig", "error");
           }
