@@ -103,8 +103,11 @@ class _EditPortfolioItemScreenState extends State<EditPortfolioItemScreen> {
     FileType type = FileType.any;
     if (widget.item.type == 'image') {
       type = FileType.image;
-    } else if (widget.item.type == 'video') type = FileType.video;
-    else if (widget.item.type == 'music') type = FileType.audio;
+    } else if (widget.item.type == 'video') {
+      type = FileType.video;
+    } else if (widget.item.type == 'music') {
+      type = FileType.audio;
+    }
 
     final result = await FilePicker.pickFiles(type: type);
 
@@ -473,7 +476,7 @@ class _EditPortfolioItemScreenState extends State<EditPortfolioItemScreen> {
                 Image.network(
                   _previewUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A1A1F)),
+                  errorBuilder: (_, _, _) => Container(color: const Color(0xFF1A1A1F)),
                 )
               else
                 Container(color: const Color(0xFF1A1A1F)),
@@ -548,7 +551,9 @@ class _EditPortfolioItemScreenState extends State<EditPortfolioItemScreen> {
                   }
                   setState(() => _isPlayingAudio = !_isPlayingAudio);
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error playing audio: $e")));
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error playing audio: $e")));
+                  }
                 }
               },
               child: Container(

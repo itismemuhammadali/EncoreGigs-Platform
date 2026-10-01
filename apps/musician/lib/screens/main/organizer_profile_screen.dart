@@ -225,6 +225,8 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                   GestureDetector(
                     onTap: () async {
                       final chatService = Provider.of<ChatService>(context, listen: false);
+                      final navigator = Navigator.of(context);
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
                       try {
                         final chatId = await chatService.getOrCreateChat(
                           widget.organizerId,
@@ -232,8 +234,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                           profileImageUrl ?? '',
                         );
                         if (mounted) {
-                          Navigator.push(
-                            context,
+                          navigator.push(
                             MaterialPageRoute(
                               builder: (context) => ChatScreen(
                                 chatId: chatId,
@@ -246,7 +247,7 @@ class _OrganizerProfileScreenState extends State<OrganizerProfileScreen> {
                         }
                       } catch (e) {
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          scaffoldMessenger.showSnackBar(
                             SnackBar(content: Text('Error starting chat: $e')),
                           );
                         }

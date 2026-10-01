@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
 import '../../../services/auth_service.dart';
@@ -196,7 +195,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                           child: Text(
                             'Sign here to authorize payment',
                             style: TextStyle(
-                              color: const Color(0xFF888888).withOpacity(0.5),
+                              color: const Color(0xFF888888).withValues(alpha: 0.5),
                               fontSize: 16,
                               fontWeight: FontWeight.w400,
                             ),
@@ -243,7 +242,7 @@ class _SignatureCanvasScreenState extends State<SignatureCanvasScreen> {
                           color: const Color(0xFF1A1A1F),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: const Color(0xFFFF3B30).withOpacity(0.3),
+                            color: const Color(0xFFFF3B30).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(

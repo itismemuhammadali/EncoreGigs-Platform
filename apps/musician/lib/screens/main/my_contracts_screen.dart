@@ -139,7 +139,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                   child: Text(
                     'View and manage all your signed performance contracts',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 14,
                       height: 1.4,
                     ),
@@ -165,7 +165,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFFB3FF00).withOpacity(0.1) : const Color(0xFF16161D),
+                        color: isSelected ? const Color(0xFFB3FF00).withValues(alpha: 0.1) : const Color(0xFF16161D),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected ? const Color(0xFFB3FF00) : const Color(0xFF2D2D3A),
@@ -174,7 +174,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                       child: Text(
                         tab,
                         style: TextStyle(
-                          color: isSelected ? const Color(0xFFB3FF00) : Colors.white.withOpacity(0.6),
+                          color: isSelected ? const Color(0xFFB3FF00) : Colors.white.withValues(alpha: 0.6),
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                           fontSize: 14,
                         ),
@@ -199,12 +199,12 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.assignment_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
+                                Icon(Icons.assignment_outlined, size: 64, color: Colors.white.withValues(alpha: 0.2)),
                                 const SizedBox(height: 16),
                                 Text(
                                   'No contracts found',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
+                                    color: Colors.white.withValues(alpha: 0.6),
                                     fontSize: 16,
                                   ),
                                 ),
@@ -253,13 +253,13 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
     Color statusBgColor;
     if (status == 'Active') {
       statusColor = const Color(0xFF10B981);
-      statusBgColor = const Color(0xFF10B981).withOpacity(0.1);
+      statusBgColor = const Color(0xFF10B981).withValues(alpha: 0.1);
     } else if (status == 'Pending') {
       statusColor = const Color(0xFFF59E0B);
-      statusBgColor = const Color(0xFFF59E0B).withOpacity(0.1);
+      statusBgColor = const Color(0xFFF59E0B).withValues(alpha: 0.1);
     } else {
       statusColor = const Color(0xFF06B6D4);
-      statusBgColor = const Color(0xFF06B6D4).withOpacity(0.1);
+      statusBgColor = const Color(0xFF06B6D4).withValues(alpha: 0.1);
     }
     
     return Container(
@@ -313,7 +313,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                     Text(
                       organizerName,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
+                        color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -350,7 +350,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
               Text(
                 'Performance: $date • $amount',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   fontSize: 14,
                 ),
               ),
@@ -360,7 +360,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
           Text(
             dateSignedStr,
             style: TextStyle(
-              color: status == 'Pending' ? const Color(0xFFF59E0B) : Colors.white.withOpacity(0.5),
+              color: status == 'Pending' ? const Color(0xFFF59E0B) : Colors.white.withValues(alpha: 0.5),
               fontSize: 13,
             ),
           ),
@@ -389,7 +389,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                       child: Text(
                         'View',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -404,7 +404,7 @@ class _MyContractsScreenState extends State<MyContractsScreen> {
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFB3FF00).withOpacity(0.1),
+                      color: const Color(0xFFB3FF00).withValues(alpha: 0.1),
                       border: Border.all(color: const Color(0xFFB3FF00)),
                       borderRadius: BorderRadius.circular(8),
                     ),

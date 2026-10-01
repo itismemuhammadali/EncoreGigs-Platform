@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:provider/provider.dart';
 import 'package:onlygigz_organizer/services/api_service.dart';
-import '../../services/chat_service.dart';
-import '../messages/chat/chat_screen.dart';
 import 'musician_profile_screen.dart';
 import 'widgets/hire_musician_dialog.dart';
 import 'payment_screen.dart';
-import '../../services/auth_service.dart';
 import '../../constants.dart';
 
 class ApplicantModel {

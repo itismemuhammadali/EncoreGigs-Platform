@@ -167,7 +167,7 @@ class _MusicianManagementScreenState extends State<MusicianManagementScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No ${_activeFilter} musicians found',
+            'No $_activeFilter musicians found',
             style: const TextStyle(color: Color(0xFF888888), fontSize: 16),
           ),
         ],
@@ -215,7 +215,7 @@ class _MusicianManagementScreenState extends State<MusicianManagementScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
               child: imagePath != null && imagePath.startsWith('http')
-                  ? Image.network(imagePath, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholderImage())
+                  ? Image.network(imagePath, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (_, _, _) => _placeholderImage())
                   : _placeholderImage(),
             ),
             const SizedBox(width: 14),

@@ -239,9 +239,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               final authService = Provider.of<AuthService>(
                                   context,
                                   listen: false);
+                              final navigator = Navigator.of(context);
                               await authService.signOut();
                               if (mounted) {
-                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                navigator.pushNamedAndRemoveUntil(
                                     '/login', (route) => false);
                               }
                             },

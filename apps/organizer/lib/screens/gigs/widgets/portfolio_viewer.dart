@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
@@ -79,10 +78,12 @@ class _PortfolioViewerSheetState extends State<_PortfolioViewerSheet> {
       if (mounted) setState(() => _audioPosition = p);
     });
     _completeSub = _audioPlayer.onPlayerComplete.listen((_) {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _isPlayingAudio = false;
         _audioPosition = Duration.zero;
       });
+      }
     });
   }
 
@@ -286,7 +287,7 @@ class _PortfolioViewerSheetState extends State<_PortfolioViewerSheet> {
                   : const Center(
                       child: CircularProgressIndicator(
                           color: Color(0xFFA2F301))),
-              errorBuilder: (_, __, ___) => _errorPlaceholder(),
+              errorBuilder: (_, _, _) => _errorPlaceholder(),
             )
           : _errorPlaceholder(),
     );

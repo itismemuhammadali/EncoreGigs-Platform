@@ -110,6 +110,11 @@ class _DisputeManagementScreenState extends State<DisputeManagementScreen> {
     final reason = dispute['category'] ?? 'General';
     final createdAt = dispute['createdAt'];
     String dateStr = 'Recently';
+    if (createdAt != null) {
+      if (createdAt is String) {
+        dateStr = createdAt;
+      }
+    }
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(

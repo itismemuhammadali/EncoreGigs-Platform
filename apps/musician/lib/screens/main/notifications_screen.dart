@@ -51,9 +51,13 @@ class AppNotification {
       try {
         final dt = DateTime.parse(createdAt).toLocal();
         final diff = DateTime.now().difference(dt);
-        if (diff.inMinutes < 60) timeAgo = '${diff.inMinutes}m ago';
-        else if (diff.inHours < 24) timeAgo = '${diff.inHours}h ago';
-        else timeAgo = '${diff.inDays}d ago';
+        if (diff.inMinutes < 60) {
+          timeAgo = '${diff.inMinutes}m ago';
+        } else if (diff.inHours < 24) {
+          timeAgo = '${diff.inHours}h ago';
+        } else {
+          timeAgo = '${diff.inDays}d ago';
+        }
       } catch (_) {
         timeAgo = '';
       }

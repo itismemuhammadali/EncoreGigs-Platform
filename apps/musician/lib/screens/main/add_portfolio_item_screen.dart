@@ -43,8 +43,11 @@ class _AddPortfolioItemScreenState extends State<AddPortfolioItemScreen> {
     FileType type = FileType.any;
     if (_selectedType == 0) {
       type = FileType.image;
-    } else if (_selectedType == 1) type = FileType.video;
-    else if (_selectedType == 2) type = FileType.audio;
+    } else if (_selectedType == 1) {
+      type = FileType.video;
+    } else if (_selectedType == 2) {
+      type = FileType.audio;
+    }
 
     final result = await FilePicker.pickFiles(type: type);
 

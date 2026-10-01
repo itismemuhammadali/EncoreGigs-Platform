@@ -7,7 +7,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import '../constants.dart';
 import 'api_service.dart';
@@ -25,6 +24,7 @@ class AuthService extends ChangeNotifier {
   List<String> get appliedGigIds => _appliedGigIds;
 
   String? _fcmToken;
+  String? get fcmToken => _fcmToken;
   void setFcmToken(String token) => _fcmToken = token;
 
   FirebaseStorage _resolveStorage() {
@@ -509,8 +509,11 @@ class AuthService extends ChangeNotifier {
       String fieldKey = '';
       if (type == 'image') {
         fieldKey = 'images';
-      } else if (type == 'video') fieldKey = 'videos';
-      else if (type == 'music') fieldKey = 'audioTracks';
+      } else if (type == 'video') {
+        fieldKey = 'videos';
+      } else if (type == 'music') {
+        fieldKey = 'audioTracks';
+      }
 
       if (fieldKey.isEmpty) return 'Invalid item type';
 
@@ -569,8 +572,11 @@ class AuthService extends ChangeNotifier {
       String fieldKey = '';
       if (type == 'image') {
         fieldKey = 'images';
-      } else if (type == 'video') fieldKey = 'videos';
-      else if (type == 'music') fieldKey = 'audioTracks';
+      } else if (type == 'video') {
+        fieldKey = 'videos';
+      } else if (type == 'music') {
+        fieldKey = 'audioTracks';
+      }
 
       if (fieldKey.isEmpty) return 'Invalid item type';
 
@@ -622,8 +628,11 @@ class AuthService extends ChangeNotifier {
       String fieldKey = '';
       if (type == 'image') {
         fieldKey = 'images';
-      } else if (type == 'video') fieldKey = 'videos';
-      else if (type == 'music') fieldKey = 'audioTracks';
+      } else if (type == 'video') {
+        fieldKey = 'videos';
+      } else if (type == 'music') {
+        fieldKey = 'audioTracks';
+      }
 
       if (fieldKey.isEmpty) return 'Invalid item type';
 

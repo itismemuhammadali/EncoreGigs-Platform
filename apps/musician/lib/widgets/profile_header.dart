@@ -311,7 +311,7 @@ class _ProfileHeaderState extends State<ProfileHeader> {
               Column(
                 children: [
                   Text(
-                    '${widget.profile.avgRating.toStringAsFixed(1)}',
+                    widget.profile.avgRating.toStringAsFixed(1),
                     style: const TextStyle(
                       color: Color(0xFFA1F301),
                       fontSize: 32,

@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui' as ui;
-import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/booking_model.dart';
 import '../../services/auth_service.dart';
@@ -12,7 +8,6 @@ import '../../services/chat_service.dart';
 import '../../constants.dart';
 import 'chat_screen.dart';
 import 'contract_review_screen.dart';
-import 'contract_success_screen.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final Booking booking;

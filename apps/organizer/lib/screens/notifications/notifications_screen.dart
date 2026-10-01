@@ -66,9 +66,13 @@ class NotificationItem {
       try {
         final dt = DateTime.parse(createdAt).toLocal();
         final diff = DateTime.now().difference(dt);
-        if (diff.inMinutes < 60) time = '${diff.inMinutes}m ago';
-        else if (diff.inHours < 24) time = '${diff.inHours}h ago';
-        else time = '${diff.inDays}d ago';
+        if (diff.inMinutes < 60) {
+          time = '${diff.inMinutes}m ago';
+        } else if (diff.inHours < 24) {
+          time = '${diff.inHours}h ago';
+        } else {
+          time = '${diff.inDays}d ago';
+        }
       } catch (_) {}
     }
     return NotificationItem(

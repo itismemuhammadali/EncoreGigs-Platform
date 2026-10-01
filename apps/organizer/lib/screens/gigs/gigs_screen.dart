@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import '../../models/gig.dart' as gig_model;
 import 'widgets/gigs_filter_tabs.dart';

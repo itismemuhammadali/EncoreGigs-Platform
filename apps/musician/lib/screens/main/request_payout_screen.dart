@@ -211,7 +211,7 @@ class _RequestPayoutScreenState extends State<RequestPayoutScreen> {
                                   children: [
                                     Text('Available Balance', style: TextStyle(color: Colors.grey[500]!, fontSize: 13)),
                                     const SizedBox(height: 8),
-                                    Text('\$' + _balance.toStringAsFixed(2), style: const TextStyle(color: Color(0xFFA1F301), fontSize: 32, fontWeight: FontWeight.bold)),
+                                    Text('\$${_balance.toStringAsFixed(2)}', style: const TextStyle(color: Color(0xFFA1F301), fontSize: 32, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                                 Container(
@@ -336,13 +336,13 @@ class _RequestPayoutScreenState extends State<RequestPayoutScreen> {
                             ),
                             child: Column(
                               children: [
-                                _buildSummaryRow('Requested Amount', '\$' + payoutAmount.toStringAsFixed(2), Colors.white),
+                                _buildSummaryRow('Requested Amount', '\$${payoutAmount.toStringAsFixed(2)}', Colors.white),
                                 const SizedBox(height: 12),
-                                _buildSummaryRow('Processing Fee (2.5%)', '-\$' + fee.toStringAsFixed(2), const Color(0xFFEF4444)),
+                                _buildSummaryRow('Processing Fee (2.5%)', '-\$${fee.toStringAsFixed(2)}', const Color(0xFFEF4444)),
                                 const SizedBox(height: 16),
                                 Container(height: 1, color: Colors.grey[800]),
                                 const SizedBox(height: 16),
-                                _buildSummaryRow('You\'ll Receive', '\$' + netAmount.toStringAsFixed(2), const Color(0xFFA1F301), isBold: true, isLarge: true),
+                                _buildSummaryRow('You\'ll Receive', '\$${netAmount.toStringAsFixed(2)}', const Color(0xFFA1F301), isBold: true, isLarge: true),
                               ],
                             ),
                           ),

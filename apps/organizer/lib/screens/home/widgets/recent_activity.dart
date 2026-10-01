@@ -1,13 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:onlygigz_organizer/services/api_service.dart';
 import '../../messages/chat/chat_screen.dart';
 import '../../gigs/musician_profile_screen.dart';
 import '../../profile/booking_details_screen.dart';
-import '../../../services/chat_service.dart';
-import '../../../models/chat_model.dart';
 import '../../../services/auth_service.dart';
 import '../../../constants.dart';
 

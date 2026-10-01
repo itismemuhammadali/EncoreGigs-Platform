@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../../services/auth_service.dart';
 import 'create_dispute_screen.dart';
 import 'dispute_detail_screen.dart';

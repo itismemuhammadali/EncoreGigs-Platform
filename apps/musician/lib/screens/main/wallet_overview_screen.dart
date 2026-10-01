@@ -15,11 +15,7 @@ import 'add_bank_account_screen.dart';
 
 import 'transaction_detail_screen.dart';
 
-import 'request_early_release_screen.dart';
-
 import 'request_payout_screen.dart';
-
-import 'default_card_success_screen.dart';
 
 
 
@@ -52,7 +48,6 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
   List<Map<String, dynamic>> _walletTransactions = [];
   String _bankAccountStatus = 'not_connected';
   List<Map<String, dynamic>> _connectedBankAccounts = [];
-  List<dynamic> _transactions = [];
 
   bool _isLoading = true;
 
@@ -86,10 +81,12 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
       // Load bank account status and connected bank accounts
       try {
         final accountData = await apiService.getConnectedAccount(musicianId);
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _bankAccountStatus = accountData['status'] ?? 'not_connected';
           _connectedBankAccounts = (accountData['bank_accounts'] ?? []).cast<Map<String, dynamic>>();
         });
+        }
       } catch (e) {
         debugPrint('Error loading bank account status: $e');
       }
@@ -129,8 +126,11 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
           final createdAt = tx['createdAt'];
           if (createdAt != null) {
             DateTime? txDate;
-            if (createdAt is Timestamp) txDate = createdAt.toDate();
-            else if (createdAt is String) txDate = DateTime.tryParse(createdAt);
+            if (createdAt is Timestamp) {
+              txDate = createdAt.toDate();
+            } else if (createdAt is String) {
+              txDate = DateTime.tryParse(createdAt);
+            }
             if (txDate != null && txDate.year == now.year && txDate.month == now.month) {
               _thisMonth += amt;
             }
@@ -366,7 +366,11 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
             ),
 
-
+            if (_isLoading)
+              const LinearProgressIndicator(
+                color: Color(0xFFA1F301),
+                backgroundColor: Colors.transparent,
+              ),
 
             // Scrollable content
 
@@ -472,7 +476,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
                                       const SizedBox(height: 8),
 
-                                      Text('\$' + _inEscrow.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                      Text('\$${_inEscrow.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
 
                                     ],
 
@@ -520,7 +524,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
                                       const SizedBox(height: 8),
 
-                                      Text('\$' + _totalEarned.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                                      Text('\$${_totalEarned.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
 
                                     ],
 
@@ -666,306 +670,6 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
 
 
-  void _showDeleteConfirmation(BuildContext context, {required String title, required String subtitle, required VoidCallback onConfirm}) {
-
-    showModalBottomSheet(
-
-      context: context,
-
-      backgroundColor: const Color(0xFF0A0A0F),
-
-      shape: const RoundedRectangleBorder(
-
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-
-      ),
-
-      builder: (_) => Padding(
-
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-
-        child: Column(
-
-          mainAxisSize: MainAxisSize.min,
-
-          children: [
-
-            Container(
-
-              width: 72,
-
-              height: 72,
-
-              decoration: BoxDecoration(
-
-                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-
-                shape: BoxShape.circle,
-
-              ),
-
-              child: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 36),
-
-            ),
-
-            const SizedBox(height: 20),
-
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-
-            const SizedBox(height: 12),
-
-            Text(subtitle, style: TextStyle(color: Colors.grey[400], fontSize: 14, height: 1.6), textAlign: TextAlign.center),
-
-            const SizedBox(height: 32),
-
-            Row(
-
-              children: [
-
-                Expanded(
-
-                  child: GestureDetector(
-
-                    onTap: () => Navigator.of(context).pop(),
-
-                    child: Container(
-
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-
-                      decoration: BoxDecoration(
-
-                        border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.5),
-
-                        borderRadius: BorderRadius.circular(14),
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-
-                      ),
-
-                    ),
-
-                  ),
-
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-
-                  child: GestureDetector(
-
-                    onTap: () {
-
-                      Navigator.of(context).pop();
-
-                      onConfirm();
-
-                    },
-
-                    child: Container(
-
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-
-                      decoration: BoxDecoration(
-
-                        color: const Color(0xFFEF4444),
-
-                        borderRadius: BorderRadius.circular(14),
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text('Delete', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-
-                      ),
-
-                    ),
-
-                  ),
-
-                ),
-
-              ],
-
-            ),
-
-          ],
-
-        ),
-
-      ),
-
-    );
-
-  }
-
-
-
-  void _showSetDefaultConfirmation(BuildContext context, String cardName) {
-
-    showModalBottomSheet(
-
-      context: context,
-
-      backgroundColor: const Color(0xFF0A0A0F),
-
-      shape: const RoundedRectangleBorder(
-
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-
-      ),
-
-      builder: (_) => Padding(
-
-        padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-
-        child: Column(
-
-          mainAxisSize: MainAxisSize.min,
-
-          children: [
-
-            Container(
-
-              width: 72,
-
-              height: 72,
-
-              decoration: BoxDecoration(
-
-                color: const Color(0xFFA1F301).withValues(alpha: 0.15),
-
-                shape: BoxShape.circle,
-
-              ),
-
-              child: const Icon(Icons.credit_card, color: Color(0xFFA1F301), size: 36),
-
-            ),
-
-            const SizedBox(height: 20),
-
-            const Text(
-
-              'Set as Default?',
-
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-
-              textAlign: TextAlign.center,
-
-            ),
-
-            const SizedBox(height: 12),
-
-            Text(
-
-              '$cardName will be set as your default payment method for all future transactions.',
-
-              style: TextStyle(color: Colors.grey[400], fontSize: 14, height: 1.6),
-
-              textAlign: TextAlign.center,
-
-            ),
-
-            const SizedBox(height: 32),
-
-            Row(
-
-              children: [
-
-                Expanded(
-
-                  child: GestureDetector(
-
-                    onTap: () => Navigator.of(context).pop(),
-
-                    child: Container(
-
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-
-                      decoration: BoxDecoration(
-
-                        border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.5),
-
-                        borderRadius: BorderRadius.circular(14),
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text('Cancel', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-
-                      ),
-
-                    ),
-
-                  ),
-
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-
-                  child: GestureDetector(
-
-                    onTap: () {
-
-                      Navigator.of(context).pop();
-
-                      Navigator.of(context).push(MaterialPageRoute(
-
-                        builder: (_) => DefaultCardSuccessScreen(cardName: cardName),
-
-                      ));
-
-                    },
-
-                    child: Container(
-
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-
-                      decoration: BoxDecoration(
-
-                        color: const Color(0xFFA1F301),
-
-                        borderRadius: BorderRadius.circular(14),
-
-                      ),
-
-                      child: const Center(
-
-                        child: Text('Confirm', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w600)),
-
-                      ),
-
-                    ),
-
-                  ),
-
-                ),
-
-              ],
-
-            ),
-
-          ],
-
-        ),
-
-      ),
-
-    );
-
-  }
-
-
-
   Widget _buildPillTab(String title, int index) {
 
     bool isActive = _selectedTabIndex == index;
@@ -1068,7 +772,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
                     const SizedBox(height: 12),
 
-                    Text('\$' + _thisMonth.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text('\$${_thisMonth.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
                     const Text('Current balance', style: TextStyle(color: Color(0xFF666666), fontSize: 12)),
 
@@ -1118,7 +822,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
 
                     const SizedBox(height: 12),
 
-                    Text('\$' + _inEscrow.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                    Text('\$${_inEscrow.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 6),
                     Text('From $_pendingGigs gigs', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
 
@@ -1156,7 +860,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
               booking['gigTitle'] ?? 'Gig',
               booking['organizerName'] ?? 'Organizer',
               'Amount held in escrow',
-              '\$' + (booking['escrow_amount'] ?? booking['amount'] ?? 0).toDouble().toStringAsFixed(2),
+              '\$${(booking['escrow_amount'] ?? booking['amount'] ?? 0).toDouble().toStringAsFixed(2)}',
               'Held',
               const Color(0xFFF59E0B),
               'assets/profile_image.png',
@@ -1218,7 +922,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
               child: _buildActivityItem(
                 tx['description'] ?? 'Transaction',
                 tx['createdAt'] != null ? tx['createdAt'].toString().substring(0, 10) : '',
-                (isIncoming ? '+' : '-') + '\$' + amount.abs().toStringAsFixed(2),
+                '${isIncoming ? '+' : '-'}\$${amount.abs().toStringAsFixed(2)}',
                 isIncoming ? const Color(0xFF00C950) : const Color(0xFFEF4444),
                 isIncoming ? Icons.south_east : Icons.north_east,
               ),
@@ -1400,13 +1104,13 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
                     ],
                   ),
                   const SizedBox(height: 24),
-                  _buildAmountRow('Gross Amount', '\$' + amount.toStringAsFixed(2), Colors.white),
+                  _buildAmountRow('Gross Amount', '\$${amount.toStringAsFixed(2)}', Colors.white),
                   const SizedBox(height: 16),
-                  _buildAmountRow('Platform Fee (5%)', '-\$' + fee.toStringAsFixed(2), const Color(0xFFEF4444)),
+                  _buildAmountRow('Platform Fee (5%)', '-\$${fee.toStringAsFixed(2)}', const Color(0xFFEF4444)),
                   const SizedBox(height: 20),
                   Container(height: 1, color: Colors.grey[800]),
                   const SizedBox(height: 20),
-                  _buildAmountRow('You Receive', '\$' + net.toStringAsFixed(2), const Color(0xFFA1F301), isBold: true, isLarge: true),
+                  _buildAmountRow('You Receive', '\$${net.toStringAsFixed(2)}', const Color(0xFFA1F301), isBold: true, isLarge: true),
                   const SizedBox(height: 24),
                   Row(
                     children: [
@@ -1426,7 +1130,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
                           children: [
                             Text('Amount', style: TextStyle(color: Colors.grey[500]!, fontSize: 13)),
                             const SizedBox(height: 6),
-                            Text('\$' + amount.toStringAsFixed(2), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                            Text('\$${amount.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -1565,27 +1269,21 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
             final isIncoming = amount >= 0;
             final txType = tx['type'] ?? 'transaction';
             Color amountColor;
-            Color iconBgColor;
             IconData icon;
             if (txType == 'topup') {
               amountColor = const Color(0xFF00C950);
-              iconBgColor = const Color(0xFF0A2A0A);
               icon = Icons.south_east;
             } else if (txType == 'escrow_hold') {
               amountColor = const Color(0xFFF59E0B);
-              iconBgColor = const Color(0xFF2A1A00);
               icon = Icons.lock_outline;
             } else if (txType == 'payment_received') {
               amountColor = const Color(0xFF00C950);
-              iconBgColor = const Color(0xFF0A2A0A);
               icon = Icons.south_east;
             } else if (txType == 'withdrawal') {
               amountColor = const Color(0xFF3B82F6);
-              iconBgColor = const Color(0xFF0A1A2A);
               icon = Icons.north_east;
             } else {
               amountColor = isIncoming ? const Color(0xFF00C950) : const Color(0xFFEF4444);
-              iconBgColor = isIncoming ? const Color(0xFF0A2A0A) : const Color(0xFF2A0A0A);
               icon = isIncoming ? Icons.south_east : Icons.north_east;
             }
             return Padding(
@@ -1595,7 +1293,7 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
                 null,
                 tx['createdAt'] != null ? tx['createdAt'].toString().substring(0, 10) : '',
                 '',
-                (isIncoming ? '+' : '-') + '\$' + amount.abs().toStringAsFixed(2),
+                '${isIncoming ? '+' : '-'}\$${amount.abs().toStringAsFixed(2)}',
                 amountColor,
                 icon,
                 null,
@@ -1819,784 +1517,6 @@ class _WalletOverviewScreenState extends State<WalletOverviewScreen> with Widget
       ],
     );
   }
-
-  Widget _buildDetailedEscrowItem() {
-
-    return Column(
-
-      children: [
-
-        // First Card - Corporate Event Entertainment
-
-        Container(
-
-          padding: const EdgeInsets.all(20),
-
-          decoration: BoxDecoration(
-
-            color: Colors.black,
-
-            border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.5),
-
-            borderRadius: BorderRadius.circular(12),
-
-          ),
-
-          child: Column(
-
-            crossAxisAlignment: CrossAxisAlignment.start,
-
-            children: [
-
-              Row(
-
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: [
-
-                  ClipOval(
-
-                    child: Image.asset('assets/profile_image.png', width: 64, height: 64, fit: BoxFit.cover),
-
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        const Text('Wedding Reception Live Band', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-
-                        const SizedBox(height: 6),
-
-                        Text('Emily & John', style: TextStyle(color: Colors.grey[500], fontSize: 15)),
-
-                        const SizedBox(height: 12),
-
-                        Container(
-
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-
-                          decoration: BoxDecoration(
-
-                            color: const Color(0xFF00C950).withValues(alpha: 0.15),
-
-                            border: Border.all(color: const Color(0xFF00C950), width: 1.5),
-
-                            borderRadius: BorderRadius.circular(20),
-
-                          ),
-
-                          child: Row(
-
-                            mainAxisSize: MainAxisSize.min,
-
-                            children: [
-
-                              Icon(Icons.check_circle, color: const Color(0xFF00C950), size: 12),
-
-                              const SizedBox(width: 4),
-
-                              const Text('Released', style: TextStyle(color: Color(0xFF00C950), fontSize: 11, fontWeight: FontWeight.w600)),
-
-                            ],
-
-                          ),
-
-                        ),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 24),
-
-              _buildAmountRow('Gross Amount', '\$1200.00', Colors.white),
-
-              const SizedBox(height: 16),
-
-              _buildAmountRow('Platform Fee (5%)', '-\$60.00', const Color(0xFFEF4444)),
-
-              const SizedBox(height: 20),
-
-              Container(height: 1, color: Colors.grey[800]),
-
-              const SizedBox(height: 20),
-
-              _buildAmountRow('You Receive', '\$1140.00', const Color(0xFFA1F301), isBold: true, isLarge: true),
-
-              const SizedBox(height: 24),
-
-              Row(
-
-                children: [
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Contract Signed', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Dec 28, 2025', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Gig Date', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 5, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Released', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 6, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
-
-                children: [
-
-                  Icon(Icons.location_on, color: const Color(0xFFEF4444), size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('Grand Ballroom Hotel', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                  const Spacer(),
-
-                  Icon(Icons.access_time, color: Colors.grey[500], size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('4 hours', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              Container(
-
-                padding: const EdgeInsets.all(16),
-
-                decoration: BoxDecoration(
-
-                  color: const Color(0xFF00C950).withValues(alpha: 0.1),
-
-                  borderRadius: BorderRadius.circular(10),
-
-                ),
-
-                child: Row(
-
-                  children: [
-
-                    Icon(Icons.check_circle, color: const Color(0xFF00C950), size: 24),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-
-                      child: const Text('Payment successfully add to your wallet balance', style: TextStyle(color: Color(0xFF00C950), fontSize: 14, fontWeight: FontWeight.w600)),
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
-
-            ],
-
-          ),
-
-        ),
-
-        const SizedBox(height: 16),
-
-        // Second Card - Corporate Event Entertainment
-
-        Container(
-
-          padding: const EdgeInsets.all(20),
-
-          decoration: BoxDecoration(
-
-            color: Colors.black,
-
-            border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.5),
-
-            borderRadius: BorderRadius.circular(12),
-
-          ),
-
-          child: Column(
-
-            crossAxisAlignment: CrossAxisAlignment.start,
-
-            children: [
-
-              Row(
-
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: [
-
-                  ClipOval(
-
-                    child: Image.asset('assets/profile_image.png', width: 64, height: 64, fit: BoxFit.cover),
-
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        const Text('Corporate Event Entertainment', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-
-                        const SizedBox(height: 6),
-
-                        Text('TechCorp Events', style: TextStyle(color: Colors.grey[500], fontSize: 15)),
-
-                        const SizedBox(height: 12),
-
-                        Container(
-
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-
-                          decoration: BoxDecoration(
-
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-
-                            border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-
-                            borderRadius: BorderRadius.circular(20),
-
-                          ),
-
-                          child: Row(
-
-                            mainAxisSize: MainAxisSize.min,
-
-                            children: [
-
-                              Icon(Icons.schedule, color: const Color(0xFFF59E0B), size: 14),
-
-                              const SizedBox(width: 4),
-
-                              const Text('In Escrow - Pending', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 12, fontWeight: FontWeight.w600)),
-
-                            ],
-
-                          ),
-
-                        ),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 24),
-
-              _buildAmountRow('Gross Amount', '\$2500.00', Colors.white),
-
-              const SizedBox(height: 16),
-
-              _buildAmountRow('Platform Fee (5%)', '-\$125.00', const Color(0xFFEF4444)),
-
-              const SizedBox(height: 20),
-
-              Container(height: 1, color: Colors.grey[800]),
-
-              const SizedBox(height: 20),
-
-              _buildAmountRow('You Receive', '\$2375.00', const Color(0xFFA1F301), isBold: true, isLarge: true),
-
-              const SizedBox(height: 24),
-
-              Row(
-
-                children: [
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Contract Signed', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 3, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Gig Date', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 10, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Releases', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 11, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
-
-                children: [
-
-                  Icon(Icons.location_on, color: const Color(0xFFEF4444), size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('Tech Conference Center', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                  const Spacer(),
-
-                  Icon(Icons.access_time, color: Colors.grey[500], size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('6 hours', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              GestureDetector(
-
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RequestEarlyReleaseScreen())),
-
-                child: Container(
-
-                  width: double.infinity,
-
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-
-                  decoration: BoxDecoration(
-
-                    color: const Color(0xFFA1F301),
-
-                    borderRadius: BorderRadius.circular(12),
-
-                  ),
-
-                  child: Row(
-
-                    mainAxisAlignment: MainAxisAlignment.center,
-
-                    children: [
-
-                      SizedBox(
-
-                        width: 20,
-
-                        height: 20,
-
-                        child: SvgPicture.asset(
-
-                          'assets/send_message_icon.svg',
-
-                          fit: BoxFit.contain,
-
-                          colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-
-                        ),
-
-                      ),
-
-                      const SizedBox(width: 8),
-
-                      const Text('Request Early Release', style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                    ],
-
-                  ),
-
-                ),
-
-              ),
-
-            ],
-
-          ),
-
-        ),
-
-        const SizedBox(height: 16),
-
-        // Third Card - Birthday Party DJ Set
-
-        Container(
-
-          padding: const EdgeInsets.all(20),
-
-          decoration: BoxDecoration(
-
-            color: Colors.black,
-
-            border: Border.all(color: const Color(0xFFA1F301).withValues(alpha: 0.3), width: 1.5),
-
-            borderRadius: BorderRadius.circular(12),
-
-          ),
-
-          child: Column(
-
-            crossAxisAlignment: CrossAxisAlignment.start,
-
-            children: [
-
-              Row(
-
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: [
-
-                  ClipOval(
-
-                    child: Image.asset('assets/profile_image.png', width: 64, height: 64, fit: BoxFit.cover),
-
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        const Text('Birthday Party DJ Set', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-
-                        const SizedBox(height: 6),
-
-                        Text('Michael Rodriguez', style: TextStyle(color: Colors.grey[500], fontSize: 15)),
-
-                        const SizedBox(height: 12),
-
-                        Container(
-
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-
-                          decoration: BoxDecoration(
-
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-
-                            border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
-
-                            borderRadius: BorderRadius.circular(20),
-
-                          ),
-
-                          child: Row(
-
-                            mainAxisSize: MainAxisSize.min,
-
-                            children: [
-
-                              Icon(Icons.lock, color: const Color(0xFFF59E0B), size: 12),
-
-                              const SizedBox(width: 4),
-
-                              const Text('In Escrow - Held', style: TextStyle(color: Color(0xFFF59E0B), fontSize: 11, fontWeight: FontWeight.w600)),
-
-                            ],
-
-                          ),
-
-                        ),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 24),
-
-              _buildAmountRow('Gross Amount', '\$800.00', Colors.white),
-
-              const SizedBox(height: 16),
-
-              _buildAmountRow('Platform Fee (5%)', '-\$40.00', const Color(0xFFEF4444)),
-
-              const SizedBox(height: 20),
-
-              Container(height: 1, color: Colors.grey[800]),
-
-              const SizedBox(height: 20),
-
-              _buildAmountRow('You Receive', '\$760.00', const Color(0xFFA1F301), isBold: true, isLarge: true),
-
-              const SizedBox(height: 24),
-
-              Row(
-
-                children: [
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Contract Signed', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Jan 8, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Gig Date', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Feb 14, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                  Expanded(
-
-                    child: Column(
-
-                      crossAxisAlignment: CrossAxisAlignment.start,
-
-                      children: [
-
-                        Text('Releases', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
-
-                        const SizedBox(height: 6),
-
-                        const Text('Feb 15, 2026', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-
-                      ],
-
-                    ),
-
-                  ),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              Row(
-
-                children: [
-
-                  Icon(Icons.location_on, color: const Color(0xFFEF4444), size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('Private Residence', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                  const Spacer(),
-
-                  Icon(Icons.access_time, color: Colors.grey[500], size: 18),
-
-                  const SizedBox(width: 6),
-
-                  Text('3 hours', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-
-                ],
-
-              ),
-
-              const SizedBox(height: 20),
-
-              Container(
-
-                padding: const EdgeInsets.all(16),
-
-                decoration: BoxDecoration(
-
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-
-                  borderRadius: BorderRadius.circular(10),
-
-                ),
-
-                child: Row(
-
-                  children: [
-
-                    Icon(Icons.info_outline, color: const Color(0xFFF59E0B), size: 20),
-
-                    const SizedBox(width: 12),
-
-                    Expanded(
-
-                      child: Text(
-
-                        'Payment will be automatically released 24h after gig completion',
-
-                        style: TextStyle(color: Colors.grey[400], fontSize: 14),
-
-                      ),
-
-                    ),
-
-                  ],
-
-                ),
-
-              ),
-
-            ],
-
-          ),
-
-        ),
-
-      ],
-
-    );
-
-  }
-
-
 
   Widget _buildAmountRow(String label, String amount, Color amountColor, {bool isBold = false, bool isLarge = false}) {
 

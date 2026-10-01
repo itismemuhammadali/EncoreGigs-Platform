@@ -91,7 +91,6 @@ class _CreateDisputeScreenState extends State<CreateDisputeScreen> {
       }
 
       FilePickerResult? result = await FilePicker.pickFiles(
-        allowMultiple: true,
         type: FileType.custom,
         allowedExtensions: ['jpg', 'pdf', 'doc', 'png', 'jpeg'],
       );
