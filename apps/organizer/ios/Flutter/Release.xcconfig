@@ -1,2 +1,7 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+DEVELOPMENT_TEAM = 9HTF2BKHQL
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = com.onlygigz.organizer AppStore
