@@ -11,7 +11,9 @@ import {
   Eye,
   Check,
   ExternalLink,
-  User
+  User,
+  Trash2,
+  X
 } from "lucide-react";
 import { Toast } from "@/components/ui/Toast";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -19,11 +21,6 @@ import { ScraperDetailsModal } from "@/components/ui/ScraperDetailsModal";
 import { EditScrapedGigModal } from "@/components/ui/EditScrapedGigModal";
 import { RunScraperModal } from "@/components/ui/RunScraperModal";
 import { apiRequest } from "@/lib/api";
-
-/** 
- * BACKEND DEVELOPER NOTE:
- * The following interfaces define the structure expected from the API.
- */
 
 interface ScraperStat {
   label: string;
@@ -77,6 +74,13 @@ export default function ScraperModule() {
   const [publishing, setPublishing] = useState<string | null>(null);
   const [publishingAll, setPublishingAll] = useState(false);
   
+  // Selection & Bulk Action States
+  const [selectedGigIds, setSelectedGigIds] = useState<string[]>([]);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [clearAllModalOpen, setClearAllModalOpen] = useState(false);
+  const [clearAllLoading, setClearAllLoading] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<ScraperStat[]>([]);
   const [recentRuns, setRecentRuns] = useState<ScraperRun[]>([]);
@@ -95,7 +99,6 @@ export default function ScraperModule() {
         apiRequest(`/scraper/imported?limit=2000&filter_type=${activeTab}`)
       ]);
 
-      // Map icons to stats
       const iconMap: Record<string, any> = {
         "Database": Database,
         "CheckCircle": CheckCircle,
@@ -110,6 +113,7 @@ export default function ScraperModule() {
       setStats(safeStats.map((s: any) => ({ ...s, icon: iconMap[s.icon] || Database })));
       setRecentRuns(safeRuns);
       setImportedGigs(safeGigs);
+      setSelectedGigIds([]);
     } catch (error) {
       console.error("Failed to fetch scraper data:", error);
       showToast("Failed to load scraper data", "error");
@@ -143,9 +147,25 @@ export default function ScraperModule() {
     }
   };
 
-  /** 
-   * BACKEND INTEGRATION: Trigger Scraper 
-   */
+  // --- MULTI-SELECT HANDLERS ---
+  const isAllSelected = importedGigs.length > 0 && importedGigs.every(g => selectedGigIds.includes(g.id));
+  const isPartiallySelected = selectedGigIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedGigIds([]);
+    } else {
+      setSelectedGigIds(importedGigs.map(g => g.id));
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedGigIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  // --- ACTIONS ---
   const handleRunScraper = async () => {
     try {
       await apiRequest("/scraper/run", { method: "POST" });
@@ -155,17 +175,14 @@ export default function ScraperModule() {
     }
   };
 
-  /** 
-   * BACKEND INTEGRATION: Delete Scraped Gig 
-   */
   const handleDeleteGig = async () => {
     if (deleteModal.gigId) {
       try {
         await apiRequest(`/scraper/gigs/${deleteModal.gigId}`, { method: "DELETE" });
         setImportedGigs(prev => prev.filter(g => g.id !== deleteModal.gigId));
+        setSelectedGigIds(prev => prev.filter(id => id !== deleteModal.gigId));
         setDeleteModal({ show: false, gigId: null });
         showToast("Gig deleted successfully");
-        // Refresh stats cards immediately so count updates without page reload
         fetchData();
       } catch (error) {
         showToast("Failed to delete gig", "error");
@@ -199,6 +216,67 @@ export default function ScraperModule() {
     }
   };
 
+  // --- BULK OPERATIONS ---
+  const handleBulkPublish = async () => {
+    if (selectedGigIds.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      let publishedCount = 0;
+      for (const id of selectedGigIds) {
+        try {
+          await apiRequest(`/scraper/gigs/${id}/publish`, { method: "POST" });
+          publishedCount++;
+        } catch (e) {
+          console.error(`Failed to publish gig ${id}:`, e);
+        }
+      }
+      showToast(`Published ${publishedCount} gigs to the app`);
+      setSelectedGigIds([]);
+      fetchData();
+    } catch (error) {
+      showToast("Failed to publish selected gigs", "error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (selectedGigIds.length === 0) return;
+    try {
+      setBulkActionLoading(true);
+      const res = await apiRequest("/scraper/gigs/bulk-delete", {
+        method: "POST",
+        body: JSON.stringify({ gigIds: selectedGigIds })
+      });
+      const deletedCount = res?.deletedCount ?? selectedGigIds.length;
+      setImportedGigs(prev => prev.filter(g => !selectedGigIds.includes(g.id)));
+      showToast(`Deleted ${deletedCount} scraped gigs successfully`);
+      setSelectedGigIds([]);
+      setBulkDeleteModalOpen(false);
+      fetchData();
+    } catch (error) {
+      showToast("Failed to delete selected gigs", "error");
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleConfirmClearAll = async () => {
+    try {
+      setClearAllLoading(true);
+      const res = await apiRequest("/scraper/gigs/clear-all", { method: "POST" });
+      const count = res?.deletedCount ?? 0;
+      showToast(`Cleared all ${count} scraped gigs from database`);
+      setSelectedGigIds([]);
+      setClearAllModalOpen(false);
+      fetchData();
+    } catch (error) {
+      showToast("Failed to clear scraped gigs", "error");
+    } finally {
+      setClearAllLoading(false);
+    }
+  };
+
   if (isLoading && stats.length === 0) {
     return (
       <div className="w-full h-[60vh] flex items-center justify-center">
@@ -216,25 +294,33 @@ export default function ScraperModule() {
             <h1 className="text-2xl sm:text-[32px] font-bold text-white mb-2 leading-tight">Scraper Module Management</h1>
             <p className="text-[#a1a1aa] text-sm sm:text-[16px]">Monitor and manage the automated gig scraping engine</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button 
               onClick={() => setRunScraperModal(true)}
-              className="flex items-center justify-center gap-3 bg-[#b3ff00] text-black px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10 whitespace-nowrap"
+              className="flex items-center justify-center gap-2.5 bg-[#b3ff00] text-black px-5 py-2.5 rounded-[8px] font-bold text-[15px] sm:text-[16px] hover:bg-[#a2e600] transition-all shadow-lg shadow-[#b3ff00]/10 whitespace-nowrap"
             >
-              <Play className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
+              <Play className="w-4 h-4 stroke-[2.5px]" />
               Run Scraper Now
             </button>
             <button 
               onClick={handlePublishAll}
               disabled={publishingAll}
-              className="flex items-center justify-center gap-3 bg-[#1a1a2e] border border-[#b3ff00]/30 text-[#b3ff00] px-6 py-3 rounded-[8px] font-semibold text-[16px] sm:text-[18px] hover:bg-[#1f1f35] transition-all whitespace-nowrap disabled:opacity-50"
+              className="flex items-center justify-center gap-2.5 bg-[#1a1a2e] border border-[#b3ff00]/30 text-[#b3ff00] px-5 py-2.5 rounded-[8px] font-bold text-[15px] sm:text-[16px] hover:bg-[#1f1f35] transition-all whitespace-nowrap disabled:opacity-50"
             >
               {publishingAll ? (
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Eye className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5px]" />
+                <Eye className="w-4 h-4 stroke-[2.5px]" />
               )}
               Show All in App
+            </button>
+            <button 
+              onClick={() => setClearAllModalOpen(true)}
+              className="flex items-center justify-center gap-2 bg-[#ef4444]/10 border border-[#ef4444]/40 text-[#ef4444] px-4 py-2.5 rounded-[8px] font-bold text-[14px] hover:bg-[#ef4444]/20 transition-all whitespace-nowrap"
+              title="Clear all scraped listings from database"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear Scraped Gigs
             </button>
           </div>
         </div>
@@ -330,10 +416,69 @@ export default function ScraperModule() {
               ))}
             </div>
           </div>
+
+          {/* --- BULK ACTION TOOLBAR FOR SCRAPED GIGS --- */}
+          {selectedGigIds.length > 0 && (
+            <div className="mx-6 mb-4 flex flex-wrap items-center justify-between gap-4 bg-[#1a2110] border border-[#b3ff00]/40 rounded-xl px-5 py-3.5 shadow-2xl animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#b3ff00] flex items-center justify-center text-black font-extrabold text-sm shadow">
+                  {selectedGigIds.length}
+                </div>
+                <span className="text-white font-medium text-sm">
+                  {selectedGigIds.length} of {importedGigs.length} scraped gigs selected
+                </span>
+                <button
+                  onClick={handleToggleSelectAll}
+                  className="text-[#b3ff00] hover:underline text-xs font-bold ml-2"
+                >
+                  {isAllSelected ? "Deselect All" : `Select All (${importedGigs.length})`}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkPublish}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-1.5 bg-[#b3ff00]/20 hover:bg-[#b3ff00]/30 text-[#b3ff00] border border-[#b3ff00]/40 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[2.5px]" />
+                  Approve & Publish Selected
+                </button>
+                <button
+                  onClick={() => setBulkDeleteModalOpen(true)}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-1.5 bg-[#ef4444]/20 hover:bg-[#ef4444]/30 text-[#ef4444] border border-[#ef4444]/40 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {bulkActionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  Delete Selected ({selectedGigIds.length})
+                </button>
+                <button
+                  onClick={() => setSelectedGigIds([])}
+                  className="text-[#a1a1aa] hover:text-white p-1.5 rounded-lg hover:bg-white/5 transition-all ml-1"
+                  title="Clear Selection"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#262626] border-y border-[#2A2A2A]">
+                  <th className="w-12 px-4 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={input => {
+                        if (input) input.indeterminate = isPartiallySelected;
+                      }}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded border-[#3A3A3A] bg-[#141414] text-[#b3ff00] accent-[#b3ff00] cursor-pointer"
+                      title="Select all imported gigs"
+                    />
+                  </th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Title</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Source</th>
                   <th className="px-6 py-4 text-[14px] font-medium leading-[20px] text-[#FFFFFF] capitalize">Original Link</th>
@@ -347,6 +492,7 @@ export default function ScraperModule() {
               </thead>
               <tbody className="divide-y divide-[#2A2A2A]">
                 {importedGigs.map((gig) => {
+                  const isSelected = selectedGigIds.includes(gig.id);
                   const rawSourceUrl = (gig as any).sourceUrl || (gig as any).source_url || (gig as any).postUrl || (gig as any).post_url || (gig as any).permalink || (gig as any).url || (gig as any).link || "";
                   const rawPosterUrl = (gig as any).organizerProfileUrl || (gig as any).posterUrl || (gig as any).organizer_profile_url || "";
                   
@@ -364,7 +510,18 @@ export default function ScraperModule() {
                   const posterLink = formatExternalUrl(rawPosterUrl) || sourceLink;
 
                   return (
-                  <tr key={gig.id} className="hover:bg-white/[0.02] transition-colors group">
+                  <tr 
+                    key={gig.id} 
+                    className={`transition-colors group ${isSelected ? "bg-[#b3ff00]/[0.04]" : "hover:bg-white/[0.02]"}`}
+                  >
+                    <td className="w-12 px-4 py-5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(gig.id)}
+                        className="w-4 h-4 rounded border-[#3A3A3A] bg-[#141414] text-[#b3ff00] accent-[#b3ff00] cursor-pointer"
+                      />
+                    </td>
                     <td className="px-6 py-5 text-white font-bold text-[14px] truncate max-w-[180px]">{gig.title}</td>
                     <td className="px-6 py-5 text-[#a1a1aa] text-[14px] font-medium">{gig.source}</td>
                     <td className="px-6 py-5">
@@ -469,7 +626,7 @@ export default function ScraperModule() {
                 })}
                 {importedGigs.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-6 py-10 text-center text-[#71717a]">No imported gigs found</td>
+                    <td colSpan={10} className="px-6 py-10 text-center text-[#71717a]">No imported gigs found</td>
                   </tr>
                 )}
               </tbody>
@@ -480,20 +637,47 @@ export default function ScraperModule() {
 
       <Toast show={toast.show} message={toast.message} onClose={() => setToast({ show: false, message: "" })} />
       
+      {/* --- SINGLE GIG DELETE MODAL --- */}
       <ConfirmationModal 
         isOpen={deleteModal.show}
         onClose={() => setDeleteModal({ show: false, gigId: null })}
         onConfirm={handleDeleteGig}
         title="Delete Scraped Gig?"
-        description="This action will permanently remove the scraped gig from the moderation queue."
+        description="This action will permanently remove the scraped gig from the moderation queue and active listings."
         cancelLabel="Cancel"
         confirmLabel="Delete Gig"
       />
+
+      {/* --- BULK DELETE MODAL --- */}
+      <ConfirmationModal 
+        isOpen={bulkDeleteModalOpen}
+        onClose={() => setBulkDeleteModalOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title={`Delete ${selectedGigIds.length} Scraped Gigs?`}
+        description={`Are you sure you want to permanently delete these ${selectedGigIds.length} scraped gigs? Any listings published from them will also be removed. This cannot be undone.`}
+        cancelLabel="Cancel"
+        confirmLabel={`Delete ${selectedGigIds.length} Gigs`}
+        confirmVariant="danger"
+      />
+
+      {/* --- CLEAR ALL SCRAPED GIGS MODAL --- */}
+      <ConfirmationModal 
+        isOpen={clearAllModalOpen}
+        onClose={() => setClearAllModalOpen(false)}
+        onConfirm={handleConfirmClearAll}
+        title="Clear All Scraped Gigs?"
+        description="Are you sure you want to wipe all scraped gigs from the database? All scraped entries and any published listings created from them will be permanently deleted. This action is irreversible."
+        cancelLabel="Cancel"
+        confirmLabel="Clear All Scraped Gigs"
+        confirmVariant="danger"
+      />
+
       <ScraperDetailsModal 
         isOpen={detailsModal.show}
         onClose={() => setDetailsModal({ show: false, run: null })}
         runData={detailsModal.run}
       />
+      
       <EditScrapedGigModal 
         isOpen={editModal.show}
         onClose={() => setEditModal({ show: false, gig: null })}
@@ -511,7 +695,6 @@ export default function ScraperModule() {
             setImportedGigs(prev => prev.filter(g => g.id !== gigId));
             setEditModal({ show: false, gig: null });
             showToast("Gig deleted successfully");
-            // Refresh stats cards immediately so count updates without page reload
             fetchData();
           } catch (error) {
             showToast("Failed to delete gig", "error");
@@ -534,11 +717,12 @@ export default function ScraperModule() {
           }
         }}
       />
+
       <RunScraperModal 
         isOpen={runScraperModal}
         onClose={() => {
           setRunScraperModal(false);
-          fetchData(); // Refresh the main dashboard when closing the modal
+          fetchData();
         }}
         onConfirm={handleRunScraper}
         onRefreshData={fetchData}

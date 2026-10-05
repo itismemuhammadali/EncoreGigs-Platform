@@ -316,3 +316,30 @@ class BookingService:
             )
         
         return {"message": "Contract signed successfully"}
+
+    @staticmethod
+    def delete_booking(booking_id: str) -> bool:
+        """Deletes a booking / contract."""
+        try:
+            ref = db.collection("bookings").document(booking_id)
+            if not ref.get().exists:
+                return False
+            ref.delete()
+            return True
+        except Exception as e:
+            print(f"Error deleting booking {booking_id}: {e}")
+            return False
+
+    @staticmethod
+    def delete_bookings_batch(booking_ids: list[str]) -> dict:
+        """Batch deletes bookings / contracts."""
+        deleted_count = 0
+        errors = []
+        for bid in booking_ids:
+            try:
+                success = BookingService.delete_booking(bid)
+                if success:
+                    deleted_count += 1
+            except Exception as e:
+                errors.append(f"{bid}: {str(e)}")
+        return {"success": True, "deletedCount": deleted_count, "errors": errors}

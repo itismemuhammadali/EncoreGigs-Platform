@@ -43,6 +43,32 @@ async def list_bookings(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+from pydantic import BaseModel
+from typing import Optional, List
+
+class BulkDeleteBookingsRequest(BaseModel):
+    bookingIds: List[str]
+
+@router.post("/bulk-delete")
+async def bulk_delete_bookings(request: BulkDeleteBookingsRequest):
+    try:
+        res = BookingService.delete_bookings_batch(request.bookingIds)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/{booking_id}")
+async def delete_booking(booking_id: str):
+    try:
+        success = BookingService.delete_booking(booking_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Booking not found")
+        return {"message": "Booking deleted successfully", "success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{booking_id}")
 async def get_booking(booking_id: str):
     try:

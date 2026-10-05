@@ -638,3 +638,31 @@ class GigService:
         except Exception as e:
             print(f"Error updating status for gig {gig_id}: {e}")
             return False
+
+    @staticmethod
+    def delete_gigs_batch(gig_ids: list[str]) -> dict:
+        """Batch permanently deletes multiple gigs and associated artifacts."""
+        deleted_count = 0
+        errors = []
+        for gig_id in gig_ids:
+            try:
+                success = GigService.delete_gig(gig_id)
+                if success:
+                    deleted_count += 1
+            except Exception as e:
+                errors.append(f"{gig_id}: {str(e)}")
+        return {"success": True, "deletedCount": deleted_count, "errors": errors}
+
+    @staticmethod
+    def update_gigs_status_batch(gig_ids: list[str], status: str) -> dict:
+        """Batch updates the status of multiple gigs."""
+        updated_count = 0
+        errors = []
+        for gig_id in gig_ids:
+            try:
+                success = GigService.update_gig_status(gig_id, status)
+                if success:
+                    updated_count += 1
+            except Exception as e:
+                errors.append(f"{gig_id}: {str(e)}")
+        return {"success": True, "updatedCount": updated_count, "errors": errors}

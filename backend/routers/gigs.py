@@ -3,8 +3,32 @@ from backend.services.gig_service import GigService
 from backend.models.gig_models import GigRequest, ApplicationRequest
 from backend.database import db
 from typing import Optional, List, Any, Dict
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/gigs", tags=["gigs"])
+
+class BulkDeleteRequest(BaseModel):
+    gigIds: List[str]
+
+class BulkStatusRequest(BaseModel):
+    gigIds: List[str]
+    status: str
+
+@router.post("/bulk-delete")
+async def bulk_delete_gigs(request: BulkDeleteRequest):
+    try:
+        res = GigService.delete_gigs_batch(request.gigIds)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/bulk-status")
+async def bulk_update_gig_status(request: BulkStatusRequest):
+    try:
+        res = GigService.update_gigs_status_batch(request.gigIds, request.status)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create")
 async def create_gig(request: GigRequest):

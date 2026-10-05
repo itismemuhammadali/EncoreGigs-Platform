@@ -54,6 +54,25 @@ async def run_scraper(request: Optional[RunScraperRequest] = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ScraperBulkDeleteRequest(BaseModel):
+    gigIds: List[str]
+
+@router.post("/gigs/bulk-delete")
+async def bulk_delete_scraped_gigs(request: ScraperBulkDeleteRequest):
+    try:
+        res = ScraperService.delete_gigs_batch(request.gigIds)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/gigs/clear-all")
+async def clear_all_scraped_gigs():
+    try:
+        res = ScraperService.clear_all_scraped()
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/gigs/{gig_id}")
 async def delete_scraped_gig(gig_id: str):
     try:

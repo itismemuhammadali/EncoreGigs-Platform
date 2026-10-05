@@ -123,3 +123,16 @@ class ReviewService:
             return False
         review_ref.delete()
         return True
+
+    @staticmethod
+    def delete_reviews_batch(review_ids: list[str]) -> dict:
+        deleted_count = 0
+        errors = []
+        for rid in review_ids:
+            try:
+                success = ReviewService.delete_review(rid)
+                if success:
+                    deleted_count += 1
+            except Exception as e:
+                errors.append(f"{rid}: {str(e)}")
+        return {"success": True, "deletedCount": deleted_count, "errors": errors}

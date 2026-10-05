@@ -665,6 +665,35 @@ async def update_user_status(request: UserStatusRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class BulkUserStatusRequest(BaseModel):
+    userIds: List[str]
+    status: str
+    userType: Optional[str] = None
+
+
+class BulkUserDeleteRequest(BaseModel):
+    userIds: List[str]
+    userType: Optional[str] = None
+
+
+@router.post("/users/bulk-status")
+async def bulk_update_user_status(request: BulkUserStatusRequest):
+    try:
+        res = AuthService.update_users_status_batch(request.userIds, request.status, request.userType)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/users/bulk-delete")
+async def bulk_delete_users(request: BulkUserDeleteRequest):
+    try:
+        res = AuthService.delete_users_batch(request.userIds, request.userType)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/signin")
 async def signin(request: SignInRequest):
     payload = {

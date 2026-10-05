@@ -32,6 +32,19 @@ async def toggle_flag(review_id: str, request: ReviewFlagRequest):
         if isinstance(e, HTTPException): raise e
         raise HTTPException(status_code=500, detail=str(e))
 
+from pydantic import BaseModel
+
+class BulkDeleteReviewsRequest(BaseModel):
+    reviewIds: List[str]
+
+@router.post("/bulk-delete")
+async def bulk_delete_reviews(request: BulkDeleteReviewsRequest):
+    try:
+        res = ReviewService.delete_reviews_batch(request.reviewIds)
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/{review_id}")
 async def delete_review(review_id: str):
     try:

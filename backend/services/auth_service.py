@@ -249,5 +249,60 @@ class AuthService:
             return False
 
     @staticmethod
+    def update_users_status_batch(user_ids: list[str], status: str, user_type: Optional[str] = None) -> dict:
+        """Batch updates the status for multiple users and triggers notifications."""
+        updated_count = 0
+        errors = []
+        collections = [f"{user_type}s"] if user_type in ["musician", "organizer", "admin"] else ["musicians", "organizers", "admins"]
+
+        for uid in user_ids:
+            try:
+                found = False
+                for col in collections:
+                    ref = db.collection(col).document(uid)
+                    doc: Any = ref.get()
+                    if doc.exists:
+                        ref.update({"status": status})
+                        found = True
+                        data = doc.to_dict() or {}
+                        user_name = data.get("fullName") or data.get("name") or "User"
+                        user_email = data.get("email") or ""
+                        SecurityService.create_log(f"Bulk set status to {status}", user_email)
+
+                        try:
+                            if status in ["approved", "active"]:
+                                EmailService.send_account_approved_email(user_email, user_name)
+                            elif status in ["rejected", "denied", "suspended"]:
+                                EmailService.send_account_denied_email(user_email, user_name)
+                        except Exception as ex:
+                            print(f"Error sending email in bulk status for {uid}: {ex}")
+                        break
+                if found:
+                    updated_count += 1
+                else:
+                    errors.append(f"{uid}: User not found")
+            except Exception as e:
+                errors.append(f"{uid}: {str(e)}")
+        return {"success": True, "updatedCount": updated_count, "errors": errors}
+
+    @staticmethod
+    def delete_users_batch(user_ids: list[str], user_type: Optional[str] = None) -> dict:
+        """Batch deletes multiple users."""
+        deleted_count = 0
+        errors = []
+        collections = [f"{user_type}s"] if user_type in ["musician", "organizer", "admin"] else ["musicians", "organizers", "admins"]
+        for uid in user_ids:
+            try:
+                for col in collections:
+                    ref = db.collection(col).document(uid)
+                    if ref.get().exists:
+                        ref.delete()
+                        deleted_count += 1
+                        break
+            except Exception as e:
+                errors.append(f"{uid}: {str(e)}")
+        return {"success": True, "deletedCount": deleted_count, "errors": errors}
+
+    @staticmethod
     def signOut():
         pass

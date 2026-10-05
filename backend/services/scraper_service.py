@@ -193,13 +193,52 @@ class ScraperService:
 
     @staticmethod
     def delete_gig(gig_id: str):
-        """Deletes a scraped gig."""
+        """Deletes a scraped gig and cleans up any published gig in the app."""
         try:
-            db.collection("scraped_gigs").document(gig_id).delete()
-            return True
+            doc_ref = db.collection("scraped_gigs").document(gig_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict() or {}
+                pub_id = data.get("publishedGigId")
+                if pub_id:
+                    try:
+                        from backend.services.gig_service import GigService
+                        GigService.delete_gig(pub_id)
+                    except Exception as ex:
+                        print(f"Error deleting associated app gig {pub_id}: {ex}")
+                doc_ref.delete()
+                return True
+            return False
         except Exception as e:
             print(f"Error deleting gig: {e}")
             return False
+
+    @staticmethod
+    def delete_gigs_batch(gig_ids: list[str]) -> dict:
+        """Deletes a batch of scraped gigs."""
+        deleted_count = 0
+        errors = []
+        for gig_id in gig_ids:
+            try:
+                success = ScraperService.delete_gig(gig_id)
+                if success:
+                    deleted_count += 1
+            except Exception as e:
+                errors.append(f"{gig_id}: {str(e)}")
+        return {"success": True, "deletedCount": deleted_count, "errors": errors}
+
+    @staticmethod
+    def clear_all_scraped() -> dict:
+        """Clears all scraped gigs and associated published gigs."""
+        try:
+            docs = list(db.collection("scraped_gigs").stream())
+            deleted_count = 0
+            for doc in docs:
+                if ScraperService.delete_gig(doc.id):
+                    deleted_count += 1
+            return {"success": True, "deletedCount": deleted_count}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @staticmethod
     def update_gig(gig_id: str, updates: dict):
