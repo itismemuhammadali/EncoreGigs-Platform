@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/signup_provider.dart';
@@ -58,7 +59,24 @@ class _Step3VerificationState extends State<Step3Verification> {
       if (!mounted) return;
 
       if (error == null) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/signup/pending', (route) => false);
+        final currentUser = authService.currentUser;
+        if (currentUser != null) {
+          try {
+            await FirebaseFirestore.instance.collection('organizers').doc(currentUser.uid).set({
+              'isProfileCompleted': true,
+              if (currentUser.photoURL != null && currentUser.photoURL!.isNotEmpty)
+                'profileImageUrl': currentUser.photoURL,
+            }, SetOptions(merge: true));
+          } catch (_) {}
+        }
+        if (!mounted) return;
+        final status = await authService.getUserStatus();
+        if (!mounted) return;
+        if (status == 'approved') {
+          Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil('/signup/pending', (route) => false);
+        }
       } else {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(

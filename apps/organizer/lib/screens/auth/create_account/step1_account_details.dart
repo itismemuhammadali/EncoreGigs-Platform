@@ -1,4 +1,8 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_config/email_verification_dialog.dart';
 import '../../../providers/signup_provider.dart';
@@ -19,6 +23,19 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+  bool _isSocialUser = false;
+  bool _isLoadingSocial = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      _isSocialUser = true;
+      _nameController.text = currentUser.displayName ?? '';
+      _emailController.text = currentUser.email ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -30,13 +47,58 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
     super.dispose();
   }
 
+  Future<void> _handleSocialSignIn(String provider) async {
+    setState(() => _isLoadingSocial = true);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final result = provider == 'google'
+        ? await authService.signInWithGoogle()
+        : await authService.signInWithApple();
+
+    if (mounted) {
+      setState(() => _isLoadingSocial = false);
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (result == null && currentUser != null) {
+        final userStatus = await authService.getUserStatus(currentUser.uid);
+        if (!mounted) return;
+        if (userStatus == 'pending' || userStatus == 'pending_approval') {
+          Navigator.of(context).pushReplacementNamed('/account_pending');
+          return;
+        } else if (userStatus == 'rejected' || userStatus == 'denied') {
+          Navigator.of(context).pushReplacementNamed('/account_denied');
+          return;
+        } else if (userStatus != 'incomplete') {
+          Navigator.of(context).pushReplacementNamed('/home');
+          return;
+        }
+      }
+
+      if (currentUser != null) {
+        setState(() {
+          _isSocialUser = true;
+          if (_nameController.text.trim().isEmpty) {
+            _nameController.text = currentUser.displayName ?? '';
+          }
+          if (_emailController.text.trim().isEmpty) {
+            _emailController.text = currentUser.email ?? '';
+          }
+        });
+      } else if (result != null && result != 'new_user') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result)));
+      }
+    }
+  }
+
   void _handleNext() async {
     final missing = <String>[];
     if (_nameController.text.trim().isEmpty) missing.add('Full Name');
     if (_organizationController.text.trim().isEmpty) missing.add('Organization Name');
     if (_emailController.text.trim().isEmpty) missing.add('Email');
-    if (_passwordController.text.isEmpty) missing.add('Password');
-    if (_confirmPasswordController.text.isEmpty) missing.add('Confirm Password');
+
+    // For social users (Google/Apple), password is not required
+    if (!_isSocialUser) {
+      if (_passwordController.text.isEmpty) missing.add('Password');
+      if (_confirmPasswordController.text.isEmpty) missing.add('Confirm Password');
+    }
 
     if (missing.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -45,6 +107,19 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
           backgroundColor: Colors.redAccent,
         ),
       );
+      return;
+    }
+
+    final email = _emailController.text.trim();
+
+    if (_isSocialUser) {
+      Provider.of<SignUpProvider>(context, listen: false).updateStep1(
+        name: _nameController.text.trim(),
+        orgName: _organizationController.text.trim(),
+        email: email,
+        password: '',
+      );
+      Navigator.of(context).pushNamed('/signup/step2');
       return;
     }
 
@@ -69,7 +144,6 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
       return;
     }
 
-    final email = _emailController.text.trim();
     final authService = Provider.of<AuthService>(context, listen: false);
 
     final createError = await authService.createUser(email, _passwordController.text);
@@ -143,7 +217,57 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
                 'Set up your organizer account',
                 style: TextStyle(color: Color(0xFF999999), fontSize: 14),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+              if (!_isSocialUser) ...[
+                _buildSocialButton(
+                  iconPath: 'assets/google_icon.svg',
+                  label: 'Sign up with Google',
+                  onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('google'),
+                ),
+                if (!kIsWeb && Platform.isIOS) ...[
+                  const SizedBox(height: 12),
+                  _buildSocialButton(
+                    iconPath: 'assets/apple_icon.svg',
+                    label: 'Sign up with Apple',
+                    onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('apple'),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('or with email',
+                          style: TextStyle(color: Color(0xFF666666), fontSize: 13)),
+                    ),
+                    Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFA2F301).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFA2F301).withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Color(0xFFA2F301), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Authenticated via ${_emailController.text.isNotEmpty ? _emailController.text : "Social Account"}',
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               _buildLabel('Full Name'),
               const SizedBox(height: 8),
               _buildTextField(_nameController, 'Your full name'),
@@ -154,28 +278,34 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
               const SizedBox(height: 20),
               _buildLabel('Email Address'),
               const SizedBox(height: 8),
-              _buildTextField(_emailController, 'your@email.com',
-                  keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 20),
-              _buildLabel('Password'),
-              const SizedBox(height: 8),
               _buildTextField(
-                _passwordController,
-                'Create a password',
-                obscure: _obscurePassword,
-                toggleObscure: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
+                _emailController,
+                'your@email.com',
+                keyboardType: TextInputType.emailAddress,
+                readOnly: _isSocialUser,
               ),
-              const SizedBox(height: 20),
-              _buildLabel('Confirm Password'),
-              const SizedBox(height: 8),
-              _buildTextField(
-                _confirmPasswordController,
-                'Re-enter password',
-                obscure: _obscureConfirm,
-                toggleObscure: () =>
-                    setState(() => _obscureConfirm = !_obscureConfirm),
-              ),
+              if (!_isSocialUser) ...[
+                const SizedBox(height: 20),
+                _buildLabel('Password'),
+                const SizedBox(height: 8),
+                _buildTextField(
+                  _passwordController,
+                  'Create a password',
+                  obscure: _obscurePassword,
+                  toggleObscure: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+                const SizedBox(height: 20),
+                _buildLabel('Confirm Password'),
+                const SizedBox(height: 8),
+                _buildTextField(
+                  _confirmPasswordController,
+                  'Re-enter password',
+                  obscure: _obscureConfirm,
+                  toggleObscure: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                ),
+              ],
               const SizedBox(height: 40),
             ],
           ),
@@ -198,17 +328,19 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
     bool obscure = false,
     VoidCallback? toggleObscure,
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
   }) {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      readOnly: readOnly,
       keyboardType: keyboardType,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Color(0xFF555555)),
         filled: true,
-        fillColor: const Color(0xFF1A1A1F),
+        fillColor: readOnly ? const Color(0xFF141418) : const Color(0xFF1A1A1F),
         suffixIcon: toggleObscure != null
             ? GestureDetector(
                 onTap: toggleObscure,
@@ -221,6 +353,40 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton({
+    required String iconPath,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1F),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF2A2A2F)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(iconPath, width: 22, height: 22),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -507,6 +507,28 @@ async def delete_admin_member(uid: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+def _get_initial_user_status() -> str:
+    """
+    Returns initial status for newly registered users.
+    During Apple Review / onboarding mode, returns 'approved' so reviewers
+    can explore the app immediately without waiting for admin approval.
+    Can be dynamically toggled via Firestore (collection 'app_settings', doc 'auth', field 'autoApproveUsers')
+    or via environment variable AUTO_APPROVE_NEW_USERS.
+    """
+    try:
+        config_doc = db.collection("app_settings").document("auth").get()
+        if config_doc.exists:
+            val = (config_doc.to_dict() or {}).get("autoApproveUsers")
+            if val is not None:
+                return "approved" if bool(val) else "pending"
+    except Exception as e:
+        print(f"Error checking app_settings for autoApproveUsers: {e}")
+    
+    # Default to auto-approving during review period (True unless explicitly set to false)
+    auto_approve = os.getenv("AUTO_APPROVE_NEW_USERS", "true").lower() in ("true", "1", "yes")
+    return "approved" if auto_approve else "pending"
+
+
 @router.post("/signup/musician")
 async def signup_musician(request: MusicianSignUpRequest):
     try:
@@ -537,6 +559,7 @@ async def signup_musician(request: MusicianSignUpRequest):
                 display_name=request.fullName
             )
         
+        initial_status = _get_initial_user_status()
         user_data = {
             "uid": user.uid,
             "fullName": request.fullName,
@@ -562,17 +585,18 @@ async def signup_musician(request: MusicianSignUpRequest):
             "portfolio": request.portfolio,
             "profileImageUrl": request.profileImageUrl,
             "bannerImageUrl": request.bannerImageUrl,
-            "status": "pending",
+            "status": initial_status,
+            "isProfileCompleted": True,
             "role": "musician",
             "joinedAt": datetime.now().strftime("%Y-%m-%d"),
             "createdAt": SERVER_TIMESTAMP
         }
-        db.collection("musicians").document(user.uid).set(user_data)
+        db.collection("musicians").document(user.uid).set(user_data, merge=True)
         
         AdminNotificationService.user_activity("New musician registered", f"{request.fullName} ({request.email}) joined as a musician.")
         AdminNotificationService.check_milestones()
         
-        return {"message": "Musician created successfully", "uid": user.uid}
+        return {"message": "Musician created successfully", "uid": user.uid, "status": initial_status}
     except HTTPException:
         raise
     except Exception as e:
@@ -613,6 +637,7 @@ async def signup(request: SignUpRequest):
                 display_name=request.name
             )
         
+        initial_status = _get_initial_user_status()
         user_data = {
             "uid": user.uid,
             "name": request.name,
@@ -624,17 +649,18 @@ async def signup(request: SignUpRequest):
             "businessPhone": request.contact,
             "location": request.location,
             "bio": request.bio,
-            "status": "pending",
+            "status": initial_status,
+            "isProfileCompleted": True,
             "role": "organizer",
             "joinedAt": datetime.now().strftime("%Y-%m-%d"),
             "createdAt": SERVER_TIMESTAMP
         }
-        db.collection("organizers").document(user.uid).set(user_data)
+        db.collection("organizers").document(user.uid).set(user_data, merge=True)
         
         AdminNotificationService.user_activity("New organizer registered", f"{request.name} ({request.email}) joined as an organizer.")
         AdminNotificationService.check_milestones()
         
-        return {"message": "User created successfully", "uid": user.uid}
+        return {"message": "User created successfully", "uid": user.uid, "status": initial_status}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

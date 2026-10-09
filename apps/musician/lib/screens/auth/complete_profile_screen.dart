@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/musician_signup_provider.dart';
@@ -22,6 +23,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   final Map<String, dynamic> profileData = {
     'fullName': '',
     'profileImage': null,
+    'profileImageUrl': null,
     'bannerImage': null,
     'bio': '',
     'primaryGenre': '',
@@ -52,6 +54,28 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
+
+    // Auto-populate from authenticated social user (Google/Apple)
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      if ((profileData['fullName'] as String).isEmpty && (currentUser.displayName ?? '').isNotEmpty) {
+        profileData['fullName'] = currentUser.displayName!;
+      }
+      if (currentUser.photoURL != null && currentUser.photoURL!.isNotEmpty) {
+        profileData['profileImageUrl'] = currentUser.photoURL;
+      }
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final signupProvider = Provider.of<MusicianSignUpProvider>(context, listen: false);
+        if (signupProvider.email.isEmpty && (currentUser.email ?? '').isNotEmpty) {
+          signupProvider.updateCredentials(currentUser.email!, '');
+        }
+        if (signupProvider.fullName.isEmpty && (currentUser.displayName ?? '').isNotEmpty) {
+          signupProvider.fullName = currentUser.displayName!;
+        }
+      });
+    }
   }
 
   @override
@@ -84,14 +108,36 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
     try {
       final signupProvider = Provider.of<MusicianSignUpProvider>(context, listen: false);
       final authService = Provider.of<AuthService>(context, listen: false);
+      final currentUser = FirebaseAuth.instance.currentUser;
 
       // Update provider with profile data
       signupProvider.updateProfile(profileData);
 
+      final effectiveEmail = signupProvider.email.trim().isNotEmpty
+          ? signupProvider.email.trim()
+          : (currentUser?.email?.trim() ?? '');
+
+      if (effectiveEmail.isEmpty) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Email address is required. Please sign in again or provide an email.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
+      final effectiveFullName = signupProvider.fullName.trim().isNotEmpty
+          ? signupProvider.fullName.trim()
+          : ((profileData['fullName'] as String?)?.trim().isNotEmpty == true
+              ? (profileData['fullName'] as String).trim()
+              : (currentUser?.displayName?.trim() ?? ''));
+
       final error = await authService.signUpMusician(
-        email: signupProvider.email,
+        email: effectiveEmail,
         password: signupProvider.password,
-        fullName: signupProvider.fullName,
+        fullName: effectiveFullName,
         bio: signupProvider.bio,
         genres: signupProvider.genres,
         instruments: signupProvider.instruments,
@@ -101,6 +147,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         website: signupProvider.website,
         portfolio: signupProvider.portfolio,
         profileImage: profileData['profileImage'] as File?,
+        existingProfileImageUrl: profileData['profileImageUrl'] as String?,
         bannerImage: profileData['bannerImage'] as File?,
         primaryCity: profileData['primaryCity'] as String?,
         primaryState: profileData['primaryState'] as String?,
@@ -117,9 +164,20 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
       if (!mounted) return;
 
       if (error == null) {
-        debugPrint('Signup successful, navigating to account pending review screen...');
+        debugPrint('Signup successful, checking user status...');
+        final currentUser = FirebaseAuth.instance.currentUser;
+        String status = 'pending';
+        if (currentUser != null) {
+          status = await authService.getUserStatus(currentUser.uid);
+        }
         if (mounted) {
-          Navigator.of(context).pushNamedAndRemoveUntil('/account_pending', (route) => false);
+          if (status == 'approved') {
+            debugPrint('User is approved, navigating directly to home...');
+            Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+          } else {
+            debugPrint('User is pending approval, navigating to pending screen...');
+            Navigator.of(context).pushNamedAndRemoveUntil('/account_pending', (route) => false);
+          }
         }
       } else {
         setState(() => _isLoading = false);

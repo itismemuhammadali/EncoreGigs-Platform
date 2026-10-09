@@ -108,14 +108,37 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     );
   }
 
+  bool _isLoadingSocial = false;
+
   Future<void> _handleSocialSignIn(String provider) async {
+    setState(() => _isLoadingSocial = true);
     final authService = Provider.of<AuthService>(context, listen: false);
     final result = provider == 'google'
         ? await authService.signInWithGoogle()
         : await authService.signInWithApple();
 
     if (mounted) {
-      if (result == null || result == 'new_user') {
+      setState(() => _isLoadingSocial = false);
+      if (result == null) {
+        final user = authService.currentUser;
+        if (user != null) {
+          final userStatus = await authService.getUserStatus(user.uid);
+          if (!mounted) return;
+          if (userStatus == 'pending' || userStatus == 'pending_approval') {
+            Navigator.of(context).pushReplacementNamed('/account_pending');
+            return;
+          } else if (userStatus == 'rejected' || userStatus == 'denied') {
+            Navigator.of(context).pushReplacementNamed('/account_denied');
+            return;
+          } else if (userStatus == 'incomplete') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+            );
+            return;
+          }
+        }
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else if (result == 'new_user') {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
         );
@@ -191,14 +214,14 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                 _buildSocialButton(
                   iconPath: 'assets/google_icon.svg',
                   label: 'Continue with Google',
-                  onTap: () => _handleSocialSignIn('google'),
+                  onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('google'),
                 ),
                 if (!kIsWeb && Platform.isIOS) ...[
                   const SizedBox(height: 12),
                   _buildSocialButton(
                     iconPath: 'assets/apple_icon.svg',
                     label: 'Continue with Apple',
-                    onTap: () => _handleSocialSignIn('apple'),
+                    onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('apple'),
                   ),
                 ],
                 const SizedBox(height: 24),

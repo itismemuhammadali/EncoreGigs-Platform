@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import 'complete_profile_screen.dart';
 import 'two_factor_verification_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -110,11 +111,18 @@ class _SignInScreenState extends State<SignInScreen> {
           } else if (userStatus == 'rejected' || userStatus == 'denied') {
             Navigator.of(context).pushReplacementNamed('/account_denied');
             return;
+          } else if (userStatus == 'incomplete') {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+            );
+            return;
           }
         }
         Navigator.of(context).pushReplacementNamed('/home');
       } else if (result == 'new_user') {
-        Navigator.of(context).pushReplacementNamed('/signup');
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CompleteProfileScreen()),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result)),

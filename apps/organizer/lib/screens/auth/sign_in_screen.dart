@@ -103,6 +103,9 @@ class _SignInScreenState extends State<SignInScreen> {
           } else if (userStatus == 'rejected' || userStatus == 'denied') {
             Navigator.of(context).pushReplacementNamed('/account_denied');
             return;
+          } else if (userStatus == 'incomplete') {
+            Navigator.of(context).pushReplacementNamed('/signup/step1');
+            return;
           }
         }
         Navigator.of(context).pushReplacementNamed('/home');

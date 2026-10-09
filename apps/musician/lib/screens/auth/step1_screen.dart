@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
@@ -75,8 +76,22 @@ class _Step1ScreenState extends State<Step1Screen> {
   @override
   void initState() {
     super.initState();
+    final currentAuthUser = FirebaseAuth.instance.currentUser;
+    final existingName = (widget.profileData['fullName'] as String?)?.trim();
+    final effectiveName = (existingName != null && existingName.isNotEmpty)
+        ? existingName
+        : (currentAuthUser?.displayName?.trim() ?? '');
+    
+    if (widget.profileData['fullName'] == null || (widget.profileData['fullName'] as String).isEmpty) {
+      widget.profileData['fullName'] = effectiveName;
+    }
+
+    if (widget.profileData['profileImageUrl'] == null && (currentAuthUser?.photoURL ?? '').isNotEmpty) {
+      widget.profileData['profileImageUrl'] = currentAuthUser!.photoURL;
+    }
+
     _nameController = TextEditingController(
-      text: widget.profileData['fullName'] ?? '',
+      text: effectiveName,
     );
     _bioController = TextEditingController(
       text: widget.profileData['bio'] ?? '',
@@ -457,8 +472,13 @@ class _Step1ScreenState extends State<Step1Screen> {
                               image: FileImage(_imageFile!),
                               fit: BoxFit.cover,
                             )
-                          : null,
-                      gradient: _imageFile == null 
+                          : ((widget.profileData['profileImageUrl'] as String?)?.isNotEmpty == true)
+                              ? DecorationImage(
+                                  image: NetworkImage(widget.profileData['profileImageUrl'] as String),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                      gradient: (_imageFile == null && ((widget.profileData['profileImageUrl'] as String?)?.isNotEmpty != true))
                         ? LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -472,7 +492,7 @@ class _Step1ScreenState extends State<Step1Screen> {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        if (_imageFile == null)
+                        if (_imageFile == null && ((widget.profileData['profileImageUrl'] as String?)?.isNotEmpty != true))
                           SizedBox(
                             width: 48,
                             height: 48,

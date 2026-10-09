@@ -192,23 +192,43 @@ class AuthService extends ChangeNotifier {
       idToken: appleCredential.identityToken,
       accessToken: appleCredential.authorizationCode,
     );
-    return await _auth.signInWithCredential(oauthCredential);
+    final userCredential = await _auth.signInWithCredential(oauthCredential);
+    // Apple only returns name on first sign in
+    if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      final appleName = [appleCredential.givenName, appleCredential.familyName]
+          .where((s) => s != null && s.isNotEmpty)
+          .join(' ');
+      if (appleName.isNotEmpty) {
+        try {
+          await userCredential.user?.updateDisplayName(appleName);
+        } catch (_) {}
+      }
+    }
+    return userCredential;
   }
 
   Future<String?> _handleSocialSignIn(UserCredential userCredential, String provider) async {
     final user = userCredential.user;
     if (user == null) return 'Sign in failed';
 
-    final doc = await FirebaseFirestore.instance.collection('musicians').doc(user.uid).get();
+    final doc = await FirebaseFirestore.instance.collection('organizers').doc(user.uid).get();
     if (doc.exists) {
+      final data = doc.data();
+      final status = (data?['status'] as String?)?.toLowerCase();
+      final isProfileCompleted = data?['isProfileCompleted'] as bool? ?? false;
+      if (status == 'incomplete' || (!isProfileCompleted && status != 'pending' && status != 'approved')) {
+        return 'new_user';
+      }
       return null;
     }
 
-    await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set({
-      'email': user.email,
-      'fullName': user.displayName ?? '',
+    await FirebaseFirestore.instance.collection('organizers').doc(user.uid).set({
+      'email': user.email ?? '',
+      'name': user.displayName ?? '',
       'profileImageUrl': user.photoURL ?? '',
       'authProvider': provider,
+      'status': 'incomplete',
+      'isProfileCompleted': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
@@ -1010,12 +1030,13 @@ class AuthService extends ChangeNotifier {
     required String bio,
   }) async {
     try {
+      final effectivePassword = password.isNotEmpty ? password : 'SocialAuthTempPassword!123';
       final response = await http.post(
         Uri.parse('$_backendUrl/auth/signup'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
-          'password': password,
+          'password': effectivePassword,
           'name': name,
           'orgName': orgName,
           'type': type,
@@ -1025,6 +1046,11 @@ class AuthService extends ChangeNotifier {
         }),
       );
       if (response.statusCode == 200) {
+        if (password.isNotEmpty && _auth.currentUser == null) {
+          try {
+            await _auth.signInWithEmailAndPassword(email: email, password: password);
+          } catch (_) {}
+        }
         return null;
       }
       return _handleError(response, 'Failed to sign up');

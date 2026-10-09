@@ -203,7 +203,19 @@ class AuthService extends ChangeNotifier {
       idToken: appleCredential.identityToken,
       accessToken: appleCredential.authorizationCode,
     );
-    return await _auth.signInWithCredential(oauthCredential);
+    final userCredential = await _auth.signInWithCredential(oauthCredential);
+    // Apple only returns name on first sign in
+    if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      final appleName = [appleCredential.givenName, appleCredential.familyName]
+          .where((s) => s != null && s.isNotEmpty)
+          .join(' ');
+      if (appleName.isNotEmpty) {
+        try {
+          await userCredential.user?.updateDisplayName(appleName);
+        } catch (_) {}
+      }
+    }
+    return userCredential;
   }
 
   Future<String?> _handleSocialSignIn(UserCredential userCredential, String provider) async {
@@ -212,14 +224,23 @@ class AuthService extends ChangeNotifier {
 
     final doc = await FirebaseFirestore.instance.collection('musicians').doc(user.uid).get();
     if (doc.exists) {
+      final data = doc.data();
+      final status = (data?['status'] as String?)?.toLowerCase();
+      final isProfileCompleted = data?['isProfileCompleted'] as bool? ?? false;
+      // If profile has not been completed, treat as new user so they complete profile steps
+      if (status == 'incomplete' || (!isProfileCompleted && status != 'pending' && status != 'approved')) {
+        return 'new_user';
+      }
       return null;
     }
 
     await FirebaseFirestore.instance.collection('musicians').doc(user.uid).set({
-      'email': user.email,
+      'email': user.email ?? '',
       'fullName': user.displayName ?? '',
       'profileImageUrl': user.photoURL ?? '',
       'authProvider': provider,
+      'status': 'incomplete',
+      'isProfileCompleted': false,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
@@ -313,6 +334,7 @@ class AuthService extends ChangeNotifier {
     String? website,
     Map<String, dynamic>? portfolio,
     File? profileImage,
+    String? existingProfileImageUrl,
     File? bannerImage,
     String? primaryCity,
     String? primaryState,
@@ -334,6 +356,10 @@ class AuthService extends ChangeNotifier {
           profileImage,
           'profile_photos/${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
+      } else if (existingProfileImageUrl != null && existingProfileImageUrl.isNotEmpty) {
+        profileImageUrl = existingProfileImageUrl;
+      } else if (_auth.currentUser?.photoURL != null && _auth.currentUser!.photoURL!.isNotEmpty) {
+        profileImageUrl = _auth.currentUser!.photoURL;
       }
 
       String? bannerImageUrl;
@@ -408,7 +434,15 @@ class AuthService extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         await Future.delayed(const Duration(milliseconds: 500));
-        await _auth.signInWithEmailAndPassword(email: email, password: password);
+        // Only re-authenticate with password if a password was provided (for email/pw signup).
+        // Social users (Google/Apple) are already authenticated with Firebase.
+        if (password.isNotEmpty) {
+          try {
+            await _auth.signInWithEmailAndPassword(email: email, password: password);
+          } catch (e) {
+            debugPrint('Warning: signInWithEmailAndPassword after signup: $e');
+          }
+        }
         return null;
       } else {
         return _handleError(response, 'Sign up failed');
