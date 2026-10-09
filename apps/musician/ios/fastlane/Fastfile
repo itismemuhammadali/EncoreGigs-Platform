@@ -16,8 +16,6 @@ platform :ios do
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
       export_method: "app-store",
-      archive_path: "../build/ios/archive/Runner.xcarchive",
-      skip_build_archive: true,
       export_options: {
         teamID: "9HTF2BKHQL",
         provisioningProfiles: {
