@@ -276,7 +276,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TwoFactorAuthenticationScreen())),
                           ),
                           _buildItem(svgIcon: 'assets/eye_icon.svg', title: 'Privacy Settings', subtitle: '', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PrivacySettingsScreen()))),
-                          _buildItem(svgIcon: 'assets/lock_icon.svg', title: 'Data & Privacy', subtitle: '', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataPrivacyScreen()))),
+                          _buildItem(svgIcon: 'assets/lock_icon.svg', title: 'Data & Privacy', subtitle: 'Manage data export & archive', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataPrivacyScreen()))),
+                          _buildItem(
+                            icon: Icons.delete_forever_outlined,
+                            title: 'Delete Account',
+                            titleColor: const Color(0xFFFF3B30),
+                            subtitle: 'Permanently remove your account and all data',
+                            iconColor: const Color(0xFFFF3B30),
+                            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DataPrivacyScreen(initialShowDeleteDialog: true))),
+                          ),
                         ]),
                         const SizedBox(height: 32),
 
@@ -429,6 +437,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String subtitle,
     required VoidCallback onTap,
     Color? iconColor,
+    Color? titleColor,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -447,7 +456,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(title, style: TextStyle(color: titleColor ?? Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   if (subtitle.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(subtitle, style: TextStyle(color: Colors.grey[500], fontSize: 14)),

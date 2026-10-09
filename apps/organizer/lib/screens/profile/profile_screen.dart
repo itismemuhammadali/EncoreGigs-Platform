@@ -162,10 +162,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ProfileMenuItem(
                       icon: Icons.privacy_tip_outlined,
                       title: 'Data & Privacy',
-                      subtitle: 'Download data or delete account',
+                      subtitle: 'Download your data archive',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const DataPrivacyScreen(),
+                        ),
+                      ),
+                    ),
+                    ProfileMenuItem(
+                      icon: Icons.delete_forever_outlined,
+                      iconColor: const Color(0xFFFF3B30),
+                      iconBgColor: const Color(0x26FF3B30),
+                      title: 'Delete Account',
+                      titleColor: const Color(0xFFFF3B30),
+                      subtitle: 'Permanently remove your account & data',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const DataPrivacyScreen(initialShowDeleteDialog: true),
                         ),
                       ),
                     ),

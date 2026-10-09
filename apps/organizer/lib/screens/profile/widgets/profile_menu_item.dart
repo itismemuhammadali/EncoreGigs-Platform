@@ -7,6 +7,9 @@ class ProfileMenuItem extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
+  final Color? iconColor;
+  final Color? titleColor;
+  final Color? iconBgColor;
 
   const ProfileMenuItem({
     super.key,
@@ -15,10 +18,17 @@ class ProfileMenuItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     this.onTap,
+    this.iconColor,
+    this.titleColor,
+    this.iconBgColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? const Color(0xFFA2F301);
+    final effectiveTitleColor = titleColor ?? Colors.white;
+    final effectiveIconBgColor = iconBgColor ?? effectiveIconColor.withValues(alpha: 0.1);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -34,7 +44,7 @@ class ProfileMenuItem extends StatelessWidget {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFFA2F301).withValues(alpha: 0.1),
+                color: effectiveIconBgColor,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
@@ -43,10 +53,10 @@ class ProfileMenuItem extends StatelessWidget {
                         iconPath!,
                         width: 20,
                         height: 20,
-                        colorFilter: const ColorFilter.mode(
-                            Color(0xFFA2F301), BlendMode.srcIn),
+                        colorFilter: ColorFilter.mode(
+                            effectiveIconColor, BlendMode.srcIn),
                       )
-                    : Icon(icon, color: const Color(0xFFA2F301), size: 20),
+                    : Icon(icon, color: effectiveIconColor, size: 20),
               ),
             ),
             const SizedBox(width: 14),
@@ -56,8 +66,8 @@ class ProfileMenuItem extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: effectiveTitleColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),

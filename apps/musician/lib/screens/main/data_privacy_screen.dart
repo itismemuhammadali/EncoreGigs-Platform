@@ -6,7 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../services/api_service.dart';
 
 class DataPrivacyScreen extends StatefulWidget {
-  const DataPrivacyScreen({super.key});
+  final bool initialShowDeleteDialog;
+  const DataPrivacyScreen({super.key, this.initialShowDeleteDialog = false});
 
   @override
   State<DataPrivacyScreen> createState() => _DataPrivacyScreenState();
@@ -15,6 +16,16 @@ class DataPrivacyScreen extends StatefulWidget {
 class _DataPrivacyScreenState extends State<DataPrivacyScreen> {
   bool _isExporting = false;
   bool _isDeleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialShowDeleteDialog) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _handleDeleteAccount();
+      });
+    }
+  }
 
   Widget _buildExportFeatureRow(String label) {
     return Padding(
