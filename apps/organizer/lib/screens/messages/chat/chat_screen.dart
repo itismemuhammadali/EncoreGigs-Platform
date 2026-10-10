@@ -223,6 +223,80 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _showReportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161622),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Report User', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Report ${widget.name} for objectionable content or misconduct:',
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 12),
+            ...['Harassment or Bullying', 'Inappropriate Content', 'Spam or Fraud', 'Other Violation'].map((reason) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(reason, style: const TextStyle(color: Colors.white, fontSize: 14)),
+              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 14),
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Report submitted. Thank you for keeping OnlyGigz safe.'),
+                    backgroundColor: Color(0xFFA2F301),
+                  ),
+                );
+              },
+            )),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBlockDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF161622),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Block User?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text('Are you sure you want to block ${widget.name}? They will no longer be able to message you.',
+            style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF3B30)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${widget.name} has been blocked.'),
+                  backgroundColor: const Color(0xFFFF3B30),
+                ),
+              );
+            },
+            child: const Text('Block', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final chatService = Provider.of<ChatService>(context);
@@ -290,6 +364,42 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            color: const Color(0xFF1A1A1F),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (value) {
+              if (value == 'report') {
+                _showReportDialog(context);
+              } else if (value == 'block') {
+                _showBlockDialog(context);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.flag_outlined, color: Color(0xFFFF9500), size: 18),
+                    SizedBox(width: 10),
+                    Text('Report User', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(Icons.block, color: Color(0xFFFF3B30), size: 18),
+                    SizedBox(width: 10),
+                    Text('Block User', style: TextStyle(color: Color(0xFFFF3B30))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
