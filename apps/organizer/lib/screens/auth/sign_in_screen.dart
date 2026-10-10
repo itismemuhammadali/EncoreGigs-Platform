@@ -131,121 +131,132 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      body: Stack(
-        children: [
-          // Green glow gradient overlay
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFFA1F301).withValues(alpha: 0.1),
-                  const Color(0xFF0A0A0F).withValues(alpha: 0.0),
-                  const Color(0xFFA1F301).withValues(alpha: 0.1),
-                ],
-                stops: const [0.0, 0.5, 1.0],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A0A0F),
+        body: Stack(
+          children: [
+            // Green glow gradient overlay
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFA1F301).withValues(alpha: 0.1),
+                    const Color(0xFF0A0A0F).withValues(alpha: 0.0),
+                    const Color(0xFFA1F301).withValues(alpha: 0.1),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
               ),
             ),
-          ),
-          SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 60),
-              // Logo
-              Image.asset(
-                'assets/organizer_logo.jpeg',
-                height: 90,
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Welcome to OnlyGigz',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Create your account',
-                style: TextStyle(
-                  color: Color(0xFF999999),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 32),
-              // Email field
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Email address',
-                  hintStyle: const TextStyle(color: Color(0xFF666666)),
-                  prefixIcon: const Icon(Icons.email_outlined,
-                      color: Color(0xFF666666), size: 20),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFA2F301)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Password field
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscurePassword,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  hintStyle: const TextStyle(color: Color(0xFF666666)),
-                  prefixIcon: const Icon(Icons.lock_outline,
-                      color: Color(0xFF666666), size: 20),
-                  suffixIcon: GestureDetector(
-                    onTap: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                    child: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined,
-                      color: const Color(0xFF666666),
-                      size: 20,
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    // Logo
+                    Image.asset(
+                      'assets/organizer_logo.jpeg',
+                      height: 90,
                     ),
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF1A1A1F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: Color(0xFFA2F301)),
-                  ),
-                ),
-              ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Welcome to OnlyGigz',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Sign in to your account',
+                      style: TextStyle(
+                        color: Color(0xFF999999),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    // Email field
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Email address',
+                        hintStyle: const TextStyle(color: Color(0xFF666666)),
+                        prefixIcon: const Icon(Icons.email_outlined,
+                            color: Color(0xFF666666), size: 20),
+                        filled: true,
+                        fillColor: const Color(0xFF1A1A1F),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFA2F301)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Password field
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        FocusScope.of(context).unfocus();
+                        _handleSignIn();
+                      },
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Password',
+                        hintStyle: const TextStyle(color: Color(0xFF666666)),
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: Color(0xFF666666), size: 20),
+                        suffixIcon: GestureDetector(
+                          onTap: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
+                          child: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: const Color(0xFF666666),
+                            size: 20,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF1A1A1F),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFF2A2A2F)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Color(0xFFA2F301)),
+                        ),
+                      ),
+                    ),
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
@@ -347,14 +358,15 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 60),
             ],
           ),
         ),
       ),
-        ],
-      ),
-    );
+    ],
+  ),
+),
+);
   }
 
   Widget _buildSocialButton({

@@ -176,143 +176,154 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      appBar: AppBar(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
         backgroundColor: const Color(0xFF0A0A0F),
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1F),
-              borderRadius: BorderRadius.circular(8),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0A0A0F),
+          elevation: 0,
+          leading: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1F),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chevron_left, color: Colors.white),
             ),
-            child: const Icon(Icons.chevron_left, color: Colors.white),
           ),
+          title: const Text(
+            'Create Account',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          'Create Account',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Account Details',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Account Details',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Set up your organizer account',
-                style: TextStyle(color: Color(0xFF999999), fontSize: 14),
-              ),
-              const SizedBox(height: 24),
-              if (!_isSocialUser) ...[
-                _buildSocialButton(
-                  iconPath: 'assets/google_icon.svg',
-                  label: 'Sign up with Google',
-                  onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('google'),
+                const SizedBox(height: 4),
+                const Text(
+                  'Set up your organizer account',
+                  style: TextStyle(color: Color(0xFF999999), fontSize: 14),
                 ),
-                if (!kIsWeb && Platform.isIOS) ...[
-                  const SizedBox(height: 12),
+                const SizedBox(height: 24),
+                if (!_isSocialUser) ...[
                   _buildSocialButton(
-                    iconPath: 'assets/apple_icon.svg',
-                    label: 'Sign up with Apple',
-                    onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('apple'),
+                    iconPath: 'assets/google_icon.svg',
+                    label: 'Sign up with Google',
+                    onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('google'),
                   ),
-                ],
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or with email',
-                          style: TextStyle(color: Color(0xFF666666), fontSize: 13)),
+                  if (!kIsWeb && Platform.isIOS) ...[
+                    const SizedBox(height: 12),
+                    _buildSocialButton(
+                      iconPath: 'assets/apple_icon.svg',
+                      label: 'Sign up with Apple',
+                      onTap: _isLoadingSocial ? () {} : () => _handleSocialSignIn('apple'),
                     ),
-                    Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
                   ],
-                ),
-                const SizedBox(height: 24),
-              ] else ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFA2F301).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFA2F301).withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
+                  const SizedBox(height: 24),
+                  Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Color(0xFFA2F301), size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Authenticated via ${_emailController.text.isNotEmpty ? _emailController.text : "Social Account"}',
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                        ),
+                      Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or with email',
+                            style: TextStyle(color: Color(0xFF666666), fontSize: 13)),
                       ),
+                      Expanded(child: Container(height: 1, color: const Color(0xFF2A2A2F))),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-              ],
-              _buildLabel('Full Name'),
-              const SizedBox(height: 8),
-              _buildTextField(_nameController, 'Your full name'),
-              const SizedBox(height: 20),
-              _buildLabel('Organization Name'),
-              const SizedBox(height: 8),
-              _buildTextField(_organizationController, 'Your company or venue'),
-              const SizedBox(height: 20),
-              _buildLabel('Email Address'),
-              const SizedBox(height: 8),
-              _buildTextField(
-                _emailController,
-                'your@email.com',
-                keyboardType: TextInputType.emailAddress,
-                readOnly: _isSocialUser,
-              ),
-              if (!_isSocialUser) ...[
+                  const SizedBox(height: 24),
+                ] else ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFA2F301).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFA2F301).withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Color(0xFFA2F301), size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Authenticated via ${_emailController.text.isNotEmpty ? _emailController.text : "Social Account"}',
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+                _buildLabel('Full Name'),
+                const SizedBox(height: 8),
+                _buildTextField(_nameController, 'Your full name',
+                    textInputAction: TextInputAction.next),
                 const SizedBox(height: 20),
-                _buildLabel('Password'),
+                _buildLabel('Organization Name'),
+                const SizedBox(height: 8),
+                _buildTextField(_organizationController, 'Your company or venue',
+                    textInputAction: TextInputAction.next),
+                const SizedBox(height: 20),
+                _buildLabel('Email Address'),
                 const SizedBox(height: 8),
                 _buildTextField(
-                  _passwordController,
-                  'Create a password',
-                  obscure: _obscurePassword,
-                  toggleObscure: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
+                  _emailController,
+                  'your@email.com',
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: _isSocialUser ? TextInputAction.done : TextInputAction.next,
+                  readOnly: _isSocialUser,
                 ),
-                const SizedBox(height: 20),
-                _buildLabel('Confirm Password'),
-                const SizedBox(height: 8),
-                _buildTextField(
-                  _confirmPasswordController,
-                  'Re-enter password',
-                  obscure: _obscureConfirm,
-                  toggleObscure: () =>
-                      setState(() => _obscureConfirm = !_obscureConfirm),
-                ),
+                if (!_isSocialUser) ...[
+                  const SizedBox(height: 20),
+                  _buildLabel('Password'),
+                  const SizedBox(height: 8),
+                  _buildTextField(
+                    _passwordController,
+                    'Create a password',
+                    obscure: _obscurePassword,
+                    textInputAction: TextInputAction.next,
+                    toggleObscure: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildLabel('Confirm Password'),
+                  const SizedBox(height: 8),
+                  _buildTextField(
+                    _confirmPasswordController,
+                    'Re-enter password',
+                    obscure: _obscureConfirm,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                    toggleObscure: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                _buildNextButton(onTap: _handleNext),
+                const SizedBox(height: 60),
               ],
-              const SizedBox(height: 40),
-            ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: _buildNextButton(
-        onTap: _handleNext,
       ),
     );
   }
@@ -328,6 +339,8 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
     bool obscure = false,
     VoidCallback? toggleObscure,
     TextInputType keyboardType = TextInputType.text,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
     bool readOnly = false,
   }) {
     return TextField(
@@ -335,6 +348,8 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
       obscureText: obscure,
       readOnly: readOnly,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
@@ -393,29 +408,26 @@ class _Step1AccountDetailsState extends State<Step1AccountDetails> {
   }
 
   Widget _buildNextButton({required VoidCallback onTap}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFA2F301),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Next',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
-              SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: Colors.black),
-            ],
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFA2F301),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Next',
+                style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+            SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: Colors.black),
+          ],
         ),
       ),
     );

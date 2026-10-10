@@ -58,83 +58,91 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      appBar: AppBar(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
         backgroundColor: const Color(0xFF0A0A0F),
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1F),
-              borderRadius: BorderRadius.circular(8),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF0A0A0F),
+          elevation: 0,
+          leading: GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1F),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.chevron_left, color: Colors.white),
             ),
-            child: const Icon(Icons.chevron_left, color: Colors.white),
           ),
+          title: const Text(
+            'Create Account',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          centerTitle: true,
         ),
-        title: const Text(
-          'Create Account',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Organizer Information',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Organizer Information',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Tell us about yourself',
-                style: TextStyle(color: Color(0xFF999999), fontSize: 14),
-              ),
-              const SizedBox(height: 32),
-              _buildLabel('Organizer Type'),
-              const SizedBox(height: 8),
-              _buildDropdown(),
-              const SizedBox(height: 20),
-              _buildLabel('Contact Number'),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CountryCodePicker(
-                    selectedCountry: _selectedCountry,
-                    onCountryChanged: (code) {
-                      setState(() {
-                        _selectedCountry = code;
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(_contactController, '555 000-0000',
-                        keyboardType: TextInputType.phone),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildLabel('City & Location'),
-              const SizedBox(height: 8),
-              _buildTextField(_locationController, 'Los Angeles, CA'),
-              const SizedBox(height: 40),
-            ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Tell us about yourself',
+                  style: TextStyle(color: Color(0xFF999999), fontSize: 14),
+                ),
+                const SizedBox(height: 32),
+                _buildLabel('Organizer Type'),
+                const SizedBox(height: 8),
+                _buildDropdown(),
+                const SizedBox(height: 20),
+                _buildLabel('Contact Number'),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CountryCodePicker(
+                      selectedCountry: _selectedCountry,
+                      onCountryChanged: (code) {
+                        setState(() {
+                          _selectedCountry = code;
+                        });
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildTextField(_contactController, '555 000-0000',
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                _buildLabel('City & Location'),
+                const SizedBox(height: 8),
+                _buildTextField(_locationController, 'Los Angeles, CA',
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => FocusScope.of(context).unfocus()),
+                const SizedBox(height: 32),
+                _buildNextButton(onTap: _handleNext),
+                const SizedBox(height: 60),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: _buildNextButton(
-        onTap: _handleNext,
       ),
     );
   }
@@ -176,10 +184,14 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
     TextEditingController controller,
     String hint, {
     TextInputType keyboardType = TextInputType.text,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onSubmitted,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
@@ -195,29 +207,26 @@ class _Step2OrganizerInfoState extends State<Step2OrganizerInfo> {
   }
 
   Widget _buildNextButton({required VoidCallback onTap}) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFA2F301),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Next',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600)),
-              SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: Colors.black),
-            ],
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFA2F301),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Next',
+                style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600)),
+            SizedBox(width: 8),
+            Icon(Icons.chevron_right, color: Colors.black),
+          ],
         ),
       ),
     );
