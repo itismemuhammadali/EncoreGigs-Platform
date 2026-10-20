@@ -1,6 +1,12 @@
 <div align="center">
 
-<img src="./assets/branding/logo.png" alt="EncoreGigs Logo" width="140" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(245, 158, 11, 0.35);" />
+<p align="center">
+  <img src="assets/branding/client_trademark_logo.png" alt="OnlyGigz Client Production Logo" width="140" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); margin: 0 12px;" />
+  <img src="assets/branding/encoregigs_platform_logo.jpg" alt="EncoreGigs Platform Architectural Logo" width="140" style="border-radius: 20px; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25); margin: 0 12px;" />
+</p>
+<p align="center">
+  <em>Left: Production Client Mark (OnlyGigz Trademark) &bull; Right: Architectural Platform Identity (EncoreGigs)</em>
+</p>
 
 # EncoreGigs Platform
 
