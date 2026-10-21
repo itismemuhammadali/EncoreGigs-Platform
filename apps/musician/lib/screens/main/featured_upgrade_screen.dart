@@ -38,9 +38,11 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(message), backgroundColor: Colors.red),
-          );
+          if (!message.toLowerCase().contains('cancel')) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message), backgroundColor: Colors.red),
+            );
+          }
         }
       }
     });
@@ -81,8 +83,9 @@ class _FeaturedUpgradeScreenState extends State<FeaturedUpgradeScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+        final cleanMsg = e.toString().replaceFirst('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Purchase error: ${e.toString()}'), backgroundColor: Colors.red),
+          SnackBar(content: Text(cleanMsg), backgroundColor: Colors.red),
         );
       }
     }
